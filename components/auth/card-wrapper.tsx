@@ -9,10 +9,11 @@ import { Header } from "@/components/auth/header";
 
 interface CardWrapperProps {
   children: React.ReactNode;
+  headerH1: string;
   headerLabel: string;
 };
 
-export default function CardWrapper({ children, headerLabel }: CardWrapperProps) {
+export default function CardWrapper({ children, headerLabel, headerH1 }: CardWrapperProps) {
   return (
     <div>
     <div className="flex justify-center mb-4">
@@ -24,7 +25,7 @@ export default function CardWrapper({ children, headerLabel }: CardWrapperProps)
     </div>
     <Card className="w-[600px] shadow-md p-8">
       <CardHeader>
-        <Header label={headerLabel} />
+        <Header h1={headerH1} label={headerLabel} />
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>

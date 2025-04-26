@@ -32,6 +32,7 @@ export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) 
     router.push(href);
   };
 
+  // Fetch the SVG content from the public folder
   useEffect(() => {
     if (image) {
       const fetchSvg = async () => {
@@ -47,6 +48,7 @@ export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) 
     }
   }, [image]);
 
+  // Modify the SVG to apply the gradient when active
   const renderSvgWithGradient = () => {
     if (!svgContent) return null;
 
@@ -54,10 +56,12 @@ export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) 
     const svgDoc = parser.parseFromString(svgContent, "image/svg+xml");
     const svgElement = svgDoc.documentElement;
 
+    // Set width and height to match your design (16x16 pixels)
     svgElement.setAttribute("width", "16");
     svgElement.setAttribute("height", "16");
     svgElement.setAttribute("class", "w-4 h-4");
 
+    // Find all elements with fill attributes and set them to use the gradient or fallback color
     const elementsWithFill = svgElement.querySelectorAll("[fill]");
     elementsWithFill.forEach((el) => {
       if (el.getAttribute("fill") !== "none") {
@@ -65,6 +69,7 @@ export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) 
       }
     });
 
+    // Inject the gradient definition if active
     if (isActive) {
       const defs = svgDoc.createElementNS("http://www.w3.org/2000/svg", "defs");
       const linearGradient = svgDoc.createElementNS(
@@ -99,16 +104,23 @@ export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) 
     return <div dangerouslySetInnerHTML={{ __html: svgElement.outerHTML }} />;
   };
 
-
+  // If the item has children, render it as a collapsible section
   if (children && children.length > 0) {
     return (
       <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
-        <CollapsibleTrigger asChild>
+        <div
+          className={cn(
+            "flex items-center w-full transition-all",
+            isActive && "bg-[#F5F2FF] hover:bg-sky-200/20"
+          )}
+        >
+          {/* Main route content (click to navigate) */}
           <button
+            onClick={() => onClick(href)}
             type="button"
             className={cn(
-              "flex items-center gap-x-2 text-slate-500 text-sm font-[500] pl-6 transition-all hover:text-slate-600 hover:bg-slate-300/20 w-full",
-              isActive && "bg-[#F5F2FF] hover:bg-sky-200/20"
+              "flex items-center gap-x-2 text-slate-500 text-sm font-[500] pl-6 transition-all hover:text-slate-600 hover:bg-slate-300/20 flex-1",
+              isActive && "bg-transparent" // Prevent nested background color
             )}
           >
             <div className="flex items-center gap-x-2 py-4">
@@ -122,15 +134,18 @@ export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) 
                 {label}
               </span>
             </div>
-            <div className="ml-auto pr-6">
+          </button>
+          {/* Chevron button (click to expand/collapse) */}
+          <CollapsibleTrigger asChild>
+            <button className="pr-6">
               {isOpen ? (
                 <ChevronUp className="h-4 w-4 text-gray-500" />
               ) : (
                 <ChevronDown className="h-4 w-4 text-gray-500" />
               )}
-            </div>
-          </button>
-        </CollapsibleTrigger>
+            </button>
+          </CollapsibleTrigger>
+        </div>
         <CollapsibleContent className="pl-12">
           {children.map((child) => (
             <button
@@ -151,7 +166,7 @@ export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) 
     );
   }
 
-
+  // If the item has no children, render it as a single link
   return (
     <button
       onClick={() => onClick(href)}

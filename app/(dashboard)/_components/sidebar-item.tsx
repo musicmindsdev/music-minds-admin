@@ -3,39 +3,48 @@
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface SidebarItemProps {
   label: string;
   href: string;
-  image: string; 
+  image?: string;
+  children?: { label: string; href: string }[];
 }
 
-export const SidebarItem = ({ label, href, image }: SidebarItemProps) => {
+export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const [svgContent, setSvgContent] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   const isActive =
     (pathname === "/" && href === "/") ||
     pathname === href ||
     pathname?.startsWith(`${href}/`);
 
-  const onClick = () => {
+  const onClick = (href: string) => {
     router.push(href);
   };
 
-
   useEffect(() => {
-    const fetchSvg = async () => {
-      try {
-        const response = await fetch(image);
-        const text = await response.text();
-        setSvgContent(text);
-      } catch (error) {
-        console.error("Failed to fetch SVG:", error);
-      }
-    };
-    fetchSvg();
+    if (image) {
+      const fetchSvg = async () => {
+        try {
+          const response = await fetch(image);
+          const text = await response.text();
+          setSvgContent(text);
+        } catch (error) {
+          console.error("Failed to fetch SVG:", error);
+        }
+      };
+      fetchSvg();
+    }
   }, [image]);
 
   const renderSvgWithGradient = () => {
@@ -90,9 +99,62 @@ export const SidebarItem = ({ label, href, image }: SidebarItemProps) => {
     return <div dangerouslySetInnerHTML={{ __html: svgElement.outerHTML }} />;
   };
 
+
+  if (children && children.length > 0) {
+    return (
+      <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              "flex items-center gap-x-2 text-slate-500 text-sm font-[500] pl-6 transition-all hover:text-slate-600 hover:bg-slate-300/20 w-full",
+              isActive && "bg-[#F5F2FF] hover:bg-sky-200/20"
+            )}
+          >
+            <div className="flex items-center gap-x-2 py-4">
+              <div className="relative w-4 h-4">{renderSvgWithGradient()}</div>
+              <span
+                className={cn(
+                  isActive &&
+                    "bg-gradient-to-r from-[#0065FF] via-[#952BDA] to-[#FE02BF] bg-clip-text text-transparent"
+                )}
+              >
+                {label}
+              </span>
+            </div>
+            <div className="ml-auto pr-6">
+              {isOpen ? (
+                <ChevronUp className="h-4 w-4 text-gray-500" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-gray-500" />
+              )}
+            </div>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pl-12">
+          {children.map((child) => (
+            <button
+              key={child.href}
+              onClick={() => onClick(child.href)}
+              type="button"
+              className={cn(
+                "flex items-center gap-x-2 text-slate-500 text-sm font-[500] pl-6 transition-all hover:text-slate-600 hover:bg-slate-300/20 w-full py-2",
+                pathname === child.href &&
+                  "bg-[#F5F2FF] hover:bg-sky-200/20 bg-gradient-to-r from-[#0065FF] via-[#952BDA] to-[#FE02BF] bg-clip-text text-transparent"
+              )}
+            >
+              {child.label}
+            </button>
+          ))}
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+
+
   return (
     <button
-      onClick={onClick}
+      onClick={() => onClick(href)}
       type="button"
       className={cn(
         "flex items-center gap-x-2 text-slate-500 text-sm font-[500] pl-6 transition-all hover:text-slate-600 hover:bg-slate-300/20",

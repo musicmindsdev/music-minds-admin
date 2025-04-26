@@ -1,43 +1,34 @@
 "use client";
 
-import qs from "query-string";
+import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { Input } from "./ui/input";
-import { useEffect, useState } from "react";
-import { useDebounce } from "@/hooks/use-debounce";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
-
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export const SearchInput = () => {
-    const [value, setValue] = useState("")
-    const deBounceValue = useDebounce(value);
+  const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
 
-    const searchParams = useSearchParams();
-    const router = useRouter();
-    const pathname = usePathname();
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      // Redirect to a search results page or update the current page with query
+      router.push(`/dashboard?search=${encodeURIComponent(searchQuery)}`);
+    }
+  };
 
-    const currentCategoryId = searchParams.get("categoryId");
-
-    useEffect(() => {
-        const url = qs.stringifyUrl({
-            url: pathname,
-            query: {
-                categoryId: currentCategoryId,
-                title: deBounceValue,
-            }
-        }, {skipEmptyString: true, skipNull: true});
-
-        router.push(url);
-    }, [deBounceValue, currentCategoryId, router, pathname])
-
-return (
-    <div className="relative">
-        <Search className="h-4 w-4 absolute top-3 left-3 text-slate-600"/>
-        <Input 
-        onChange={(e) => setValue(e.target.value)}
-        value={value}
-        className="w-full md:w-[300px] pl-9 rounded-full bg-slate-100 focus-visible:ring-slate-200"
-        placeholder="Search....."/>
-    </div>
-)
-}
+  return (
+    <form onSubmit={handleSearch} className="relative">
+      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+        <Search className="h-5 w-5 text-gray-400" />
+      </div>
+      <Input
+        type="text"
+        placeholder="Search"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="pl-10 bg-blue-50 border-none rounded-lg h-10 w-[400px] max-w-md focus:ring-2 focus:ring-blue-200"
+      />
+    </form>
+  );
+};

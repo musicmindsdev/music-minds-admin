@@ -111,7 +111,7 @@ export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) 
         <div
           className={cn(
             "flex items-center w-full transition-all",
-            isActive && "bg-[#F5F2FF] hover:bg-sky-200/20"
+            isActive && "bg-[#F5F2FF] dark:bg-sky-200/10 "
           )}
         >
           {/* Main route content (click to navigate) */}
@@ -119,7 +119,7 @@ export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) 
             onClick={() => onClick(href)}
             type="button"
             className={cn(
-              "flex items-center gap-x-2 text-slate-500 text-sm font-[500] pl-6 transition-all hover:text-slate-600 hover:bg-slate-300/20 flex-1",
+              "flex items-center gap-x-2 text-slate-500 text-sm font-[500] pl-6 transition-all hover:text-slate-600  flex-1",
               isActive && "bg-transparent" // Prevent nested background color
             )}
           >

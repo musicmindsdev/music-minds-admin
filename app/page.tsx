@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ModeToggle } from "@/components/modetoggle";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 
@@ -29,7 +28,6 @@ export default function Home() {
       autoplay
       className="w-50 h-50"
     />
-      <ModeToggle/>
       </div>
     </div>
   );

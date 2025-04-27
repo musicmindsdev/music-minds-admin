@@ -131,7 +131,7 @@ function LoginForm() {
               </Link>
             </div>
           </div>
-          <Button type="submit" className="w-[513px] h-[53px]" disabled={isLoading}>
+          <Button type="submit" className="w-[513px] h-[53px] font-bold" disabled={isLoading}>
             {isLoading ? (
               <Oval height={24} width={24} color="#ffffff" secondaryColor="#cccccc" strokeWidth={4} />
             ) : (

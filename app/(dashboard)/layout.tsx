@@ -18,7 +18,7 @@ const DashboardLayout = ({
         <main className="md:pl-63 pt-[80px] h-full pb-[80px] md:pb-0">
           {children}
         </main>
-        <MobileSidebar />
+        {/* <MobileSidebar /> */}
       </div>
     );
 }

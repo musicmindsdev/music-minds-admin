@@ -15,13 +15,13 @@ import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoginSchema } from "@/schemas";
 import { Button } from "../ui/button";
-import { useRouter } from "next/router";
+// import { useRouter } from "next/router";
 import { verifyOTP, resendOTP } from "@/lib/api";
 import { Oval } from "react-loader-spinner";
 
 function VerifyForm() {
-  const router = useRouter();
-  const { email } = router.query;
+  // const router = useRouter();
+  // const { email } = router.query;
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
     defaultValues: {
@@ -37,24 +37,24 @@ function VerifyForm() {
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async () => {
-    if (!email || typeof email !== "string") {
-      setError("Email is missing or invalid");
-      return;
-    }
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await verifyOTP(email, value);
-      // On success, store token or user data if provided in response
-      if (response.token) {
-        localStorage.setItem("authToken", response.token); // Adjust based on actual response
-      }
-      router.push("/dashboard"); // Redirect to dashboard
-    } catch (err: any) {
-      setError(err.message || "An error occurred during OTP verification");
-    } finally {
-      setIsLoading(false);
-    }
+    // if (!email || typeof email !== "string") {
+    //   setError("Email is missing or invalid");
+    //   return;
+    // }
+    // setIsLoading(true);
+    // setError(null);
+    // try {
+    //   const response = await verifyOTP(email, value);
+    //   // On success, store token or user data if provided in response
+    //   if (response.token) {
+    //     localStorage.setItem("authToken", response.token); // Adjust based on actual response
+    //   }
+    //   router.push("/dashboard"); // Redirect to dashboard
+    // } catch (err: any) {
+    //   setError(err.message || "An error occurred during OTP verification");
+    // } finally {
+    //   setIsLoading(false);
+    // }
   };
 
   useEffect(() => {
@@ -69,19 +69,19 @@ function VerifyForm() {
   }, [timer, canResend]);
 
   const handleResend = async () => {
-    if (canResend && email && typeof email === "string") {
-      setIsLoading(true);
-      setError(null);
-      try {
-        await resendOTP(email);
-        setCanResend(false);
-        setTimer(60);
-      } catch (err: any) {
-        setError(err.message || "Failed to resend OTP");
-      } finally {
-        setIsLoading(false);
-      }
-    }
+    // if (canResend && email && typeof email === "string") {
+    //   setIsLoading(true);
+    //   setError(null);
+    //   try {
+    //     await resendOTP(email);
+    //     setCanResend(false);
+    //     setTimer(60);
+    //   } catch (err: any) {
+    //     setError(err.message || "Failed to resend OTP");
+    //   } finally {
+    //     setIsLoading(false);
+    //   }
+    // }
   };
 
   return (

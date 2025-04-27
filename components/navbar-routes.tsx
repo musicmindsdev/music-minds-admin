@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MdKeyboardArrowDown } from "react-icons/md";
 import { SearchInput } from "./search-input";
+import { ModeToggle } from "./modetoggle";
 
 export const NavbarRoutes = () => {
   const router = useRouter();
@@ -44,7 +45,8 @@ export const NavbarRoutes = () => {
       <div className="hidden md:block max-w-md">
         <SearchInput />
       </div>
-      <div className="flex items-center gap-x-3">
+      <div className="flex items-center gap-3">
+        <ModeToggle />
         <Button variant="ghost" size="icon">
           <Bell className="h-5 w-5 text-gray-500" />
         </Button>

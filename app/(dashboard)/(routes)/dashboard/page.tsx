@@ -19,6 +19,7 @@ import "swiper/css";
 import UserTable from "./_components/UserTable";
 import BookingTable from "./_components/BookingTable";
 import TransactionTable from "./_components/TransactionTable";
+import ExportModal from "./_components/ExportModal";
 
 // Mock data for stats and charts
 const statsData = {
@@ -70,6 +71,7 @@ const revenueGrowthData = [
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("users");
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   return (
     <div className="p-6 space-y-6">
@@ -85,15 +87,21 @@ export default function DashboardPage() {
             <TbTicket className="mr-2" />
             Support Tickets
           </Button>
-          <Button className="bg-blue-600 text-white hover:bg-blue-700">
+          <Button className=" text-white" onClick={() => setIsExportModalOpen(true)}>
             <CiExport className="mr-2" />
             Export Data
           </Button>
         </div>
       </div>
+      
+     {/* Export Modal */}
+     <ExportModal
+     isOpen={isExportModalOpen}
+     onClose={() => setIsExportModalOpen(false)}
+   />
 
       {/* Stats Slider */}
-      <Swiper slidesPerView={1.2} spaceBetween={16} className="mySwiper">
+      <Swiper slidesPerView={1.2} spaceBetween={16} className="mySwiper" >
         <SwiperSlide>
           <Card className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <div>
@@ -105,7 +113,7 @@ export default function DashboardPage() {
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData.totalUsers}</div>
-                  <p className="text-sm font-light">Total Users</p>
+                  <p className="text-xs font-light">Total Users</p>
                 </CardTitle>
               </CardContent>
             </div>
@@ -118,7 +126,7 @@ export default function DashboardPage() {
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData.successfulBookings}</div>
-                  <p className="text-sm font-light w-full">Successful Bookings</p>
+                  <p className="text-xs font-light w-full">Successful Bookings</p>
                 </CardTitle>
               </CardContent>
             </div>
@@ -131,7 +139,7 @@ export default function DashboardPage() {
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData.revenueGenerated}</div>
-                  <p className="text-sm font-light">Revenue Generated</p>
+                  <p className="text-xs font-light">Revenue Generated</p>
                 </CardTitle>
               </CardContent>
             </div>
@@ -144,7 +152,7 @@ export default function DashboardPage() {
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData.impressions}</div>
-                  <p className="text-sm font-light">Impressions</p>
+                  <p className="text-xs font-light">Impressions</p>
                 </CardTitle>
               </CardContent>
             </div>
@@ -161,7 +169,7 @@ export default function DashboardPage() {
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData.pending}</div>
-                  <p className="text-sm font-light">Pending</p>
+                  <p className="text-xs font-light">Pending</p>
                 </CardTitle>
               </CardContent>
             </div>
@@ -174,7 +182,7 @@ export default function DashboardPage() {
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData2.successfulBookings}</div>
-                  <p className="text-sm font-light w-full">Successful Bookings</p>
+                  <p className="text-xs font-light w-full">Successful Bookings</p>
                 </CardTitle>
               </CardContent>
             </div>
@@ -187,7 +195,7 @@ export default function DashboardPage() {
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData2.revenueGenerated}</div>
-                  <p className="text-sm font-light">Revenue Generated</p>
+                  <p className="text-xs font-light">Revenue Generated</p>
                 </CardTitle>
               </CardContent>
             </div>
@@ -200,7 +208,7 @@ export default function DashboardPage() {
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData2.impressions}</div>
-                  <p className="text-sm font-light">Impressions</p>
+                  <p className="text-xs font-light">Impressions</p>
                 </CardTitle>
               </CardContent>
             </div>
@@ -323,21 +331,21 @@ export default function DashboardPage() {
       {/* Tabs */}
       <div className="flex space-x-2">
         <Button
-          variant={activeTab === "users" ? "default" : "outline"}
+          variant={activeTab === "users" ? "gradient" : "outline"}
           className="rounded-full px-4 py-2"
           onClick={() => setActiveTab("users")}
         >
           Users
         </Button>
         <Button
-          variant={activeTab === "bookings" ? "default" : "outline"}
+          variant={activeTab === "bookings" ? "gradient" : "outline"}
           className="rounded-full px-4 py-2"
           onClick={() => setActiveTab("bookings")}
         >
           Bookings
         </Button>
         <Button
-          variant={activeTab === "transactions" ? "default" : "outline"}
+          variant={activeTab === "transactions" ? "gradient" : "outline"}
           className="rounded-full px-4 py-2"
           onClick={() => setActiveTab("transactions")}
         >
@@ -348,9 +356,9 @@ export default function DashboardPage() {
       {/* Dynamic Table Component */}
       <Card>
         <CardHeader>
-          {activeTab === "users" && <UserTable />}
-          {activeTab === "bookings" && <BookingTable />}
-          {activeTab === "transactions" && <TransactionTable />}
+          {activeTab === "users" && <UserTable users={[]} />}
+          {activeTab === "bookings" && <BookingTable bookings={[]} />}
+          {activeTab === "transactions" && <TransactionTable transactions={[]} />}
         </CardHeader>
       </Card>
     </div>

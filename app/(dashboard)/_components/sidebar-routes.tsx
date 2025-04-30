@@ -26,7 +26,7 @@ const routes = [
       children: [
         {
           label: "All Users",
-          href: "/user-management/users",
+          href: "/user-management",
         },
         {
           label: "Admin Team",
@@ -41,7 +41,7 @@ const routes = [
       children: [
         {
           label: "Bookings",
-          href: "/content-management/bookings",
+          href: "/content-management",
         },
         {
           label: "Reviews",
@@ -51,6 +51,10 @@ const routes = [
           label: "Announcements",
           href: "/content-management/announcements",
         },
+        {
+          label: "Transactions",
+          href: "/content-management/transactions",
+        }
       ],
     },
     {
@@ -60,7 +64,7 @@ const routes = [
       children: [
         {
           label: "Support Tickets",
-          href: "/support-management/tickets",
+          href: "/support-management",
         },
         {
           label: "Direct Messages",
@@ -79,7 +83,7 @@ const routes = [
       children: [
         {
           label: "Articles",
-          href: "/knowledge-base/articles",
+          href: "/knowledge-base",
         },
       ],
     },
@@ -90,7 +94,7 @@ const routes = [
       children: [
         {
           label: "General Settings",
-          href: "/settings/general",
+          href: "/settings",
         },
         {
           label: "Security",

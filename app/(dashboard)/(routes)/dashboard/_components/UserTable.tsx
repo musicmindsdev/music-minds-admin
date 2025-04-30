@@ -1,326 +1,287 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Filter, Search, Calendar } from "lucide-react";
-import { MdVerified } from "react-icons/md";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+  import { useState } from "react";
+  import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+  } from "@/components/ui/table";
+  import { Button } from "@/components/ui/button";
+  import { Filter, Search, Calendar } from "lucide-react";
+  import { MdVerified } from "react-icons/md";
+  import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+  } from "@/components/ui/dropdown-menu";
+  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+  import { Input } from "@/components/ui/input";
+  import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+  import { usersData } from "@/lib/mockData"; // Import mock data
 
-// Mock data for Users
-const usersData = [
-  {
-    id: "0001",
-    name: "Daniel Aderi C.",
-    email: "danieladeri@yahoo.com",
-    profileType: "Musician",
-    status: "Active",
-    verified: true,
-    lastLogin: "19/04/25 • 9:00 AM",
-  },
-  {
-    id: "0002",
-    name: "Michael Ajob E.",
-    email: "michaelajob@gmail.com",
-    profileType: "Professional Studio",
-    status: "Active",
-    verified: true,
-    lastLogin: "12/04/25 • 2:45 AM",
-  },
-  {
-    id: "0004",
-    name: "James D. Shola",
-    email: "jamesshola@gmail.com",
-    profileType: "Talent Agency",
-    status: "Suspended",
-    verified: true,
-    lastLogin: "19/04/25 • 10:14 PM",
-  },
-  {
-    id: "0005",
-    name: "Anit Adeboyo",
-    email: "adeboyoanit@gmail.com",
-    profileType: "Music Business Coa...",
-    status: "Active",
-    verified: true,
-    lastLogin: "20/04/25 • 10:00 AM",
-  },
-  {
-    id: "0006",
-    name: "Amakiri Justina",
-    email: "amakirijustina@gmail.com",
-    profileType: "Producer",
-    status: "Deactivated",
-    verified: true,
-    lastLogin: "01/03/25 • 1:00 AM",
-  },
-];
+  // Helper function to parse date string "dd/mm/yy • hh:mm AM/PM" to Date object
+  const parseUserDate = (dateString: any) => {
+    const [datePart, timePart] = dateString.split(" • ");
+    const [day, month, year] = datePart.split("/").map(Number);
+    let [hours, minutes, period] = timePart.split(/[: ]/);
+    hours = parseInt(hours);
+    minutes = parseInt(minutes);
+    if (period === "PM" && hours !== 12) hours += 12;
+    if (period === "AM" && hours === 12) hours = 0;
+    return new Date(2000 + year, month - 1, day, hours, minutes);
+  };
 
-// Helper function to parse date string "dd/mm/yy • hh:mm AM/PM" to Date object
-const parseUserDate = (dateString) => {
-  const [datePart, timePart] = dateString.split(" • ");
-  const [day, month, year] = datePart.split("/").map(Number);
-  let [hours, minutes, period] = timePart.split(/[: ]/);
-  hours = parseInt(hours);
-  minutes = parseInt(minutes);
-  if (period === "PM" && hours !== 12) hours += 12;
-  if (period === "AM" && hours === 12) hours = 0;
-  return new Date(2000 + year, month - 1, day, hours, minutes);
-};
+  export default function UserTable() {
+    const [statusFilter, setStatusFilter] = useState({
+      Active: false,
+      Suspended: false,
+      Deactivated: false,
+    });
+    const [profileTypeFilter, setProfileTypeFilter] = useState("all");
+    const [dateRangeFrom, setDateRangeFrom] = useState("");
+    const [dateRangeTo, setDateRangeTo] = useState("");
+    const [verificationFilter, setVerificationFilter] = useState("all");
 
-export default function UserTable() {
-  const [statusFilter, setStatusFilter] = useState({
-    Active: false,
-    Suspended: false,
-    Deactivated: false,
-  });
-  const [profileTypeFilter, setProfileTypeFilter] = useState("all");
-  const [dateRangeFrom, setDateRangeFrom] = useState("");
-  const [dateRangeTo, setDateRangeTo] = useState("");
-  const [verificationFilter, setVerificationFilter] = useState("all");
+    // Filter the users based on the selected filters
+    const filteredUsers = usersData.filter((user) => {
+      const statusMatch =
+        Object.values(statusFilter).every((val) => !val) ||
+        statusFilter[user.status as keyof typeof statusFilter];
+      const profileTypeMatch =
+        profileTypeFilter === "all" || user.profileType === profileTypeFilter;
+      let dateMatch = true;
+      if (dateRangeFrom || dateRangeTo) {
+        const userDate = parseUserDate(user.lastLogin);
+        const fromDate = dateRangeFrom
+          ? parseUserDate(dateRangeFrom + " • 12:00 AM")
+          : null;
+        const toDate = dateRangeTo
+          ? parseUserDate(dateRangeTo + " • 11:59 PM")
+          : null;
+        if (fromDate && userDate < fromDate) dateMatch = false;
+        if (toDate && userDate > toDate) dateMatch = false;
+      }
+      const verificationMatch =
+        verificationFilter === "all" ||
+        (verificationFilter === "Verified" && user.verified) ||
+        (verificationFilter === "Not Verified" && !user.verified);
+      return statusMatch && profileTypeMatch && dateMatch && verificationMatch;
+    });
 
-  // Filter the users based on the selected filters
-  const filteredUsers = usersData.filter((user) => {
-    const statusMatch =
-      Object.values(statusFilter).every((val) => !val) ||
-      statusFilter[user.status];
-    const profileTypeMatch =
-      profileTypeFilter === "all" || user.profileType === profileTypeFilter;
-    let dateMatch = true;
-    if (dateRangeFrom || dateRangeTo) {
-      const userDate = parseUserDate(user.lastLogin);
-      const fromDate = dateRangeFrom
-        ? parseUserDate(dateRangeFrom + " • 12:00 AM")
-        : null;
-      const toDate = dateRangeTo
-        ? parseUserDate(dateRangeTo + " • 11:59 PM")
-        : null;
-      if (fromDate && userDate < fromDate) dateMatch = false;
-      if (toDate && userDate > toDate) dateMatch = false;
-    }
-    const verificationMatch =
-      verificationFilter === "all" ||
-      (verificationFilter === "Verified" && user.verified) ||
-      (verificationFilter === "Not Verified" && !user.verified);
-    return statusMatch && profileTypeMatch && dateMatch && verificationMatch;
-  });
-
-  return (
-    <>
-      <div className="flex justify-between items-center">
-        <p>USER MANAGEMENT</p>
-        <Button variant="link" className="text-blue-600 hover:text-blue-800">
-          View all Users
-        </Button>
-      </div>
-      <div className="relative mt-4 flex items-center">
-        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-        <input
-          placeholder="Search for user by Name, Email or ID"
-          className="pl-8 p-2 border rounded-lg w-full bg-background"
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="ml-2">
-              <Filter className="h-4 w-4 text-gray-500" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            side="bottom"
-            sideOffset={4}
-            className="w-64 p-4 shadow-lg border border-gray-200 rounded-lg"
-          >
-            <DropdownMenuLabel>Filter by</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {/* Status Filter */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Status</p>
-              <div className="flex space-x-2">
-                <Button
-                  variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Active ? "border border-gray-400 font-medium" : ""
-                  }`}
-                  onClick={() =>
-                    setStatusFilter((prev) => ({
-                      ...prev,
-                      Active: !prev.Active,
-                    }))
-                  }
-                >
-                  <span className="h-2 w-2 rounded-full bg-green-500" />
-                  Active
-                </Button>
-                <Button
-                  variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Suspended ? "border border-gray-400 font-medium" : ""
-                  }`}
-                  onClick={() =>
-                    setStatusFilter((prev) => ({
-                      ...prev,
-                      Suspended: !prev.Suspended,
-                    }))
-                  }
-                >
-                  <span className="h-2 w-2 rounded-full bg-yellow-500" />
-                  Suspended
-                </Button>
-                <Button
-                  variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Deactivated ? "border border-gray-400 font-medium" : ""
-                  }`}
-                  onClick={() =>
-                    setStatusFilter((prev) => ({
-                      ...prev,
-                      Deactivated: !prev.Deactivated,
-                    }))
-                  }
-                >
-                  <span className="h-2 w-2 rounded-full bg-gray-500" />
-                  Deactivated
-                </Button>
-              </div>
-            </div>
-            <DropdownMenuSeparator />
-            {/* Profile Type Filter */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Profile Type</p>
-              <Select onValueChange={setProfileTypeFilter} value={profileTypeFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select profile type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="Musician">Musician</SelectItem>
-                  <SelectItem value="Professional Studio">Professional Studio</SelectItem>
-                  <SelectItem value="Talent Agency">Talent Agency</SelectItem>
-                  <SelectItem value="Music Business Coa...">
-                    Music Business Coa...
-                  </SelectItem>
-                  <SelectItem value="Producer">Producer</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <DropdownMenuSeparator />
-            {/* Date Range Filter */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Date Range</p>
-              <div className="flex space-x-2">
-                <div className="relative flex-1">
-                  <Input
-                    placeholder="dd/mm/yy"
-                    value={dateRangeFrom}
-                    onChange={(e) => setDateRangeFrom(e.target.value)}
-                    className="pl-8"
-                  />
-                  <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                </div>
-                <div className="relative flex-1">
-                  <Input
-                    placeholder="dd/mm/yy"
-                    value={dateRangeTo}
-                    onChange={(e) => setDateRangeTo(e.target.value)}
-                    className="pl-8"
-                  />
-                  <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                </div>
-              </div>
-            </div>
-            <DropdownMenuSeparator />
-            {/* Verification Filter */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Verification</p>
-              <Select onValueChange={setVerificationFilter} value={verificationFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select verification status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="Verified">Verified</SelectItem>
-                  <SelectItem value="Not Verified">Not Verified</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>User ID</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Profile Type</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Verified</TableHead>
-            <TableHead>Last Login</TableHead>
-            <TableHead>Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredUsers.map((user) => (
-            <TableRow key={user.id}>
-              <TableCell>{user.id}</TableCell>
-              <TableCell>{user.name}</TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>{user.profileType}</TableCell>
-              <TableCell>
-                <span
-                  className={`flex items-center justify-center gap-1 rounded-full ${
-                    user.status === "Active"
-                      ? "bg-green-100 text-green-600"
-                      : user.status === "Suspended"
-                      ? "bg-yellow-100 text-yellow-600"
-                      : "bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      user.status === "Active"
-                        ? "bg-green-500"
-                        : user.status === "Suspended"
-                        ? "bg-yellow-500"
-                        : "bg-gray-500"
+    return (
+      <>
+        <div className="flex justify-between items-center">
+          <p className="font-light text-sm">USER MANAGEMENT</p>
+          <Button variant="link" className="text-blue-600 hover:text-blue-800">
+            View all Users
+          </Button>
+        </div>
+        <div className="relative mt-4 flex items-center">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <input
+            placeholder="Search for user by Name, Email or ID"
+            className="pl-8 p-2 border rounded-lg w-full bg-background"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="ml-2">
+                <Filter className="h-4 w-4 text-gray-500" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              side="bottom"
+              sideOffset={4}
+              className="w-94 p-4 shadow-lg border border-gray-200 rounded-lg"
+            >
+              <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {/* Status Filter */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Status</p>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="ghost"
+                    className={`flex items-center gap-1 rounded-full text-sm ${
+                      statusFilter.Active ? "border border-gray-400 font-medium" : ""
                     }`}
-                  />
-                  {user.status}
-                </span>
-              </TableCell>
-              <TableCell>
-                {user.verified ? (
-                  <span className="text-blue-600 flex gap-2">
-                    Verified <MdVerified />
-                  </span>
-                ) : (
-                  "Not Verified"
-                )}
-              </TableCell>
-              <TableCell>{user.lastLogin}</TableCell>
-              <TableCell>
-                <Button variant="ghost">...</Button>
-              </TableCell>
+                    onClick={() =>
+                      setStatusFilter((prev) => ({
+                        ...prev,
+                        Active: !prev.Active,
+                      }))
+                    }
+                  >
+                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                    Active
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className={`flex items-center gap-1 rounded-full text-sm ${
+                      statusFilter.Suspended ? "border border-gray-400 font-medium" : ""
+                    }`}
+                    onClick={() =>
+                      setStatusFilter((prev) => ({
+                        ...prev,
+                        Suspended: !prev.Suspended,
+                      }))
+                    }
+                  >
+                    <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                    Suspended
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className={`flex items-center gap-1 rounded-full text-sm ${
+                      statusFilter.Deactivated ? "border border-gray-400 font-medium" : ""
+                    }`}
+                    onClick={() =>
+                      setStatusFilter((prev) => ({
+                        ...prev,
+                        Deactivated: !prev.Deactivated,
+                      }))
+                    }
+                  >
+                    <span className="h-2 w-2 rounded-full bg-gray-500" />
+                    Deactivated
+                  </Button>
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              {/* Profile Type Filter */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Profile Type</p>
+                <Select onValueChange={setProfileTypeFilter} value={profileTypeFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select profile type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="Musician">Musician</SelectItem>
+                    <SelectItem value="Professional Studio">Professional Studio</SelectItem>
+                    <SelectItem value="Talent Agency">Talent Agency</SelectItem>
+                    <SelectItem value="Music Business Coa...">
+                      Music Business Coa...
+                    </SelectItem>
+                    <SelectItem value="Producer">Producer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <DropdownMenuSeparator />
+              {/* Date Range Filter */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Date Range</p>
+                <div className="flex space-x-2">
+                  <div className="relative flex-1">
+                    <Input
+                      placeholder="dd/mm/yy"
+                      value={dateRangeFrom}
+                      onChange={(e) => setDateRangeFrom(e.target.value)}
+                      className="pl-8"
+                    />
+                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="relative flex-1">
+                    <Input
+                      placeholder="dd/mm/yy"
+                      value={dateRangeTo}
+                      onChange={(e) => setDateRangeTo(e.target.value)}
+                      className="pl-8"
+                    />
+                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              {/* Verification Filter */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Verification</p>
+                <Select onValueChange={setVerificationFilter} value={verificationFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select verification status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="Verified">Verified</SelectItem>
+                    <SelectItem value="Not Verified">Not Verified</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>User ID</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Profile Type</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Verified</TableHead>
+              <TableHead>Last Login</TableHead>
+              <TableHead>Action</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </>
-  );
-}
+          </TableHeader>
+          <TableBody>
+            {filteredUsers.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell>{user.id}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Avatar>
+                      <AvatarImage src={user.image} alt={user.name} />
+                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    {user.name}
+                  </div>
+                </TableCell>
+                <TableCell>{user.email}</TableCell>
+                <TableCell>{user.profileType}</TableCell>
+                <TableCell>
+                  <span
+                    className={`flex items-center justify-center gap-1 rounded-full ${
+                      user.status === "Active"
+                        ? "bg-green-100 text-green-600"
+                        : user.status === "Suspended"
+                        ? "bg-yellow-100 text-yellow-600"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        user.status === "Active"
+                          ? "bg-green-500"
+                          : user.status === "Suspended"
+                          ? "bg-yellow-500"
+                          : "bg-gray-500"
+                      }`}
+                    />
+                    {user.status}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  {user.verified ? (
+                    <span className="text-blue-600 flex gap-2">
+                      Verified <MdVerified />
+                    </span>
+                  ) : (
+                    "Not Verified"
+                  )}
+                </TableCell>
+                <TableCell>{user.lastLogin}</TableCell>
+                <TableCell>
+                  <Button variant="ghost">...</Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </>
+    );
+  }

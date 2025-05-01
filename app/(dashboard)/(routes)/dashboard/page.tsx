@@ -329,23 +329,24 @@ export default function DashboardPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-2">
+      <div>
+      <div className="flex space-x-2 border w-[320px] p-2 rounded-t-lg bg-card border-b-0">
         <Button
-          variant={activeTab === "users" ? "gradient" : "outline"}
+          variant={activeTab === "users" ? "gradient" : "ghost"}
           className="rounded-full px-4 py-2"
           onClick={() => setActiveTab("users")}
         >
           Users
         </Button>
         <Button
-          variant={activeTab === "bookings" ? "gradient" : "outline"}
+          variant={activeTab === "bookings" ? "gradient" : "ghost"}
           className="rounded-full px-4 py-2"
           onClick={() => setActiveTab("bookings")}
         >
           Bookings
         </Button>
         <Button
-          variant={activeTab === "transactions" ? "gradient" : "outline"}
+          variant={activeTab === "transactions" ? "gradient" : "ghost"}
           className="rounded-full px-4 py-2"
           onClick={() => setActiveTab("transactions")}
         >
@@ -354,13 +355,14 @@ export default function DashboardPage() {
       </div>
 
       {/* Dynamic Table Component */}
-      <Card>
+      <Card className="rounded-none">
         <CardHeader>
-          {activeTab === "users" && <UserTable users={[]} />}
-          {activeTab === "bookings" && <BookingTable bookings={[]} />}
-          {activeTab === "transactions" && <TransactionTable transactions={[]} />}
+          {activeTab === "users" && <UserTable  />}
+          {activeTab === "bookings" && <BookingTable />}
+          {activeTab === "transactions" && <TransactionTable  />}
         </CardHeader>
       </Card>
+      </div>
     </div>
   );
 }

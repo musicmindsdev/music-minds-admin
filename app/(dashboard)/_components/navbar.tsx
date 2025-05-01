@@ -2,18 +2,15 @@
 
 import { NavbarRoutes } from "@/components/navbar-routes";
 import { MobileSidebar } from "./mobile-sidebar";
-import { usersData, bookingsData, transactionsData } from "@/lib/mockData"; // Import mock data
+import { usersData, transactionsData, bookingsData } from "@/lib/mockData"; // Import mock data
 
 export const Navbar = () => {
   return (
-    <div className="p-4 border-b h-full flex items-center shadow-sm bg-background">
+    <div className="p-4 border-b h-full flex items-center shadow-sm bg-card">
       <MobileSidebar />
       <NavbarRoutes
         users={usersData}
-        bookings={bookingsData.map((booking) => ({
-          ...booking,
-          status: booking.status as "Confirmed" | "Pending" | "Cancelled",
-        }))}
+        bookings={bookingsData}
         transactions={transactionsData}
       />
     </div>

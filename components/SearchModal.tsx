@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogOverlay } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CiUser } from "react-icons/ci";
 import { LuCalendarClock } from "react-icons/lu";
@@ -10,46 +10,18 @@ import { TbTicket } from "react-icons/tb";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, Trash2, X } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  profileType: string;
-  status: string;
-  verified: boolean;
-  lastLogin: string;
-  image: string;
-}
-
-interface Booking {
-  id: string;
-  user: string;
-  event: string;
-  date: string;
-  status: "Confirmed" | "Pending" | "Cancelled";
-  amount: string;
-}
-
-interface Transaction {
-  id: string;
-  user: string;
-  bookingId: string;
-  date: string;
-  status: string;
-  amount: string;
-}
+import { usersData, bookingsData, transactionsData } from "@/lib/mockData";
 
 interface SearchModalProps {
   children: React.ReactNode;
   searchQuery: string;
   isOpen: boolean;
   onClose: () => void;
-  users: User[];
-  bookings: Booking[];
-  transactions: Transaction[];
+  users: typeof usersData;
+  bookings: typeof bookingsData;
+  transactions: typeof transactionsData;
   trigger: React.ReactNode;
 }
 
@@ -67,16 +39,27 @@ export default function SearchModal({
   console.log("SearchModal data:", { users, bookings, transactions });
 
   const [dataType, setDataType] = useState("Users");
-  const [status, setStatus] = useState("Active");
+  const [status, setStatus] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [modalSearchQuery, setModalSearchQuery] = useState(searchQuery);
 
+  // Define status options for each data type
+  const statusOptions: { [key: string]: string[] } = {
+    Users: ["Active", "Suspended", "Deactivated"],
+    Bookings: ["Confirmed", "Pending", "Cancelled"],
+    Transactions: ["Completed", "Pending", "Failed"],
+    "Support Tickets": [],
+  };
+
+  // Reset status when dataType changes
   useEffect(() => {
     if (isOpen) {
       setModalSearchQuery(searchQuery);
     }
-  }, [isOpen, searchQuery]);
+    // Set default status to "all" for all data types
+    setStatus("all");
+  }, [isOpen, searchQuery, dataType]);
 
   const dataTypes = [
     { name: "Users", icon: <CiUser className="w-5 h-5" /> },
@@ -85,31 +68,37 @@ export default function SearchModal({
     { name: "Support Tickets", icon: <TbTicket className="w-5 h-5" /> },
   ];
 
+  // Apply search and status filters
   const filteredUserResults = users.filter(
     (result) =>
-      result.name.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-      result.email.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-      result.profileType.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-      result.id.toLowerCase().includes(modalSearchQuery.toLowerCase())
+      (result.name.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+       result.email.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+       result.profileType.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+       result.id.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
+      (status === "all" || result.status === status)
   );
 
   const filteredBookingResults = bookings.filter(
     (result) =>
-      result.id.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-      result.user.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-      result.event.toLowerCase().includes(modalSearchQuery.toLowerCase())
+      (result.id.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+       result.clientName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+       result.serviceOffered.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
+      (status === "all" || result.status === status)
   );
 
   const filteredTransactionResults = transactions.filter(
     (result) =>
-      result.id.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-      result.user.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-      result.bookingId.toLowerCase().includes(modalSearchQuery.toLowerCase())
+      (result.id.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+       result.clientName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+       result.bookingId.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+       result.providerName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+       result.serviceOffered.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
+      (status === "all" || result.status === status)
   );
 
   const handleClearFilters = () => {
     setDataType("Users");
-    setStatus("Active");
+    setStatus("all");
     setStartDate("");
     setEndDate("");
     setModalSearchQuery("");
@@ -119,11 +108,12 @@ export default function SearchModal({
     <>
       <div>{trigger}</div>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[575px] rounded-lg p-0 bg-background">
+        <DialogOverlay className="backdrop-blur-xs" />
+        <DialogContent className="sm:max-w-[575px] border-none rounded-lg p-0 bg-transparent">
           <VisuallyHidden>
             <DialogTitle>Search Modal</DialogTitle>
           </VisuallyHidden>
-          <div className="p-2 bg-transparent border-gray-200/50 flex items-center justify-between">
+          <div className="p-1 flex items-center justify-between">
             <div className="relative flex-1">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
@@ -136,16 +126,9 @@ export default function SearchModal({
                 className="pl-10 bg-blue-50 border-none rounded-lg h-10 w-full focus:ring-2 focus:ring-blue-200"
               />
             </div>
-              {/* <Button
-                variant="ghost"
-                size="icon"
-                className="ml-2 text-gray-500 hover:text-gray-700"
-              >
-                <X className="h-5 w-5" />
-              </Button> */}
           </div>
 
-          <div className="p-4 space-y-4 bg-background">
+          <div className="p-4 space-y-4 bg-background rounded-2xl">
             <div className="flex items-center justify-between">
               <div className="space-y-2 flex-1">
                 <p className="text-sm font-light">Filter by</p>
@@ -182,14 +165,17 @@ export default function SearchModal({
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Suspended">Suspended</SelectItem>
-                    <SelectItem value="Deactivated">Deactivated</SelectItem>
-                    <SelectItem value="Confirmed">Confirmed</SelectItem>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="Cancelled">Cancelled</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
-                    <SelectItem value="Failed">Failed</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
+                    {statusOptions[dataType].map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                    {statusOptions[dataType].length === 0 && (
+                      <SelectItem value="" disabled>
+                        No status options available
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -257,13 +243,12 @@ export default function SearchModal({
                   </p>
                   {filteredBookingResults.length > 0 ? (
                     filteredBookingResults.map((result) => (
-                      <div key={result.id} className="flex items-center gap-2">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{result.id}</p>
-                          <p className="text-xs text-gray-500">{result.event}</p>
-                        </div>
+                      <div key={result.id} className="flex items-center justify-between gap-2">
+                        <div className="flex gap-3">
+                        <LuCalendarClock className="w-5 h-5 text-gray-500" />
+                        <p className="text-sm font-light">{result.id}</p>
                         <span
-                          className={`text-xs px-2 py-1 rounded-full ${
+                          className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
                             result.status === "Confirmed"
                               ? "bg-green-100 text-green-700"
                               : result.status === "Pending"
@@ -271,10 +256,23 @@ export default function SearchModal({
                               : "bg-red-100 text-red-700"
                           }`}
                         >
+                          <span
+                            className={`h-2 w-2 rounded-full ${
+                              result.status === "Confirmed"
+                                ? "bg-green-500"
+                                : result.status === "Pending"
+                                ? "bg-yellow-500"
+                                : "bg-red-500"
+                            }`}
+                          />
                           {result.status}
                         </span>
-                       局.cancelled("Cancelled") ? "bg-red-100 text-red-700" : "bg-red-100 text-red-700";
-                        <p className="text-sm font-medium">{result.amount}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                        <p className="text-sm font-light">{result.totalAmount}</p>
+                        <span className="text-gray-500">•</span>
+                        <p className="text-sm text-gray-500">{result.serviceOffered}</p>
+                        </div>
                       </div>
                     ))
                   ) : (
@@ -290,13 +288,12 @@ export default function SearchModal({
                   </p>
                   {filteredTransactionResults.length > 0 ? (
                     filteredTransactionResults.map((result) => (
-                      <div key={result.id} className="flex items-center gap-2">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{result.id}</p>
-                          <p className="text-xs text-gray-500">{result.user}</p>
-                        </div>
+                      <div key={result.id} className="flex items-center justify-between gap-2">
+                        <div className="flex gap-2 items-center">
+                        <TbReceipt className="w-5 h-5 text-gray-500" />
+                        <p className="text-sm font-light text-blue">{result.id}</p>
                         <span
-                          className={`text-xs px-2 py-1 rounded-full ${
+                          className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
                             result.status === "Completed"
                               ? "bg-green-100 text-green-700"
                               : result.status === "Pending"
@@ -304,9 +301,22 @@ export default function SearchModal({
                               : "bg-red-100 text-red-700"
                           }`}
                         >
+                          <span
+                            className={`h-2 w-2 rounded-full ${
+                              result.status === "Completed"
+                                ? "bg-green-500"
+                                : result.status === "Pending"
+                                ? "bg-yellow-500"
+                                : "bg-red-500"
+                            }`}
+                          />
                           {result.status}
                         </span>
-                        <p className="text-sm font-medium">{result.amount}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                        <p className="text-sm font-light">{result.totalAmount}</p>
+                        <p className="text-sm text-gray-500">{result.lastLogin}</p>
+                        </div>
                       </div>
                     ))
                   ) : (

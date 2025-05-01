@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogOverlay, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CiUser } from "react-icons/ci";
 import { LuCalendarClock } from "react-icons/lu";
@@ -34,6 +34,7 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
+       <DialogOverlay className="backdrop-blur-xs" />
       <DialogContent className="sm:max-w-[571px] rounded-lg">
         <DialogHeader>
           <DialogTitle className="text-lg font-medium">Export Data</DialogTitle>

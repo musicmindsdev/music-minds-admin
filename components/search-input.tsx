@@ -19,20 +19,24 @@ interface User {
 
 interface Booking {
   id: string;
-  user: string;
-  event: string;
-  date: string;
-  status: "Confirmed" | "Pending" | "Cancelled";
-  amount: string;
+  clientName: string;
+  providerName: string;
+  serviceOffered: string;
+  totalAmount: string;
+  status: string;
+  lastLogin: string;
 }
 
 interface Transaction {
   id: string;
-  user: string;
   bookingId: string;
-  date: string;
+  clientName: string;
+  providerName: string;
+  serviceOffered: string;
+  totalAmount: string;
   status: string;
-  amount: string;
+  lastLogin: string;
+  image: string;
 }
 
 interface SearchInputProps {
@@ -53,39 +57,46 @@ export const SearchInput = ({ users, bookings, transactions }: SearchInputProps)
     }
   };
 
-  const handleInputClick = (e: React.MouseEvent<HTMLInputElement>) => {
+  const handleInputClick = () => {
     console.log("Input clicked, setting isModalOpen to true");
     setIsModalOpen(true);
   };
 
   return (
-    <div className="relative">
-      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-        <Search className="h-5 w-5 text-gray-400" />
-      </div>
-      <SearchModal
-        searchQuery={searchQuery}
-        isOpen={isModalOpen}
-        onClose={() => {
-          console.log("Closing modal, setting isModalOpen to false");
-          setIsModalOpen(false);
-        }}
-        users={users}
-        bookings={bookings}
-        transactions={transactions}
-        trigger={
-          <Input
-            type="text"
-            placeholder="Search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onClick={handleInputClick}
-            className="pl-10 bg-blue-50 border-none rounded-lg h-10 w-[400px] max-w-md focus:ring-2 focus:ring-blue-200"
-          />
-        }
-      >
-        <form onSubmit={handleSearch} />
-      </SearchModal>
-    </div>
+    <SearchModal
+      searchQuery={searchQuery}
+      isOpen={isModalOpen}
+      onClose={() => {
+        console.log("Closing modal, setting isModalOpen to false");
+        setIsModalOpen(false);
+      }}
+      users={users}
+      bookings={bookings}
+      transactions={transactions}
+      trigger={
+        <Input
+          type="text"
+          placeholder="Search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onClick={handleInputClick}
+          className="pl-10 bg-blue-50 border-none rounded-lg h-10 w-[400px] max-w-md focus:ring-2 focus:ring-blue-200"
+        />
+      }
+    >
+      <form onSubmit={handleSearch} className="relative ">
+        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none ">
+          <Search className="h-5 w-5 text-gray-400" />
+        </div>
+        <Input
+          type="text"
+          placeholder="Search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onClick={handleInputClick}
+          className="pl-10 bg-blue-50 border-none rounded-lg h-10 w-[400px] max-w-md focus:ring-blue-200"
+        />
+      </form>
+    </SearchModal>
   );
 };

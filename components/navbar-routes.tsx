@@ -9,51 +9,25 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Bell, UserPlus, Settings, LogOut } from "lucide-react";
+import { Bell, UserPlus, Settings, LogOut, ChevronRight, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MdKeyboardArrowDown } from "react-icons/md";
 import { SearchInput } from "./search-input";
 import { ModeToggle } from "./modetoggle";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  profileType: string;
-  status: string;
-  verified: boolean;
-  lastLogin: string;
-  image: string;
-}
-
-interface Booking {
-  id: string;
-  user: string;
-  event: string;
-  date: string;
-  status: "Confirmed" | "Pending" | "Cancelled";
-  amount: string;
-}
-
-interface Transaction {
-  id: string;
-  user: string;
-  bookingId: string;
-  date: string;
-  status: string;
-  amount: string;
-}
+import { usersData, bookingsData, transactionsData } from "@/lib/mockData";
+import InviteAdminModal from "./invite-admin-modal";
 
 interface NavbarRoutesProps {
-  users: User[];
-  bookings: Booking[];
-  transactions: Transaction[];
+  users: typeof usersData;
+  bookings: typeof bookingsData;
+  transactions: typeof transactionsData;
 }
 
 export const NavbarRoutes = ({ users, bookings, transactions }: NavbarRoutesProps) => {
   const router = useRouter();
   const [userImage, setUserImage] = useState<string | null>(null);
+  const [isInviteAdminModalOpen, setIsInviteAdminModalOpen] = useState(false);
 
   // Mock user data to be replaced with actual API data later
   const user = {
@@ -65,12 +39,12 @@ export const NavbarRoutes = ({ users, bookings, transactions }: NavbarRoutesProp
   };
 
   // Handlers for dropdown menu actions
-  const handleInviteAdmin = () => {
-    router.push("/invite-admin");
-  };
-
   const handleSettings = () => {
     router.push("/settings");
+  };
+
+  const handleInviteAdmin = () => {
+    setIsInviteAdminModalOpen(true); // Open the modal instead of navigating
   };
 
   const handleSignOut = () => {
@@ -80,14 +54,19 @@ export const NavbarRoutes = ({ users, bookings, transactions }: NavbarRoutesProp
 
   return (
     <div className="flex items-center justify-end gap-6 w-full p-4">
-      <div className="hidden md:block max-w-md">
-        <SearchInput users={users} bookings={bookings} transactions={transactions} />
+      <div className="hidden md:block max-w-md ">
+        <SearchInput users={usersData} bookings={bookingsData} transactions={transactionsData} />
       </div>
       <div className="flex items-center gap-3">
         <ModeToggle />
-        <Button variant="ghost" size="icon">
-          <Bell className="h-5 w-5 text-gray-500" />
-        </Button>
+        <DropdownMenu>   
+          <DropdownMenuTrigger asChild>    
+            <Button variant="ghost" size="icon">         
+              <Bell className="h-5 w-5 text-gray-500" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent><Eye/></DropdownMenuContent>
+        </DropdownMenu>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -100,17 +79,20 @@ export const NavbarRoutes = ({ users, bookings, transactions }: NavbarRoutesProp
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
-            {/* Header Section */}
-            <div className="flex items-center gap-3 p-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={user.image} alt={user.name} />
-                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <p className="text-sm font-medium">{user.name}</p>
-                <p className="text-xs text-gray-500">{user.email}</p>
+            {/* Header Section - Now Clickable */}
+            <DropdownMenuItem onClick={handleSettings} className="p-0">
+              <div className="flex items-center gap-3 p-3 w-full">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={user.image} alt={user.name} />
+                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{user.name}</p>
+                  <p className="text-xs text-gray-500">{user.email}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-gray-500" />
               </div>
-            </div>
+            </DropdownMenuItem>
 
             {/* Role and Last Login Section */}
             <div className="px-3 py-2">
@@ -145,6 +127,11 @@ export const NavbarRoutes = ({ users, bookings, transactions }: NavbarRoutesProp
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Render the Invite Admin Modal */}
+        <InviteAdminModal
+          isOpen={isInviteAdminModalOpen}
+          onClose={() => setIsInviteAdminModalOpen(false)}        />
       </div>
     </div>
   );

@@ -143,3 +143,14 @@ export const usersData = [
       createdDate: "19/04/25 • 9:00 AM"
     }
   ]
+
+  export const adminData = [
+    {
+      name: "Daniel Aderi C.",
+      email: "danieladeri@yahoo.com",
+      role: "Admin",
+      dateAdded:"Pending",
+      lastLogin: "",
+    },
+    
+  ]

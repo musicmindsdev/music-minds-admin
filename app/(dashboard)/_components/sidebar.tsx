@@ -11,7 +11,7 @@ export const Sidebar = () => {
            <img
       src="/Musicmindlogo.svg"
       alt="Your Alt Text"
-      className="w-32 h-32" 
+      className="w-32 h-32  " 
     />
            </div>
            <div className="flex flex-col w-full">

@@ -152,5 +152,51 @@ export const usersData = [
       dateAdded:"Pending",
       lastLogin: "",
     },
-    
+
   ]
+
+  export const notificationsData = [
+    {
+      id: "NOT-001",
+      type: "system",
+      message: "System detected unusual login activity...",
+      timestamp: "Apr 16, 2025 • 9:10 AM",
+      read: false,
+      actions: [{ label: "Investigate", variant: "default" }],
+    },
+    {
+      id: "NOT-002",
+      type: "booking",
+      message: "New booking request (BK-004) from D...",
+      timestamp: "Apr 16, 2025 • 10:45 AM",
+      read: false,
+      actions: [
+        { label: "Approve", variant: "default" },
+        { label: "Cancel", variant: "destructive" },
+      ],
+    },
+    {
+      id: "NOT-003",
+      type: "user",
+      message: "New user 'Maria Gonzalez' registered as...",
+      timestamp: "Apr 16, 2025 • 11:05 AM",
+      read: false,
+      actions: [{ label: "Verify Profile", variant: "default" }],
+    },
+    {
+      id: "NOT-004",
+      type: "support",
+      message: "Reminder: 3 support tickets (T-#45) re...",
+      timestamp: "Apr 20, 2025 • 01:45 PM",
+      read: true,
+      actions: [{ label: "Take Action", variant: "default" }],
+    },
+    {
+      id: "NOT-005",
+      type: "security",
+      message: "Potential security breach attempt dete...",
+      timestamp: "Apr 20, 2025 • 9:10 AM",
+      read: false,
+      actions: [{ label: "Lock Account", variant: "default" }],
+    },
+  ];

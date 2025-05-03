@@ -15,7 +15,9 @@ import { FaRegStar } from "react-icons/fa6";
 import { TbTicket } from "react-icons/tb";
 import { CiExport } from "react-icons/ci";
 import { Swiper, SwiperSlide } from "swiper/react";
+import { Autoplay } from "swiper/modules";
 import "swiper/css";
+import "swiper/css/autoplay";
 import UserTable from "./_components/UserTable";
 import BookingTable from "./_components/BookingTable";
 import TransactionTable from "./_components/TransactionTable";
@@ -51,7 +53,7 @@ const bookingTrendsData = [
   { month: "Sep", bookings: 700 },
   { month: "Oct", bookings: 600 },
   { month: "Nov", bookings: 650 },
-  { month: "Dec", bookings: 805 }, // Peak at 805 as shown in the image
+  { month: "Dec", bookings: 805 },
 ];
 
 const revenueGrowthData = [
@@ -66,7 +68,7 @@ const revenueGrowthData = [
   { month: "Sep", revenue: 600 },
   { month: "Oct", revenue: 500 },
   { month: "Nov", revenue: 550 },
-  { month: "Dec", revenue: 231 }, // Peak at 231M as shown in the image (in millions)
+  { month: "Dec", revenue: 231 },
 ];
 
 export default function DashboardPage() {
@@ -79,29 +81,35 @@ export default function DashboardPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-light">Welcome, Admin</h1>
         <div className="flex space-x-2">
-          <Button variant="outline">
+          <Button variant="outline" className="flex items-center space-x-2">
             <FaRegStar className="mr-2" />
-            Moderate Reviews
+            <span className="hidden md:inline">Moderate Reviews</span>
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" className="flex items-center space-x-2">
             <TbTicket className="mr-2" />
-            Support Tickets
+            <span className="hidden md:inline">Support Tickets</span>
           </Button>
-          <Button className=" text-white" onClick={() => setIsExportModalOpen(true)}>
+          <Button className="text-white flex items-center space-x-2" onClick={() => setIsExportModalOpen(true)}>
             <CiExport className="mr-2" />
-            Export Data
+            <span className="hidden md:inline">Export Data</span>
           </Button>
         </div>
       </div>
       
-     {/* Export Modal */}
-     <ExportModal
-     isOpen={isExportModalOpen}
-     onClose={() => setIsExportModalOpen(false)}
-   />
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+      />
 
       {/* Stats Slider */}
-      <Swiper slidesPerView={1.2} spaceBetween={16} className="mySwiper" >
+      <Swiper
+        slidesPerView={1.2}
+        spaceBetween={16}
+        className="mySwiper"
+        modules={[Autoplay]}
+        autoplay={{ delay: 3000, disableOnInteraction: false, pauseOnMouseEnter: true }}
+      >
         <SwiperSlide>
           <Card className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <div>
@@ -227,49 +235,49 @@ export default function DashboardPage() {
             </select>
           </CardHeader>
           <CardContent>
-          <div className="h-[300px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={bookingTrendsData}>
-          <defs>
-            <linearGradient id="strokeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#FF00DF" />
-              <stop offset="50%" stopColor="#5243FE" />
-              <stop offset="100%" stopColor="#9F3DF3" />
-            </linearGradient>
-            <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#9F3DF3" stopOpacity={0.2} />
-              <stop offset="30%" stopColor="#FF00DF" stopOpacity={0.1} />
-              <stop offset="100%" stopColor="#5243FE" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <XAxis
-            dataKey="month"
-            tick={{ fontSize: 12 }}
-            axisLine={true}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <Tooltip
-            formatter={(value) => [value, "Bookings"]}
-            labelStyle={{ color: "#000" }}
-            itemStyle={{ color: "#5243FE" }}
-          />
-          <Area
-            type="monotone"
-            dataKey="bookings"
-            stroke="url(#strokeGradient)" // Use the new gradient for the stroke
-            strokeWidth={2}
-            fillOpacity={1}
-            fill="url(#colorBookings)"
-            activeDot={{ r: 6, fill: "#5243FE", stroke: "#fff", strokeWidth: 2 }}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={bookingTrendsData}>
+                  <defs>
+                    <linearGradient id="strokeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#FF00DF" />
+                      <stop offset="50%" stopColor="#5243FE" />
+                      <stop offset="100%" stopColor="#9F3DF3" />
+                    </linearGradient>
+                    <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#9F3DF3" stopOpacity={0.2} />
+                      <stop offset="30%" stopColor="#FF00DF" stopOpacity={0.1} />
+                      <stop offset="100%" stopColor="#5243FE" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 12 }}
+                    axisLine={true}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    formatter={(value) => [value, "Bookings"]}
+                    labelStyle={{ color: "#000" }}
+                    itemStyle={{ color: "#5243FE" }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="bookings"
+                    stroke="url(#strokeGradient)"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorBookings)"
+                    activeDot={{ r: 6, fill: "#5243FE", stroke: "#fff", strokeWidth: 2 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -281,87 +289,87 @@ export default function DashboardPage() {
             </select>
           </CardHeader>
           <CardContent>
-           <div className="h-[300px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={bookingTrendsData}>
-          <defs>
-            <linearGradient id="strokeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#FF00DF" />
-              <stop offset="50%" stopColor="#5243FE" />
-              <stop offset="100%" stopColor="#9F3DF3" />
-            </linearGradient>
-            <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#9F3DF3" stopOpacity={0.2} />
-              <stop offset="30%" stopColor="#FF00DF" stopOpacity={0.1} />
-              <stop offset="100%" stopColor="#5243FE" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <XAxis
-            dataKey="month"
-            tick={{ fontSize: 12 }}
-            axisLine={true}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <Tooltip
-            formatter={(value) => [value, "Bookings"]}
-            labelStyle={{ color: "#000" }}
-            itemStyle={{ color: "#5243FE" }}
-          />
-          <Area
-            type="monotone"
-            dataKey="bookings"
-            stroke="url(#strokeGradient)" // Use the new gradient for the stroke
-            strokeWidth={2}
-            fillOpacity={1}
-            fill="url(#colorBookings)"
-            activeDot={{ r: 6, fill: "#5243FE", stroke: "#fff", strokeWidth: 2 }}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueGrowthData}>
+                  <defs>
+                    <linearGradient id="strokeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#FF00DF" />
+                      <stop offset="50%" stopColor="#5243FE" />
+                      <stop offset="100%" stopColor="#9F3DF3" />
+                    </linearGradient>
+                    <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#9F3DF3" stopOpacity={0.2} />
+                      <stop offset="30%" stopColor="#FF00DF" stopOpacity={0.1} />
+                      <stop offset="100%" stopColor="#5243FE" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 12 }}
+                    axisLine={true}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    formatter={(value) => [value, "Revenue"]}
+                    labelStyle={{ color: "#000" }}
+                    itemStyle={{ color: "#5243FE" }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="url(#strokeGradient)"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorBookings)"
+                    activeDot={{ r: 6, fill: "#5243FE", stroke: "#fff", strokeWidth: 2 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Tabs */}
       <div>
-      <div className="flex space-x-2 border w-[320px] p-2 rounded-t-lg bg-card border-b-0">
-        <Button
-          variant={activeTab === "users" ? "gradient" : "ghost"}
-          className="rounded-full px-4 py-2"
-          onClick={() => setActiveTab("users")}
-        >
-          Users
-        </Button>
-        <Button
-          variant={activeTab === "bookings" ? "gradient" : "ghost"}
-          className="rounded-full px-4 py-2"
-          onClick={() => setActiveTab("bookings")}
-        >
-          Bookings
-        </Button>
-        <Button
-          variant={activeTab === "transactions" ? "gradient" : "ghost"}
-          className="rounded-full px-4 py-2"
-          onClick={() => setActiveTab("transactions")}
-        >
-          Transactions
-        </Button>
-      </div>
+        <div className="flex space-x-2 border w-[320px] p-2 rounded-t-lg bg-card border-b-0">
+          <Button
+            variant={activeTab === "users" ? "gradient" : "ghost"}
+            className="rounded-full px-4 py-2"
+            onClick={() => setActiveTab("users")}
+          >
+            Users
+          </Button>
+          <Button
+            variant={activeTab === "bookings" ? "gradient" : "ghost"}
+            className="rounded-full px-4 py-2"
+            onClick={() => setActiveTab("bookings")}
+          >
+            Bookings
+          </Button>
+          <Button
+            variant={activeTab === "transactions" ? "gradient" : "ghost"}
+            className="rounded-full px-4 py-2"
+            onClick={() => setActiveTab("transactions")}
+          >
+            Transactions
+          </Button>
+        </div>
 
-      {/* Dynamic Table Component */}
-      <Card className="rounded-none">
-        <CardHeader>
-          {activeTab === "users" && <UserTable  />}
-          {activeTab === "bookings" && <BookingTable />}
-          {activeTab === "transactions" && <TransactionTable  />}
-        </CardHeader>
-      </Card>
+        {/* Dynamic Table Component */}
+        <Card className="rounded-none">
+          <CardHeader>
+            {activeTab === "users" && <UserTable />}
+            {activeTab === "bookings" && <BookingTable />}
+            {activeTab === "transactions" && <TransactionTable />}
+          </CardHeader>
+        </Card>
       </div>
     </div>
   );

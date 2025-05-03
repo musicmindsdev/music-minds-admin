@@ -116,3 +116,30 @@ export const usersData = [
       image: "https://via.placeholder.com/150/0001",
     },
   ];
+
+  export const supportData = [
+    {
+      id: "AN-001",
+      user: "Daniel Aderi C.",
+      issue: "Login issue",
+      priority: "High",
+      status: "In progress",
+      createdDate: "19/04/25 • 9:00 AM",
+    },
+    {
+      id: "AN-002",
+      user: "Michael Ajob E.",
+      issue: "Payment failed",
+      priority: "Medium",
+      status: "Resolved",
+      createdDate: "19/04/25 • 9:00 AM",
+    },
+    {
+      id: "AN-003",
+      user: "James D. Shola",
+      issue: "Failed OTP",
+      priority: "Low",
+      status: "Open",
+      createdDate: "19/04/25 • 9:00 AM"
+    }
+  ]

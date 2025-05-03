@@ -39,13 +39,23 @@ interface Transaction {
   image: string;
 }
 
+interface Support{
+  id: string;
+  user: string;
+  issue: string;
+  priority: string;
+  status: string;
+  createdDate: string;
+}
+
 interface SearchInputProps {
   users: User[];
   bookings: Booking[];
   transactions: Transaction[];
+  supports: Support[];
 }
 
-export const SearchInput = ({ users, bookings, transactions }: SearchInputProps) => {
+export const SearchInput = ({ users, bookings, transactions, supports }: SearchInputProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
@@ -73,6 +83,7 @@ export const SearchInput = ({ users, bookings, transactions }: SearchInputProps)
       users={users}
       bookings={bookings}
       transactions={transactions}
+      supports={supports}
       trigger={
         <Input
           type="text"

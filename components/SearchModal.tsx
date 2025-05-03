@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Search, Trash2 } from "lucide-react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { usersData, bookingsData, transactionsData } from "@/lib/mockData";
+import { usersData, bookingsData, transactionsData, supportData } from "@/lib/mockData";
+import { useRouter } from "next/navigation";
 
 interface SearchModalProps {
   children: React.ReactNode;
@@ -22,6 +23,7 @@ interface SearchModalProps {
   users: typeof usersData;
   bookings: typeof bookingsData;
   transactions: typeof transactionsData;
+  supports?: typeof supportData;
   trigger: React.ReactNode;
 }
 
@@ -33,33 +35,40 @@ export default function SearchModal({
   users,
   bookings,
   transactions,
+  supports = [],
   trigger,
 }: SearchModalProps) {
+  const router = useRouter();
   console.log("SearchModal isOpen:", isOpen);
-  console.log("SearchModal data:", { users, bookings, transactions });
+  console.log("SearchModal data - supports from prop:", supports);
+  console.log("SearchModal data - supportData from import:", supportData);
 
-  const [dataType, setDataType] = useState("Users");
+  const [dataType, setDataType] = useState<string | null>(null);
   const [status, setStatus] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [modalSearchQuery, setModalSearchQuery] = useState(searchQuery);
 
-  // Define status options for each data type
   const statusOptions: { [key: string]: string[] } = {
     Users: ["Active", "Suspended", "Deactivated"],
     Bookings: ["Confirmed", "Pending", "Cancelled"],
     Transactions: ["Completed", "Pending", "Failed"],
-    "Support Tickets": [],
+    "Support Tickets": ["Open", "Resolved", "In progress"],
   };
 
-  // Reset status when dataType changes
   useEffect(() => {
     if (isOpen) {
+      setDataType(null);
       setModalSearchQuery(searchQuery);
+      setStatus("all");
+      setStartDate("");
+      setEndDate("");
     }
-    // Set default status to "all" for all data types
+  }, [isOpen, searchQuery]);
+
+  useEffect(() => {
     setStatus("all");
-  }, [isOpen, searchQuery, dataType]);
+  }, [dataType]);
 
   const dataTypes = [
     { name: "Users", icon: <CiUser className="w-5 h-5" /> },
@@ -68,14 +77,13 @@ export default function SearchModal({
     { name: "Support Tickets", icon: <TbTicket className="w-5 h-5" /> },
   ];
 
-  // Apply search and status filters
   const filteredUserResults = users.filter(
     (result) =>
       (result.name.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
        result.email.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
        result.profileType.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
        result.id.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
-      (status === "all" || result.status === status)
+      (status === "all" || result.status.toLowerCase() === status.toLowerCase())
   );
 
   const filteredBookingResults = bookings.filter(
@@ -83,7 +91,7 @@ export default function SearchModal({
       (result.id.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
        result.clientName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
        result.serviceOffered.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
-      (status === "all" || result.status === status)
+      (status === "all" || result.status.toLowerCase() === status.toLowerCase())
   );
 
   const filteredTransactionResults = transactions.filter(
@@ -93,15 +101,47 @@ export default function SearchModal({
        result.bookingId.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
        result.providerName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
        result.serviceOffered.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
-      (status === "all" || result.status === status)
+      (status === "all" || result.status.toLowerCase() === status.toLowerCase())
   );
 
+  const filteredSupportResults = supports.filter(
+    (result) =>
+      (result.id.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+       result.user.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+       result.issue.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
+      (status === "all" || result.status.toLowerCase() === status.toLowerCase())
+  );
+
+  console.log("filteredSupportResults:", filteredSupportResults);
+  console.log("modalSearchQuery:", modalSearchQuery);
+  console.log("status:", status);
+
   const handleClearFilters = () => {
-    setDataType("Users");
+    setDataType(null);
     setStatus("all");
     setStartDate("");
     setEndDate("");
     setModalSearchQuery("");
+  };
+
+  const handleUsers = () => {
+    router.push("/user-management");
+    onClose(); // Close the modal after navigation
+  };
+
+  const handleBookings = () => {
+    router.push("/content-management");
+    onClose(); // Close the modal after navigation
+  };
+
+  const handleTransactions = () => {
+    router.push("/content-management/transactions");
+    onClose(); // Close the modal after navigation
+  };
+
+  const handleSupport = () => {
+    router.push("/support-management");
+    onClose(); // Close the modal after navigation
   };
 
   return (
@@ -166,14 +206,15 @@ export default function SearchModal({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All</SelectItem>
-                    {statusOptions[dataType].map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                    {statusOptions[dataType].length === 0 && (
-                      <SelectItem value="" disabled>
-                        No status options available
+                    {dataType && statusOptions[dataType] ? (
+                      statusOptions[dataType].map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-data-type" disabled>
+                        Select a data type to filter by status
                       </SelectItem>
                     )}
                   </SelectContent>
@@ -199,143 +240,412 @@ export default function SearchModal({
               </div>
             </div>
 
-            <div className="space-y-2">
-              {dataType === "Users" && (
+            <div className="space-y-6 max-h-[400px] overflow-y-auto">
+              {dataType === null ? (
                 <>
-                  <p className="text-xs text-gray-500">
-                    {filteredUserResults.length} {filteredUserResults.length === 1 ? "User" : "Users"}
-                  </p>
-                  {filteredUserResults.length > 0 ? (
-                    filteredUserResults.map((result) => (
-                      <div key={result.id} className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={result.image} alt={result.name} />
-                          <AvatarFallback>{result.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{result.name}</p>
-                          <p className="text-xs text-gray-500">{result.email}</p>
+                  <div className="space-y-2">
+                    <p className="text-xs text-gray-500">
+                      {filteredUserResults.length} {filteredUserResults.length === 1 ? "User" : "Users"}
+                    </p>
+                    {filteredUserResults.length > 0 ? (
+                      filteredUserResults.map((result) => (
+                        <div key={result.id} className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={result.image} alt={result.name} />
+                            <AvatarFallback>{result.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                              <div className="flex items-center gap-3">
+                              <div>
+                              <p className="text-sm font-medium">{result.name}</p>
+                              <p className="text-xs text-gray-500">{result.email}</p>
+                              </div>
+                              <span
+                              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                                result.status === "Active"
+                                  ? "bg-green-100 text-green-700"
+                                  : result.status === "Suspended"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-gray-100 text-gray-700"
+                              }`}
+                            >
+                                <span
+                                  className={`h-2 w-2 rounded-full ${
+                                    result.status === "Active"
+                                    ? "bg-green-500 text-green-700"
+                                    : result.status === "Suspended"
+                                    ? "bg-yellow-500 text-yellow-700"
+                                    : "bg-gray-500 text-gray-700"
+                                  }`}
+                                />
+                              {result.status}
+                            </span>
+                            </div>
+                            </div>
+                          <p className="text-xs text-gray-500">{result.profileType}</p>
                         </div>
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full ${
-                            result.status === "Active"
-                              ? "bg-green-100 text-green-700"
-                              : result.status === "Suspended"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : "bg-gray-100 text-gray-700"
-                          }`}
-                        >
-                          {result.status}
-                        </span>
-                        <p className="text-xs text-gray-500">{result.profileType}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-500">No results found.</p>
-                  )}
-                </>
-              )}
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">No users found.</p>
+                    )}
+                    {filteredUserResults.length > 0 && (
+                      <Button variant="link" className="w-full text-blue-600" onClick={handleUsers}>
+                        Show More Users
+                      </Button>
+                    )}
+                  </div>
 
-              {dataType === "Bookings" && (
-                <>
-                  <p className="text-sm text-gray-500">
-                    {filteredBookingResults.length} {filteredBookingResults.length === 1 ? "Booking" : "Bookings"}
-                  </p>
-                  {filteredBookingResults.length > 0 ? (
-                    filteredBookingResults.map((result) => (
-                      <div key={result.id} className="flex items-center justify-between gap-2">
-                        <div className="flex gap-3">
-                        <LuCalendarClock className="w-5 h-5 text-gray-500" />
-                        <p className="text-sm font-light">{result.id}</p>
-                        <span
-                          className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                            result.status === "Confirmed"
-                              ? "bg-green-100 text-green-700"
-                              : result.status === "Pending"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          <span
-                            className={`h-2 w-2 rounded-full ${
-                              result.status === "Confirmed"
-                                ? "bg-green-500"
-                                : result.status === "Pending"
-                                ? "bg-yellow-500"
-                                : "bg-red-500"
-                            }`}
-                          />
-                          {result.status}
-                        </span>
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-500">
+                      {filteredBookingResults.length} {filteredBookingResults.length === 1 ? "Booking" : "Bookings"}
+                    </p>
+                    {filteredBookingResults.length > 0 ? (
+                      filteredBookingResults.map((result) => (
+                        <div key={result.id} className="flex items-center justify-between gap-2">
+                          <div className="flex gap-3">
+                            <LuCalendarClock className="w-5 h-5 text-gray-500" />
+                            <p className="text-sm font-light">{result.id}</p>
+                            <span
+                              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                                result.status === "Confirmed"
+                                  ? "bg-green-100 text-green-700"
+                                  : result.status === "Pending"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              <span
+                                className={`h-2 w-2 rounded-full ${
+                                  result.status === "Confirmed"
+                                    ? "bg-green-500"
+                                    : result.status === "Pending"
+                                    ? "bg-yellow-500"
+                                    : "bg-red-500"
+                                }`}
+                              />
+                              {result.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <p className="text-sm font-light">{result.totalAmount}</p>
+                            <span className="text-gray-500">•</span>
+                            <p className="text-sm text-gray-500">{result.serviceOffered}</p>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                        <p className="text-sm font-light">{result.totalAmount}</p>
-                        <span className="text-gray-500">•</span>
-                        <p className="text-sm text-gray-500">{result.serviceOffered}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-500">No results found.</p>
-                  )}
-                </>
-              )}
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">No bookings found.</p>
+                    )}
+                    {filteredBookingResults.length > 0 && (
+                      <Button variant="link" className="w-full text-blue-600" onClick={handleBookings}>
+                        Show More Bookings
+                      </Button>
+                    )}
+                  </div>
 
-              {dataType === "Transactions" && (
-                <>
-                  <p className="text-sm text-gray-500">
-                    {filteredTransactionResults.length} {filteredTransactionResults.length === 1 ? "Transaction" : "Transactions"}
-                  </p>
-                  {filteredTransactionResults.length > 0 ? (
-                    filteredTransactionResults.map((result) => (
-                      <div key={result.id} className="flex items-center justify-between gap-2">
-                        <div className="flex gap-2 items-center">
-                        <TbReceipt className="w-5 h-5 text-gray-500" />
-                        <p className="text-sm font-light text-blue">{result.id}</p>
-                        <span
-                          className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                            result.status === "Completed"
-                              ? "bg-green-100 text-green-700"
-                              : result.status === "Pending"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          <span
-                            className={`h-2 w-2 rounded-full ${
-                              result.status === "Completed"
-                                ? "bg-green-500"
-                                : result.status === "Pending"
-                                ? "bg-yellow-500"
-                                : "bg-red-500"
-                            }`}
-                          />
-                          {result.status}
-                        </span>
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-500">
+                      {filteredTransactionResults.length} {filteredTransactionResults.length === 1 ? "Transaction" : "Transactions"}
+                    </p>
+                    {filteredTransactionResults.length > 0 ? (
+                      filteredTransactionResults.map((result) => (
+                        <div key={result.id} className="flex items-center justify-between gap-2">
+                          <div className="flex gap-2 items-center">
+                            <TbReceipt className="w-5 h-5 text-gray-500" />
+                            <p className="text-sm font-light text-blue">{result.id}</p>
+                            <span
+                              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                                result.status === "Completed"
+                                  ? "bg-green-100 text-green-700"
+                                  : result.status === "Pending"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              <span
+                                className={`h-2 w-2 rounded-full ${
+                                  result.status === "Completed"
+                                    ? "bg-green-500"
+                                    : result.status === "Pending"
+                                    ? "bg-yellow-500"
+                                    : "bg-red-500"
+                                }`}
+                              />
+                              {result.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <p className="text-sm font-light">{result.totalAmount}</p>
+                            <p className="text-sm text-gray-500">{result.lastLogin}</p>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                        <p className="text-sm font-light">{result.totalAmount}</p>
-                        <p className="text-sm text-gray-500">{result.lastLogin}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-500">No results found.</p>
-                  )}
-                </>
-              )}
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">No transactions found.</p>
+                    )}
+                    {filteredTransactionResults.length > 0 && (
+                      <Button variant="link" className="w-full text-blue-600" onClick={handleTransactions}>
+                        Show More Transactions
+                      </Button>
+                    )}
+                  </div>
 
-              {dataType === "Support Tickets" && (
-                <p className="text-sm text-gray-500">No results found.</p>
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-500">
+                      {filteredSupportResults.length} {filteredSupportResults.length === 1 ? "Ticket" : "Tickets"}
+                    </p>
+                    {filteredSupportResults.length > 0 ? (
+                      filteredSupportResults.map((result) => (
+                        <div key={result.id} className="flex items-center justify-between gap-2">
+                          <div className="flex gap-2 items-center">
+                            <TbTicket className="w-5 h-5 text-gray-500" />
+                            <p className="text-sm font-light">{result.id}</p>
+                            <span
+                              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                                result.status.toLowerCase() === "open"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : result.status.toLowerCase() === "resolved"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-yellow-100 text-yellow-700"
+                              }`}
+                            >
+                              <span
+                                className={`h-2 w-2 rounded-full ${
+                                  result.status.toLowerCase() === "open"
+                                    ? "bg-blue-500"
+                                    : result.status.toLowerCase() === "resolved"
+                                    ? "bg-green-500"
+                                    : "bg-yellow-500"
+                                }`}
+                              />
+                              {result.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <p className="text-sm text-gray-500">{result.issue}</p>
+                            <span className="text-gray-500">•</span>
+                            <p className="text-sm text-gray-500">{result.createdDate}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">No support tickets found.</p>
+                    )}
+                    {filteredSupportResults.length > 0 && (
+                      <Button variant="link" className="w-full text-blue-600" onClick={handleSupport}>
+                        Show More Support Tickets
+                      </Button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  {dataType === "Users" && (
+                    <>
+                      <p className="text-xs text-gray-500">
+                        {filteredUserResults.length} {filteredUserResults.length === 1 ? "User" : "Users"}
+                      </p>
+                      {filteredUserResults.length > 0 ? (
+                        filteredUserResults.map((result) => (
+                          <div key={result.id} className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={result.image} alt={result.name} />
+                              <AvatarFallback>{result.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3">
+                              <div>
+                              <p className="text-sm font-medium">{result.name}</p>
+                              <p className="text-xs text-gray-500">{result.email}</p>
+                              </div>
+                              <span
+                              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                                result.status === "Active"
+                                  ? "bg-green-100 text-green-700"
+                                  : result.status === "Suspended"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-gray-100 text-gray-700"
+                              }`}
+                            >
+                                <span
+                                  className={`h-2 w-2 rounded-full ${
+                                    result.status === "Active"
+                                    ? "bg-green-500 text-green-700"
+                                    : result.status === "Suspended"
+                                    ? "bg-yellow-500 text-yellow-700"
+                                    : "bg-gray-500 text-gray-700"
+                                  }`}
+                                />
+                              {result.status}
+                            </span>
+                            </div>
+                            </div>
+                          
+                            <p className="text-xs text-gray-500">{result.profileType}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">No users found.</p>
+                      )}
+                      {filteredUserResults.length > 0 && (
+                        <Button variant="link" className="w-full text-blue-600">
+                          Show More Users
+                        </Button>
+                      )}
+                    </>
+                  )}
+
+                  {dataType === "Bookings" && (
+                    <>
+                      <p className="text-sm text-gray-500">
+                        {filteredBookingResults.length} {filteredBookingResults.length === 1 ? "Booking" : "Bookings"}
+                      </p>
+                      {filteredBookingResults.length > 0 ? (
+                        filteredBookingResults.map((result) => (
+                          <div key={result.id} className="flex items-center justify-between gap-2">
+                            <div className="flex gap-3">
+                              <LuCalendarClock className="w-5 h-5 text-gray-500" />
+                              <p className="text-sm font-light">{result.id}</p>
+                              <span
+                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                                  result.status === "Confirmed"
+                                    ? "bg-green-100 text-green-700"
+                                    : result.status === "Pending"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                <span
+                                  className={`h-2 w-2 rounded-full ${
+                                    result.status === "Confirmed"
+                                      ? "bg-green-500"
+                                      : result.status === "Pending"
+                                      ? "bg-yellow-500"
+                                      : "bg-red-500"
+                                  }`}
+                                />
+                                {result.status}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <p className="text-sm font-light">{result.totalAmount}</p>
+                              <span className="text-gray-500">•</span>
+                              <p className="text-sm text-gray-500">{result.serviceOffered}</p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">No bookings found.</p>
+                      )}
+                      {filteredBookingResults.length > 0 && (
+                        <Button variant="link" className="w-full text-blue-600">
+                          Show More Bookings
+                        </Button>
+                      )}
+                    </>
+                  )}
+
+                  {dataType === "Transactions" && (
+                    <>
+                      <p className="text-sm text-gray-500">
+                        {filteredTransactionResults.length} {filteredTransactionResults.length === 1 ? "Transaction" : "Transactions"}
+                      </p>
+                      {filteredTransactionResults.length > 0 ? (
+                        filteredTransactionResults.map((result) => (
+                          <div key={result.id} className="flex items-center justify-between gap-2">
+                            <div className="flex gap-2 items-center">
+                              <TbReceipt className="w-5 h-5 text-gray-500" />
+                              <p className="text-sm font-light text-blue">{result.id}</p>
+                              <span
+                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                                  result.status === "Completed"
+                                    ? "bg-green-100 text-green-700"
+                                    : result.status === "Pending"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                <span
+                                  className={`h-2 w-2 rounded-full ${
+                                    result.status === "Completed"
+                                      ? "bg-green-500"
+                                      : result.status === "Pending"
+                                      ? "bg-yellow-500"
+                                      : "bg-red-500"
+                                  }`}
+                                />
+                                {result.status}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <p className="text-sm font-light">{result.totalAmount}</p>
+                              <p className="text-sm text-gray-500">{result.lastLogin}</p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">No transactions found.</p>
+                      )}
+                      {filteredTransactionResults.length > 0 && (
+                        <Button variant="link" className="w-full text-blue-600">
+                          Show More Transactions
+                        </Button>
+                      )}
+                    </>
+                  )}
+
+                  {dataType === "Support Tickets" && (
+                    <>
+                      <p className="text-sm text-gray-500">
+                        {filteredSupportResults.length} {filteredSupportResults.length === 1 ? "Ticket" : "Tickets"}
+                      </p>
+                      {filteredSupportResults.length > 0 ? (
+                        filteredSupportResults.map((result) => (
+                          <div key={result.id} className="flex items-center justify-between gap-2">
+                            <div className="flex gap-2 items-center">
+                              <TbTicket className="w-5 h-5 text-gray-500" />
+                              <p className="text-sm font-light">{result.id}</p>
+                              <span
+                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                                  result.status.toLowerCase() === "open"
+                                    ? "bg-blue-100 text-blue-700"
+                                    : result.status.toLowerCase() === "resolved"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-yellow-100 text-yellow-700"
+                                }`}
+                              >
+                                <span
+                                  className={`h-2 w-2 rounded-full ${
+                                    result.status.toLowerCase() === "open"
+                                      ? "bg-blue-500"
+                                      : result.status.toLowerCase() === "resolved"
+                                      ? "bg-green-500"
+                                      : "bg-yellow-500"
+                                  }`}
+                                />
+                                {result.status}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <p className="text-sm text-gray-500">{result.issue}</p>
+                              <span className="text-gray-500">•</span>
+                              <p className="text-sm text-gray-500">{result.createdDate}</p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">No support tickets found.</p>
+                      )}
+                      {filteredSupportResults.length > 0 && (
+                        <Button variant="link" className="w-full text-blue-600">
+                          Show More Support Tickets
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
               )}
             </div>
-
-            {(dataType === "Users" || dataType === "Bookings" || dataType === "Transactions") &&
-              (filteredUserResults.length > 0 || filteredBookingResults.length > 0 || filteredTransactionResults.length > 0) && (
-                <Button variant="link" className="w-full text-blue-600">
-                  Show More
-                </Button>
-              )}
           </div>
         </DialogContent>
       </Dialog>

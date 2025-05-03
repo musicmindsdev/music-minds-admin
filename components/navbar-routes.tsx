@@ -15,19 +15,23 @@ import { useState } from "react";
 import { MdKeyboardArrowDown } from "react-icons/md";
 import { SearchInput } from "./search-input";
 import { ModeToggle } from "./modetoggle";
-import { usersData, bookingsData, transactionsData } from "@/lib/mockData";
+import { usersData, bookingsData, transactionsData, supportData } from "@/lib/mockData";
 import InviteAdminModal from "./invite-admin-modal";
+import Modal from "./Modal"; 
+import { RiAlertFill } from "react-icons/ri";
 
 interface NavbarRoutesProps {
   users: typeof usersData;
   bookings: typeof bookingsData;
   transactions: typeof transactionsData;
+  supports: typeof supportData;
 }
 
-export const NavbarRoutes = ({ users, bookings, transactions }: NavbarRoutesProps) => {
+export const NavbarRoutes = ({ users, bookings, transactions, supports }: NavbarRoutesProps) => {
   const router = useRouter();
   const [userImage, setUserImage] = useState<string | null>(null);
   const [isInviteAdminModalOpen, setIsInviteAdminModalOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   // Mock user data to be replaced with actual API data later
   const user = {
@@ -44,7 +48,7 @@ export const NavbarRoutes = ({ users, bookings, transactions }: NavbarRoutesProp
   };
 
   const handleInviteAdmin = () => {
-    setIsInviteAdminModalOpen(true); // Open the modal instead of navigating
+    setIsInviteAdminModalOpen(true);
   };
 
   const handleSignOut = () => {
@@ -52,20 +56,35 @@ export const NavbarRoutes = ({ users, bookings, transactions }: NavbarRoutesProp
     router.push("/login");
   };
 
+  const openLogoutModal = () => {
+    setIsLogoutModalOpen(true);
+  };
+
+  const closeLogoutModal = () => {
+    setIsLogoutModalOpen(false);
+  };
+
   return (
     <div className="flex items-center justify-end gap-6 w-full p-4">
-      <div className="hidden md:block max-w-md ">
-        <SearchInput users={usersData} bookings={bookingsData} transactions={transactionsData} />
+      <div className="hidden md:block max-w-md">
+        <SearchInput
+          users={usersData}
+          bookings={bookingsData}
+          transactions={transactionsData}
+          supports={supports}
+        />
       </div>
       <div className="flex items-center gap-3">
         <ModeToggle />
-        <DropdownMenu>   
-          <DropdownMenuTrigger asChild>    
-            <Button variant="ghost" size="icon">         
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
               <Bell className="h-5 w-5 text-gray-500" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent><Eye/></DropdownMenuContent>
+          <DropdownMenuContent>
+            <Eye />
+          </DropdownMenuContent>
         </DropdownMenu>
 
         <DropdownMenu>
@@ -79,7 +98,7 @@ export const NavbarRoutes = ({ users, bookings, transactions }: NavbarRoutesProp
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
-            {/* Header Section - Now Clickable */}
+            
             <DropdownMenuItem onClick={handleSettings} className="p-0">
               <div className="flex items-center gap-3 p-3 w-full">
                 <Avatar className="h-10 w-10">
@@ -94,7 +113,7 @@ export const NavbarRoutes = ({ users, bookings, transactions }: NavbarRoutesProp
               </div>
             </DropdownMenuItem>
 
-            {/* Role and Last Login Section */}
+            
             <div className="px-3 py-2">
               <p className="text-xs text-gray-500">Role</p>
               <p className="text-sm">{user.role}</p>
@@ -106,7 +125,6 @@ export const NavbarRoutes = ({ users, bookings, transactions }: NavbarRoutesProp
 
             <DropdownMenuSeparator />
 
-            {/* Menu Items */}
             <DropdownMenuItem onClick={handleInviteAdmin} className="flex items-center gap-2">
               <UserPlus className="h-4 w-4" />
               Invite Admin
@@ -121,17 +139,32 @@ export const NavbarRoutes = ({ users, bookings, transactions }: NavbarRoutesProp
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-2 text-red-600">
+            <DropdownMenuItem onClick={openLogoutModal} className="flex items-center gap-2 text-red-600">
               <LogOut className="h-4 w-4 text-red-600" />
               Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Render the Invite Admin Modal */}
+     
         <InviteAdminModal
           isOpen={isInviteAdminModalOpen}
-          onClose={() => setIsInviteAdminModalOpen(false)}        />
+          onClose={() => setIsInviteAdminModalOpen(false)}
+        />
+
+        <Modal
+          isOpen={isLogoutModalOpen}
+          onClose={closeLogoutModal}
+          title="Logout"
+          icon={<RiAlertFill className="h-8 w-8 text-red-500" />}
+          iconBgColor="#FEE2E2"
+          message1="Already leaving?"
+          message="Are you sure you want to logout?"
+          cancelText="No, I'm staying"
+          confirmText="Yes, logout"
+          confirmButtonColor="#EF4444"
+          onConfirm={handleSignOut}
+        />
       </div>
     </div>
   );

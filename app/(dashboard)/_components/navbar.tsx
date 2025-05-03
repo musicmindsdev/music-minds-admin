@@ -2,7 +2,7 @@
 
 import { NavbarRoutes } from "@/components/navbar-routes";
 import { MobileSidebar } from "./mobile-sidebar";
-import { usersData, transactionsData, bookingsData } from "@/lib/mockData"; // Import mock data
+import { usersData, transactionsData, bookingsData, supportData } from "@/lib/mockData"; // Import mock data
 
 export const Navbar = () => {
   return (
@@ -12,6 +12,7 @@ export const Navbar = () => {
         users={usersData}
         bookings={bookingsData}
         transactions={transactionsData}
+        supports={supportData}
       />
     </div>
   );

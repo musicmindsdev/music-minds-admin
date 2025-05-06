@@ -14,10 +14,10 @@ interface SidebarItemProps {
   label: string;
   href: string;
   image?: string;
-  children?: { label: string; href: string }[];
+  nested?: { label: string; href: string }[];
 }
 
-export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) => {
+export const SidebarItem = ({ label, href, image, nested }: SidebarItemProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const [svgContent, setSvgContent] = useState<string | null>(null);
@@ -48,7 +48,6 @@ export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) 
     }
   }, [image]);
 
-  // Modify the SVG to apply the gradient when active
   const renderSvgWithGradient = () => {
     if (!svgContent) return null;
 
@@ -56,7 +55,6 @@ export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) 
     const svgDoc = parser.parseFromString(svgContent, "image/svg+xml");
     const svgElement = svgDoc.documentElement;
 
-    // Set width and height to match your design (16x16 pixels)
     svgElement.setAttribute("width", "16");
     svgElement.setAttribute("height", "16");
     svgElement.setAttribute("class", "w-4 h-4");
@@ -105,7 +103,7 @@ export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) 
   };
 
   // If the item has children, render it as a collapsible section
-  if (children && children.length > 0) {
+  if (nested && nested.length > 0) {
     return (
       <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
         <div
@@ -147,7 +145,7 @@ export const SidebarItem = ({ label, href, image, children }: SidebarItemProps) 
           </CollapsibleTrigger>
         </div>
         <CollapsibleContent className="pl-12">
-          {children.map((child) => (
+          {nested.map((child) => (
             <button
               key={child.href}
               onClick={() => onClick(child.href)}

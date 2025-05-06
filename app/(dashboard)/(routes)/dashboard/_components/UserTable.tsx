@@ -35,12 +35,12 @@ import { FaUser } from "react-icons/fa6";
 import UserExport from "../../user-management/_components/UserExport";
 
 
-const parseUserDate = (dateString: any) => {
+const parseUserDate = (dateString: string): Date => { 
   const [datePart, timePart] = dateString.split(" • ");
   const [day, month, year] = datePart.split("/").map(Number);
-  let [hours, minutes, period] = timePart.split(/[: ]/);
-  hours = parseInt(hours);
-  minutes = parseInt(minutes);
+  const [hoursStr, minutesStr, period] = timePart.split(/[: ]/);
+  let hours = parseInt(hoursStr);
+  const minutes = parseInt(minutesStr);
   if (period === "PM" && hours !== 12) hours += 12;
   if (period === "AM" && hours === 12) hours = 0;
   return new Date(2000 + year, month - 1, day, hours, minutes);
@@ -58,7 +58,6 @@ export default function UserTable({
   showCheckboxes = false,
   showPagination = false,
   showExportButton = false,
-  onExport,
   headerText = "USER MANAGEMENT",
 }: UserTableProps) {
   const [statusFilter, setStatusFilter] = useState({
@@ -443,7 +442,7 @@ export default function UserTable({
                   {user.status}
                 </span>
               </TableCell>
-              <TableCell>
+              <TableCell >
                 {user.verified ? (
                   <span className="text-blue-600 flex gap-2">
                     Verified <MdVerified />

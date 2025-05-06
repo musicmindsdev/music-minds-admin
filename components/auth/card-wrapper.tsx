@@ -2,10 +2,11 @@
 
 import { Card,
     CardContent,
-    CardFooter,
     CardHeader
  } from "@/components//ui/card";
 import { Header } from "@/components/auth/header";
+// import Logo from "@/public/Musicmindlogo.svg"
+import Image from "next/image";
 
 interface CardWrapperProps {
   children: React.ReactNode;
@@ -17,9 +18,9 @@ export default function CardWrapper({ children, headerLabel, headerH1 }: CardWra
   return (
     <div>
     <div className="flex justify-center mb-4">
-    <img
+    <Image
       src="/Musicmindlogo.svg"
-      alt="Your Alt Text"
+      alt="Logo"
       className="w-32 h-32" 
     />
     </div>

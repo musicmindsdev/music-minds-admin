@@ -1,5 +1,6 @@
+import Image from "next/image"
 import { SidebarRoutes } from "./sidebar-routes"
-
+// import Logo from "@/public/Musicmindlogo.svg"
 
 
 export const Sidebar = () => {
@@ -8,9 +9,9 @@ export const Sidebar = () => {
         flex flex-col items-center overflow-y-auto bg-card 
         shadow-sm">
            <div className="p-6">
-           <img
+           <Image
       src="/Musicmindlogo.svg"
-      alt="Your Alt Text"
+      alt="Logo"
       className="w-32 h-32  " 
     />
            </div>

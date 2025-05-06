@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Bell, UserPlus, Settings, LogOut, ChevronRight, Eye } from "lucide-react";
+import {UserPlus, Settings, LogOut, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MdKeyboardArrowDown } from "react-icons/md";
@@ -19,6 +19,7 @@ import { usersData, bookingsData, transactionsData, supportData } from "@/lib/mo
 import InviteAdminModal from "./invite-admin-modal";
 import Modal from "./Modal"; 
 import { RiAlertFill } from "react-icons/ri";
+import NotificationsDropdown from "./notificationsDropdown";
 
 interface NavbarRoutesProps {
   users: typeof usersData;
@@ -27,9 +28,9 @@ interface NavbarRoutesProps {
   supports: typeof supportData;
 }
 
-export const NavbarRoutes = ({ users, bookings, transactions, supports }: NavbarRoutesProps) => {
+export const NavbarRoutes = ({  supports }: NavbarRoutesProps) => {
   const router = useRouter();
-  const [userImage, setUserImage] = useState<string | null>(null);
+  const [userImage, ] = useState<string | null>(null);
   const [isInviteAdminModalOpen, setIsInviteAdminModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
@@ -76,16 +77,7 @@ export const NavbarRoutes = ({ users, bookings, transactions, supports }: Navbar
       </div>
       <div className="flex items-center gap-3">
         <ModeToggle />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5 text-gray-500" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <Eye />
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <NotificationsDropdown />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -98,7 +90,6 @@ export const NavbarRoutes = ({ users, bookings, transactions, supports }: Navbar
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
-            
             <DropdownMenuItem onClick={handleSettings} className="p-0">
               <div className="flex items-center gap-3 p-3 w-full">
                 <Avatar className="h-10 w-10">
@@ -113,7 +104,6 @@ export const NavbarRoutes = ({ users, bookings, transactions, supports }: Navbar
               </div>
             </DropdownMenuItem>
 
-            
             <div className="px-3 py-2">
               <p className="text-xs text-gray-500">Role</p>
               <p className="text-sm">{user.role}</p>
@@ -146,7 +136,6 @@ export const NavbarRoutes = ({ users, bookings, transactions, supports }: Navbar
           </DropdownMenuContent>
         </DropdownMenu>
 
-     
         <InviteAdminModal
           isOpen={isInviteAdminModalOpen}
           onClose={() => setIsInviteAdminModalOpen(false)}

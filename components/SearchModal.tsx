@@ -28,7 +28,6 @@ interface SearchModalProps {
 }
 
 export default function SearchModal({
-  children,
   searchQuery,
   isOpen,
   onClose,

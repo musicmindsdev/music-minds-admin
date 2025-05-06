@@ -22,6 +22,13 @@ import UserTable from "./_components/UserTable";
 import BookingTable from "./_components/BookingTable";
 import TransactionTable from "./_components/TransactionTable";
 import ExportModal from "./_components/ExportModal";
+import Users from "@/public/users.svg"
+import Bookings from "@/public/bookings.svg"
+import Revenue from "@/public/revenue.svg"
+import Impressions from "@/public/impressions.svg"
+import Pending from "@/public/pending.svg"
+import Image from "next/image";
+
 
 // Mock data for stats and charts
 const statsData = {
@@ -114,8 +121,8 @@ export default function DashboardPage() {
           <Card className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <div>
               <CardContent className="flex gap-2">
-                <img
-                  src="/users.svg"
+                <Image
+                  src={Users}
                   alt="Total Users Icon"
                   className="w-12 h-12"
                 />
@@ -127,8 +134,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <CardContent className="flex gap-2">
-                <img
-                  src="/bookings.svg"
+                <Image
+                  src={Bookings}
                   alt="Bookings Icon"
                   className="w-12 h-12"
                 />
@@ -140,8 +147,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <CardContent className="flex gap-2">
-                <img
-                  src="/revenue.svg"
+                <Image
+                  src={Revenue}
                   alt="Revenue Icon"
                   className="w-12 h-12"
                 />
@@ -153,8 +160,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <CardContent className="flex gap-2">
-                <img
-                  src="/impressions.svg"
+                <Image
+                  src={Impressions}
                   alt="Impressions Icon"
                   className="w-12 h-12"
                 />
@@ -170,8 +177,8 @@ export default function DashboardPage() {
           <Card className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <div>
               <CardContent className="flex gap-2">
-                <img
-                  src="/pending.svg"
+                <Image
+                  src={Pending}
                   alt="Pending Icon"
                   className="w-12 h-12"
                 />
@@ -183,8 +190,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <CardContent className="flex gap-2">
-                <img
-                  src="/bookings.svg"
+                <Image
+                  src={Bookings}
                   alt="Bookings Icon"
                   className="w-12 h-12"
                 />
@@ -196,8 +203,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <CardContent className="flex gap-2">
-                <img
-                  src="/revenue.svg"
+                <Image
+                  src={Revenue}
                   alt="Revenue Icon"
                   className="w-12 h-12"
                 />
@@ -209,8 +216,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <CardContent className="flex gap-2">
-                <img
-                  src="/impressions.svg"
+                <Image
+                  src={Impressions}
                   alt="Impressions Icon"
                   className="w-12 h-12"
                 />

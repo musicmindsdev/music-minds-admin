@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+// import { usePathname } from "next/navigation";
 import { SidebarItem } from "./sidebar-item"; 
 
 const routes = [
@@ -8,7 +8,7 @@ const routes = [
       image: "/home.svg",
       label: "Dashboard",
       href: "/dashboard",
-      children: [
+      links: [
         {
           label: "Overview",
           href: "/dashboard",
@@ -23,7 +23,7 @@ const routes = [
       image: "/user-tick.svg",
       label: "User Management",
       href: "/user-management",
-      children: [
+      links: [
         {
           label: "All Users",
           href: "/user-management",
@@ -38,7 +38,7 @@ const routes = [
       image: "/note-remove.svg",
       label: "Content Management",
       href: "/content-management",
-      children: [
+      links: [
         {
           label: "Bookings",
           href: "/content-management",
@@ -61,7 +61,7 @@ const routes = [
       image: "/message-text.svg",
       label: "Support Management",
       href: "/support-management",
-      children: [
+      links: [
         {
           label: "Support Tickets",
           href: "/support-management",
@@ -80,7 +80,7 @@ const routes = [
       image: "/document-text.svg",
       label: "Knowledge Base",
       href: "/knowledge-base",
-      children: [
+      links: [
         {
           label: "Articles",
           href: "/knowledge-base",
@@ -91,7 +91,7 @@ const routes = [
       image: "/setting-2.svg",
       label: "Settings & Security",
       href: "/settings",
-      children: [
+      links: [
         {
           label: "General Settings",
           href: "/settings",
@@ -113,7 +113,7 @@ const routes = [
   ];
 
 export const SidebarRoutes = () => {
-  const pathname = usePathname();
+  // const pathname = usePathname();
 
   return (
     <div className="flex flex-col w-full">
@@ -123,7 +123,7 @@ export const SidebarRoutes = () => {
           image={route.image}
           label={route.label}
           href={route.href}
-          children={route.children}
+          nested={route.links}
         />
       ))}
     </div>

@@ -41,10 +41,10 @@ function LoginForm() {
     setError(null);
     try {
       await login(data.email, data.password);
-      // On success, redirect to OTP verification page with email as query param
       redirect(`/verify?email=${encodeURIComponent(data.email)}`);
-    } catch (err: any) {
-      setError(err.message || "An error occurred during login");
+    } catch (err) {
+      const errorMessage = (err as Error).message || "An error occurred during login"; // Explicitly typed error
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

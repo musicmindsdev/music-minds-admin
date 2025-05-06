@@ -1,3 +1,5 @@
+"use client"
+
 import VerifyForm from "@/components/auth/verify-form"
 
 function VerifyOtp() {

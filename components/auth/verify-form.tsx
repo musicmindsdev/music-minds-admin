@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { LoginSchema } from "@/schemas";
 import { Button } from "../ui/button";
 // import { useRouter } from "next/router";
-import { verifyOTP, resendOTP } from "@/lib/api";
+// import { verifyOTP, resendOTP } from "@/lib/api";
 import { Oval } from "react-loader-spinner";
 
 function VerifyForm() {
@@ -33,8 +33,8 @@ function VerifyForm() {
   const [value, setValue] = useState("");
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, ] = useState(false);
+  const [error, ] = useState<string | null>(null);
 
   const onSubmit = async () => {
     // if (!email || typeof email !== "string") {
@@ -45,17 +45,18 @@ function VerifyForm() {
     // setError(null);
     // try {
     //   const response = await verifyOTP(email, value);
-    //   // On success, store token or user data if provided in response
     //   if (response.token) {
-    //     localStorage.setItem("authToken", response.token); // Adjust based on actual response
+    //     localStorage.setItem("authToken", response.token);
     //   }
-    //   router.push("/dashboard"); // Redirect to dashboard
-    // } catch (err: any) {
-    //   setError(err.message || "An error occurred during OTP verification");
+    //   router.push("/dashboard");
+    // } catch (err) {
+    //   const errorMessage = (err as Error).message || "An error occurred during OTP verification"; // Explicitly typed error
+    //   setError(errorMessage);
     // } finally {
     //   setIsLoading(false);
     // }
   };
+
 
   useEffect(() => {
     if (timer > 0 && !canResend) {
@@ -76,8 +77,9 @@ function VerifyForm() {
     //     await resendOTP(email);
     //     setCanResend(false);
     //     setTimer(60);
-    //   } catch (err: any) {
-    //     setError(err.message || "Failed to resend OTP");
+    //   } catch (err) {
+    //     const errorMessage = (err as Error).message || "Failed to resend OTP"; // Explicitly typed error
+    //     setError(errorMessage);
     //   } finally {
     //     setIsLoading(false);
     //   }
@@ -114,7 +116,7 @@ function VerifyForm() {
             )}
           </Button>
           <div className="flex items-center justify-center text-sm">
-            <span>Didn't receive a code?</span>
+            <span>Didn&apos;t receive a code?</span>
             {canResend ? (
               <Button
                 variant="link"

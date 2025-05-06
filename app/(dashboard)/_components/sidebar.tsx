@@ -10,6 +10,8 @@ export const Sidebar = () => {
         shadow-sm">
            <div className="p-6">
            <Image
+           width={32}
+           height={32}
       src="/Musicmindlogo.svg"
       alt="Logo"
       className="w-32 h-32  " 

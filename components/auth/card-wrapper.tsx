@@ -20,6 +20,8 @@ export default function CardWrapper({ children, headerLabel, headerH1 }: CardWra
     <div className="flex justify-center mb-4">
     <Image
       src="/Musicmindlogo.svg"
+      width={32}
+      height={32}
       alt="Logo"
       className="w-32 h-32" 
     />

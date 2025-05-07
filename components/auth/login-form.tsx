@@ -21,7 +21,7 @@ import Link from "next/link";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { redirect } from "next/navigation";
 import { login } from "@/lib/api";
-import { Oval } from "react-loader-spinner";
+// import { Oval } from "react-loader-spinner";
 
 function LoginForm() {
   const form = useForm<z.infer<typeof LoginSchema>>({
@@ -133,7 +133,7 @@ function LoginForm() {
           </div>
           <Button type="submit" className="w-[513px] h-[53px] font-bold" disabled={isLoading}>
             {isLoading ? (
-              <Oval height={24} width={24} color="#ffffff" secondaryColor="#cccccc" strokeWidth={4} />
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
             ) : (
               "Login"
             )}

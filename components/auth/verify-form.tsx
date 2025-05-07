@@ -17,7 +17,7 @@ import { LoginSchema } from "@/schemas";
 import { Button } from "../ui/button";
 // import { useRouter } from "next/router";
 // import { verifyOTP, resendOTP } from "@/lib/api";
-import { Oval } from "react-loader-spinner";
+// import { Oval } from "react-loader-spinner";
 
 function VerifyForm() {
   // const router = useRouter();
@@ -110,7 +110,9 @@ function VerifyForm() {
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
-              <Oval height={24} width={24} color="#ffffff" secondaryColor="#cccccc" strokeWidth={4} />
+              // <Oval height={24} width={24} color="#ffffff" secondaryColor="#cccccc" strokeWidth={4} />
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+
             ) : (
               "Verify OTP"
             )}

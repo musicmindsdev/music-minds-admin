@@ -463,17 +463,17 @@ export default function UserTable({
                       View Details
                     </DropdownMenuItem>
                     <DropdownMenuSeparator/>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={openSuspendModal}>
                       <CircleSlash className="h-4 w-4 mr-2" />
                       Suspend User
                     </DropdownMenuItem>
                     <DropdownMenuSeparator/>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={openActivateModal}>
                       <CheckCircle className="h-4 w-4 mr-2" />
                       Activate User
                     </DropdownMenuItem>
                     <DropdownMenuSeparator/>
-                    <DropdownMenuItem className="text-red-600">
+                    <DropdownMenuItem className="text-red-600" onClick={openDeleteModal}>
                       <UserRoundX className="h-4 w-4 mr-2 text-red-600" />
                       Delete User
                     </DropdownMenuItem>

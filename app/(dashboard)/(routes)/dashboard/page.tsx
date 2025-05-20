@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { JSX, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,13 +22,95 @@ import UserTable from "./_components/UserTable";
 import BookingTable from "./_components/BookingTable";
 import TransactionTable from "./_components/TransactionTable";
 import ExportModal from "./_components/ExportModal";
-import Users from "@/public/users.svg"
-import Bookings from "@/public/bookings.svg"
-import Revenue from "@/public/revenue.svg"
-import Impressions from "@/public/impressions.svg"
-import Pending from "@/public/pending.svg"
-import Image from "next/image";
+import TopPerformers from "./_components/TopPerformers";
+import ClientTopPerformers from "./_components/ClientTopPerformance";
+import ServiceProviderTopPerformers from "./_components/ServiceProvidersTopPerformers";
+import { TbUserCheck } from "react-icons/tb";
+import { TbUserX } from "react-icons/tb";
+import { TbUserHexagon } from "react-icons/tb";
+import { FaArrowTrendUp } from "react-icons/fa6";
+import { FaArrowTrendDown } from "react-icons/fa6";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PiUsersThreeBold } from "react-icons/pi";
+import { RiCheckboxMultipleLine } from "react-icons/ri";
+import { AiOutlineDollar } from "react-icons/ai";
+import { HiOutlineChartBar } from "react-icons/hi";
+import { TbCalendarSearch } from "react-icons/tb";
 
+type Stats = {
+  icon: JSX.Element;
+  statNum: string;
+  statTitle: string;
+  statDuration: JSX.Element;
+  statTrend: JSX.Element;
+}
+
+const stats: Stats[] = [
+{
+  icon: <TbUserCheck className="w-11 h-11 text-[#34C759] bg-[#DEFFE7] p-2 rounded-lg"/>,
+  statNum: "400K",
+  statTitle:"Active Users",
+  statDuration: (
+    <Select defaultValue="last30days">
+      <SelectTrigger className=" text-xs rounded-full ">
+        <SelectValue placeholder="Last 30 Days" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="1year">1 Year</SelectItem>
+        <SelectItem value="6months">6 Months</SelectItem>
+        <SelectItem value="3months">3 Months</SelectItem>
+        <SelectItem value="last30days">Last 30 Days</SelectItem>
+        <SelectItem value="last10days">Last 10 Days</SelectItem>
+        <SelectItem value="last24hours">Last 24 Hours</SelectItem>
+      </SelectContent>
+    </Select>
+  ),
+  statTrend: <div className="flex gap-1 p-1 text-xs items-center text-end text-[#34C759] bg-[#DEFFE7] rounded-lg"><span>18%</span><FaArrowTrendUp/></div>
+},
+{
+  icon: <TbUserX className="w-11 h-11 text-[#9F3DF3] bg-[#9747FF1A] p-2 rounded-lg"/>,
+  statNum: "80K",
+  statTitle:"Inactive Users",
+  statDuration: (
+    <Select defaultValue="last30days">
+      <SelectTrigger className=" text-xs rounded-full ">
+        <SelectValue placeholder="Last 30 Days" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="1year">1 Year</SelectItem>
+        <SelectItem value="6months">6 Months</SelectItem>
+        <SelectItem value="3months">3 Months</SelectItem>
+        <SelectItem value="last30days">Last 30 Days</SelectItem>
+        <SelectItem value="last10days">Last 10 Days</SelectItem>
+        <SelectItem value="last24hours">Last 24 Hours</SelectItem>
+      </SelectContent>
+    </Select>
+  ),
+  statTrend: <div className="flex gap-1 p-1 text-xs items-center text-[#FF3B30] bg-[#FEEAE9] rounded-lg"><span>18%</span><FaArrowTrendDown/></div>
+},
+{
+  icon: <TbUserHexagon className="w-11 h-11 text-[#EBBC00] bg-[#FDF3D9] p-2 rounded-lg"/>,
+  statNum: "20K",
+  statTitle:"Suspended Users",
+  statDuration: (
+    <Select defaultValue="last30days">
+      <SelectTrigger className=" text-xs rounded-full ">
+        <SelectValue placeholder="Last 30 Days" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="1year">1 Year</SelectItem>
+        <SelectItem value="6months">6 Months</SelectItem>
+        <SelectItem value="3months">3 Months</SelectItem>
+        <SelectItem value="last30days">Last 30 Days</SelectItem>
+        <SelectItem value="last10days">Last 10 Days</SelectItem>
+        <SelectItem value="last24hours">Last 24 Hours</SelectItem>
+      </SelectContent>
+    </Select>
+  ),
+  statTrend: <div className="flex gap-1 p-1 text-xs items-center text-[#34C759] bg-[#DEFFE7] rounded-lg"><span>18%</span><FaArrowTrendUp/></div>
+},
+
+]
 
 // Mock data for stats and charts
 const statsData = {
@@ -81,6 +163,7 @@ const revenueGrowthData = [
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("users");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [viewType, setViewType] = useState("post"); // Default to "post", options: "post", "client", "serviceProvider"
 
   return (
     <div className="p-6 space-y-6">
@@ -102,7 +185,7 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
-      
+
       {/* Export Modal */}
       <ExportModal
         isOpen={isExportModalOpen}
@@ -121,10 +204,8 @@ export default function DashboardPage() {
           <Card className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <div>
               <CardContent className="flex gap-2">
-                <Image
-                  src={Users}
-                  alt="Total Users Icon"
-                  className="w-12 h-12"
+                <PiUsersThreeBold
+                  className="w-11 h-11 p-2 text-[#0065FF] bg-[#E6F0FF] rounded-lg"
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData.totalUsers}</div>
@@ -134,10 +215,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <CardContent className="flex gap-2">
-                <Image
-                  src={Bookings}
-                  alt="Bookings Icon"
-                  className="w-12 h-12"
+                <RiCheckboxMultipleLine
+                  className="w-11 h-11 p-2 text-[#9B0175] bg-[#FFE6F9] rounded-lg"
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData.successfulBookings}</div>
@@ -147,10 +226,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <CardContent className="flex gap-2">
-                <Image
-                  src={Revenue}
-                  alt="Revenue Icon"
-                  className="w-12 h-12"
+                <AiOutlineDollar
+                  className="w-11 h-11 p-2 text-[#003E9C] bg-[#D4E4FD] rounded-lg"
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData.revenueGenerated}</div>
@@ -160,10 +237,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <CardContent className="flex gap-2">
-                <Image
-                  src={Impressions}
-                  alt="Impressions Icon"
-                  className="w-12 h-12"
+              <HiOutlineChartBar 
+                  className="w-11 h-11 p-2 text-[#9B0175] bg-[#FFE6F9] rounded-lg"
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData.impressions}</div>
@@ -177,10 +252,8 @@ export default function DashboardPage() {
           <Card className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <div>
               <CardContent className="flex gap-2">
-                <Image
-                  src={Pending}
-                  alt="Pending Icon"
-                  className="w-12 h-12"
+                <TbCalendarSearch
+                  className="w-11 h-11 bg-[#FFFCDC] text-[#EBBC00] p-2 rounded-lg"
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData.pending}</div>
@@ -190,10 +263,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <CardContent className="flex gap-2">
-                <Image
-                  src={Bookings}
-                  alt="Bookings Icon"
-                  className="w-12 h-12"
+              <RiCheckboxMultipleLine
+                  className="w-11 h-11 p-2 text-[#9B0175] bg-[#FFE6F9] rounded-lg"
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData2.successfulBookings}</div>
@@ -203,10 +274,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <CardContent className="flex gap-2">
-                <Image
-                  src={Revenue}
-                  alt="Revenue Icon"
-                  className="w-12 h-12"
+              <AiOutlineDollar
+                  className="w-11 h-11 p-2 text-[#003E9C] bg-[#D4E4FD] rounded-lg"
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData2.revenueGenerated}</div>
@@ -216,10 +285,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <CardContent className="flex gap-2">
-                <Image
-                  src={Impressions}
-                  alt="Impressions Icon"
-                  className="w-12 h-12"
+                <HiOutlineChartBar 
+                  className="w-11 h-11 p-2 text-[#9B0175] bg-[#FFE6F9] rounded-lg"
                 />
                 <CardTitle>
                   <div className="text-2xl font-bold">{statsData2.impressions}</div>
@@ -230,6 +297,27 @@ export default function DashboardPage() {
           </Card>
         </SwiperSlide>
       </Swiper>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {stats.map((stat, index) => (
+        <Card key={index} className="shadow-sm">
+          <CardContent className="flex items-center justify-between px-3">
+            <div className="flex items-center gap-4">
+              {stat.icon}
+              <div>
+                <CardTitle className="text-2xl font-bold">{stat.statNum}</CardTitle>
+                <p className="text-xs font-light">{stat.statTitle}</p>
+                
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 ">
+              <div >{stat.statDuration}</div>
+              <div className="self-end">{stat.statTrend}</div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -343,7 +431,39 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Tabs */}
+      {/* Top Performers Tabs */}
+      <div>
+        <div className="flex space-x-2 border w-[320px] p-2 rounded-t-lg bg-card border-b-0">
+          <Button
+            variant={viewType === "post" ? "gradient" : "ghost"}
+            className="rounded-full px-4 py-2"
+            onClick={() => setViewType("post")}
+          >
+            Post
+          </Button>
+          <Button
+            variant={viewType === "client" ? "gradient" : "ghost"}
+            className="rounded-full px-4 py-2"
+            onClick={() => setViewType("client")}
+          >
+            Client
+          </Button>
+          <Button
+            variant={viewType === "serviceProvider" ? "gradient" : "ghost"}
+            className="rounded-full px-4 py-2"
+            onClick={() => setViewType("serviceProvider")}
+          >
+            Service Provider
+          </Button>
+        </div>
+        <Card className="rounded-none">
+          <CardHeader>
+            {viewType === "post" ? <TopPerformers /> : viewType === "client" ? <ClientTopPerformers /> : <ServiceProviderTopPerformers />}
+          </CardHeader>
+        </Card>
+      </div>
+
+      {/* Existing Tabs */}
       <div>
         <div className="flex space-x-2 border w-[320px] p-2 rounded-t-lg bg-card border-b-0">
           <Button
@@ -368,8 +488,6 @@ export default function DashboardPage() {
             Transactions
           </Button>
         </div>
-
-        {/* Dynamic Table Component */}
         <Card className="rounded-none">
           <CardHeader>
             {activeTab === "users" && <UserTable />}

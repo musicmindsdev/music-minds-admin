@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { camptonFont } from "@/components/auth/header"; 
-
+import { Toaster } from "sonner";
+import { camptonFont } from "@/components/auth/header";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -24,6 +24,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>
     </html>

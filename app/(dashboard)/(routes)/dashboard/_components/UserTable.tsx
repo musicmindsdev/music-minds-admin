@@ -32,10 +32,9 @@ import Modal from "@/components/Modal";
 import { FaTrash } from "react-icons/fa";
 import { PiWarningOctagonFill } from "react-icons/pi";
 import { FaUser } from "react-icons/fa6";
-import UserExport from "../../user-management/_components/UserExport";
+import ExportModal from "@/components/ExportModal";
 
-
-const parseUserDate = (dateString: string): Date => { 
+const parseUserDate = (dateString: string): Date => {
   const [datePart, timePart] = dateString.split(" • ");
   const [day, month, year] = datePart.split("/").map(Number);
   const [hoursStr, minutesStr, period] = timePart.split(/[: ]/);
@@ -65,7 +64,6 @@ export default function UserTable({
     Suspended: false,
     Deactivated: false,
   });
-
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isActivateModalOpen, setIsActivateModalOpen] = useState(false);
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
@@ -82,7 +80,6 @@ export default function UserTable({
   const pathname = usePathname();
   const router = useRouter();
 
-  // Filter the users based on the selected filters, including search query
   const filteredUsers = usersData.filter((user) => {
     const query = searchQuery.toLowerCase();
     const searchMatch =
@@ -140,12 +137,10 @@ export default function UserTable({
     }
   };
 
-  // Reset selected users when page changes
   useEffect(() => {
     setSelectedUsers([]);
   }, [currentPage]);
 
-  // Pagination navigation
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -158,7 +153,6 @@ export default function UserTable({
     }
   };
 
-  // Handle action buttons
   const handleDelete = () => {
     console.log("Deleting users:", selectedUsers);
     setSelectedUsers([]);
@@ -201,9 +195,15 @@ export default function UserTable({
     setIsSuspendModalOpen(false);
   };
 
-  // Handle export modal
-  const handleExportClick = () => {
-    setIsExportModalOpen(true);
+  const handleExport = (data: {
+    statusFilter: Record<string, boolean>;
+    roleFilter: string;
+    dateRangeFrom: string;
+    dateRangeTo: string;
+    format: string;
+    fields: Record<string, boolean>;
+  }) => {
+    console.log("Exporting user data:", data);
   };
 
   return (
@@ -217,7 +217,7 @@ export default function UserTable({
             </Button>
           )}
           {showExportButton && (
-            <Button className="text-white flex items-center space-x-2" onClick={handleExportClick}>
+            <Button className="text-white flex items-center space-x-2" onClick={() => setIsExportModalOpen(true)}>
               <CiExport className="mr-2" />
               <span className="hidden md:inline">Export Data</span>
             </Button>
@@ -246,7 +246,6 @@ export default function UserTable({
           >
             <DropdownMenuLabel>Filter by</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {/* Status Filter */}
             <div className="space-y-2">
               <p className="text-sm font-medium">Status</p>
               <div className="flex space-x-2">
@@ -298,7 +297,6 @@ export default function UserTable({
               </div>
             </div>
             <DropdownMenuSeparator />
-            {/* User Role Filter */}
             <div className="space-y-2">
               <p className="text-sm font-medium">User Role</p>
               <Select onValueChange={setProfileTypeFilter} value={profileTypeFilter}>
@@ -310,15 +308,12 @@ export default function UserTable({
                   <SelectItem value="Musician">Musician</SelectItem>
                   <SelectItem value="Professional Studio">Professional Studio</SelectItem>
                   <SelectItem value="Talent Agency">Talent Agency</SelectItem>
-                  <SelectItem value="Music Business Coa...">
-                    Music Business Coa...
-                  </SelectItem>
+                  <SelectItem value="Music Business Coa...">Music Business Coa...</SelectItem>
                   <SelectItem value="Producer">Producer</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <DropdownMenuSeparator />
-            {/* Date Range Filter */}
             <div className="space-y-2">
               <p className="text-sm font-medium">Last Activity</p>
               <div className="flex space-x-2">
@@ -343,7 +338,6 @@ export default function UserTable({
               </div>
             </div>
             <DropdownMenuSeparator />
-            {/* Verification Filter */}
             <div className="space-y-2">
               <p className="text-sm font-medium">Verification</p>
               <Select onValueChange={setVerificationFilter} value={verificationFilter}>
@@ -442,7 +436,7 @@ export default function UserTable({
                   {user.status}
                 </span>
               </TableCell>
-              <TableCell >
+              <TableCell>
                 {user.verified ? (
                   <span className="text-blue-600 flex gap-2">
                     Verified <MdVerified />
@@ -462,17 +456,17 @@ export default function UserTable({
                       <Eye className="h-4 w-4 mr-2" />
                       View Details
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator/>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={openSuspendModal}>
                       <CircleSlash className="h-4 w-4 mr-2" />
                       Suspend User
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator/>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={openActivateModal}>
                       <CheckCircle className="h-4 w-4 mr-2" />
                       Activate User
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator/>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem className="text-red-600" onClick={openDeleteModal}>
                       <UserRoundX className="h-4 w-4 mr-2 text-red-600" />
                       Delete User
@@ -578,7 +572,29 @@ export default function UserTable({
         confirmButtonColor="#5243FE"
         onConfirm={handleSuspend}
       />
-      <UserExport isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} />
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        title="Export Data"
+        statusFilters={[
+          { label: "Active", value: "Active" },
+          { label: "Suspended", value: "Suspended" },
+          { label: "Deactivated", value: "Deactivated" },
+        ]}
+        roleFilters={[
+          { label: "Service Provider", value: "Service Provider" },
+          { label: "Client", value: "Client" },
+        ]}
+        fieldOptions={[
+          { label: "User ID", value: "User ID" },
+          { label: "Name", value: "Name" },
+          { label: "Email", value: "Email" },
+          { label: "User Role", value: "User Role" },
+          { label: "Status", value: "Status" },
+          { label: "Last Activity", value: "Last Activity" },
+        ]}
+        onExport={handleExport}
+      />
     </>
   );
 }

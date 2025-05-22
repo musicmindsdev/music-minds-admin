@@ -208,3 +208,84 @@ export const usersData = [
       actions: [{ label: "Lock Account", variant: "default" as const }],
     },
   ];
+
+  export const kycData = [
+    {
+      id: "USR-001",
+      name: "Daniel Adaeri C.",
+      email: "danieladaeri@yahoo.com",
+      kycStatus: "Approved",
+      submittedDate: "Apr 25, 2025",
+    },
+    {
+      id: "USR-002",
+      name: "Michael Ajobi E.",
+      email: "michaelajobi@gmail.com",
+      kycStatus: "Submitted",
+      submittedDate: "Apr 25, 2025",
+    },
+    {
+      id: "USR-003",
+      name: "Francis Praise...",
+      email: "francispraisegod@yahoo.com",
+      kycStatus: "Declined",
+      submittedDate: "Apr 25, 2025",
+    },
+    {
+      id: "USR-004",
+      name: "James D. Shola",
+      email: "jamesshola@gmail.com",
+      kycStatus: "Approved",
+      submittedDate: "Apr 25, 2025",
+    },
+    {
+      id: "USR-005",
+      name: "Anitt Adebayo...",
+      email: "adebayoanitt@gmail.com",
+      kycStatus: "Approved",
+      submittedDate: "Apr 25, 2025",
+    },
+    {
+      id: "USR-006",
+      name: "Amakiri Justina...",
+      email: "amakirijustina@gmail.com",
+      kycStatus: "Submitted",
+      submittedDate: "Apr 25, 2025",
+    },
+    {
+      id: "USR-007",
+      name: "Davida Nathan...",
+      email: "davidakanse@gmail.com",
+      kycStatus: "Declined",
+      submittedDate: "Apr 25, 2025",
+    },
+    // Add more entries to reach 120,678 for pagination testing (shortened here for brevity)
+    {
+      id: "USR-008",
+      name: "Sarah Wilson",
+      email: "sarahwilson@example.com",
+      kycStatus: "Approved",
+      submittedDate: "May 01, 2025",
+    },
+    {
+      id: "USR-009",
+      name: "Michael Lee",
+      email: "michaellee@example.com",
+      kycStatus: "Submitted",
+      submittedDate: "May 02, 2025",
+    },
+    {
+      id: "USR-010",
+      name: "Laura Adams",
+      email: "lauraadams@example.com",
+      kycStatus: "Declined",
+      submittedDate: "May 03, 2025",
+    },
+    {
+      id: "USR-011",
+      name: "Chris Evans",
+      email: "chrisevans@example.com",
+      kycStatus: "Approved",
+      submittedDate: "May 04, 2025",
+    },
+  ];

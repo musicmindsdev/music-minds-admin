@@ -32,6 +32,10 @@ const routes = [
           label: "Admin Team",
           href: "/user-management/admins",
         },
+        {
+          label: "KYC Overview",
+          href: "/user-management/kyc",
+        },
       ],
     },
     {

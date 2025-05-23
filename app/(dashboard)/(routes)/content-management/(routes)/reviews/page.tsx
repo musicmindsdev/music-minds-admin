@@ -51,17 +51,28 @@ export default function ReviewsPage() {
         onClose={() => setIsExportModalOpen(false)}
         title="Export Data"
         statusFilters={[
-          { label: "Approved", value: "Approved" },
-          { label: "Pending", value: "Pending" },
-          { label: "Rejected", value: "Rejected" },
+
+          { label: "All", value: "All" },
+          { label: "Yes", value: "Yes" },
+          { label: "No", value: "NO" },
         ]}
-        roleFilters={[]}
+        roleFilters={[
+        
+          {
+            label: "Client", value: "Client"
+          },
+          {
+            label: "Service Provider", value: "Service Provider"
+          }
+        ]}
         fieldOptions={[
           { label: "Review ID", value: "Review ID" },
-          { label: "User Name", value: "User Name" },
-          { label: "Rating", value: "Rating" },
-          { label: "Review Text", value: "Review Text" },
-          { label: "Date", value: "Date" },
+          { label: "Service", value: "Service" },
+          { label: "Comment", value: "Comment" },
+          { label: "Client", value: "Client" },
+          { label: "Date & Time", value: "Date & Time" },
+          { label: "Ratings", value: "Ratings" },
+          { label: "Provider", value: "Provider" },
           { label: "Status", value: "Status" },
         ]}
         onExport={handleExport}

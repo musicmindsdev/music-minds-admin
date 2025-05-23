@@ -24,16 +24,17 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { reviewData } from "@/lib/mockData";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Helper function to parse date string "DD/MM/YY - H:MM A.M./P.M." to Date object
 const parseDate = (dateString: string): Date => {
   const [datePart, timePart] = dateString.split(" - ");
-  const [day, month, year] = datePart.split("/");
   const match = timePart.match(/(\d+):(\d+)\s*(AM|PM)/i);
   if (!match) throw new Error("Invalid time format");
   const [_, hour, minute, period] = match;
   let hours = parseInt(hour) % 12 + (period.toLowerCase().includes("p") ? 12 : 0);
   if (parseInt(hour) === 12 && period.toLowerCase().includes("a")) hours = 0;
+  const [day, month, year] = datePart.split("/");
   return new Date(parseInt(`20${year}`), parseInt(month) - 1, parseInt(day), hours, parseInt(minute));
 };
 
@@ -48,17 +49,19 @@ export default function ReviewTable({
   showPagination = false,
   headerText = "REVIEW MANAGEMENT",
 }: ReviewTableProps) {
-  const [statusFilter, setStatusFilter] = useState({
-    Approved: false,
-    Pending: false,
-    Rejected: false,
-  });
+  const [flaggedFilter, setFlaggedFilter] = useState({ Yes: false, No: false });
+  const [serviceTypeFilter, setServiceTypeFilter] = useState("all");
+  const [ratingMin, setRatingMin] = useState("");
+  const [ratingMax, setRatingMax] = useState("");
   const [dateRangeFrom, setDateRangeFrom] = useState("");
   const [dateRangeTo, setDateRangeTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedReviews, setSelectedReviews] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const reviewsPerPage = 10;
+
+  // Get unique service types from reviewData
+  const serviceTypes = [...new Set(reviewData.map((review) => review.serviceOffered))];
 
   const filteredReviews = reviewData.filter((review) => {
     const query = searchQuery.toLowerCase();
@@ -69,20 +72,38 @@ export default function ReviewTable({
       review.serviceOffered.toLowerCase().includes(query) ||
       (review.reviewText ?? "").toLowerCase().includes(query);
 
-    const statusMatch =
-      Object.values(statusFilter).every((val) => !val) ||
-      statusFilter[review.status as keyof typeof statusFilter];
+    const flaggedMatch =
+      (Object.values(flaggedFilter).every((val) => !val) || // No filters selected, show all
+       (flaggedFilter.Yes && review.flagged === "Yes") ||
+       (flaggedFilter.No && review.flagged === "No"));
+
+    const serviceTypeMatch =
+      serviceTypeFilter === "all" || review.serviceOffered === serviceTypeFilter;
+
+    const ratingMatch =
+      (!ratingMin || review.rating >= parseFloat(ratingMin)) &&
+      (!ratingMax || review.rating <= parseFloat(ratingMax));
 
     let dateMatch = true;
     if (dateRangeFrom || dateRangeTo) {
       const reviewDate = parseDate(review.date);
-      const fromDate = dateRangeFrom ? new Date(dateRangeFrom) : null;
-      const toDate = dateRangeTo ? new Date(dateRangeTo) : null;
-      if (fromDate && reviewDate < fromDate) dateMatch = false;
-      if (toDate && reviewDate > toDate) dateMatch = false;
+      const fromDate = dateRangeFrom
+        ? new Date(dateRangeFrom)
+        : null;
+      const toDate = dateRangeTo
+        ? new Date(dateRangeTo)
+        : null;
+      if (fromDate) {
+        fromDate.setHours(0, 0, 0, 0); // Start of the day
+        if (reviewDate < fromDate) dateMatch = false;
+      }
+      if (toDate) {
+        toDate.setHours(23, 59, 59, 999); // End of the day
+        if (reviewDate > toDate) dateMatch = false;
+      }
     }
 
-    return searchMatch && statusMatch && dateMatch;
+    return searchMatch && flaggedMatch && serviceTypeMatch && ratingMatch && dateMatch;
   });
 
   const totalReviews = filteredReviews.length;
@@ -145,77 +166,109 @@ export default function ReviewTable({
           >
             <DropdownMenuLabel>Filter by</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Status</p>
-              <div className="flex space-x-2">
-                <Button
-                  variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Approved ? "border border-gray-400 font-medium" : ""
-                  }`}
-                  onClick={() =>
-                    setStatusFilter((prev) => ({
-                      ...prev,
-                      Approved: !prev.Approved,
-                    }))
-                  }
-                >
-                  <span className="h-2 w-2 rounded-full bg-green-500" />
-                  Approved
-                </Button>
-                <Button
-                  variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Pending ? "border border-gray-400 font-medium" : ""
-                  }`}
-                  onClick={() =>
-                    setStatusFilter((prev) => ({
-                      ...prev,
-                      Pending: !prev.Pending,
-                    }))
-                  }
-                >
-                  <span className="h-2 w-2 rounded-full bg-yellow-500" />
-                  Pending
-                </Button>
-                <Button
-                  variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Rejected ? "border border-gray-400 font-medium" : ""
-                  }`}
-                  onClick={() =>
-                    setStatusFilter((prev) => ({
-                      ...prev,
-                      Rejected: !prev.Rejected,
-                    }))
-                  }
-                >
-                  <span className="h-2 w-2 rounded-full bg-red-500" />
-                  Rejected
-                </Button>
-              </div>
-            </div>
-            <DropdownMenuSeparator />
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Date</p>
-              <div className="flex space-x-2">
-                <div className="relative flex-1">
-                  <Input
-                    type="date"
-                    value={dateRangeFrom}
-                    onChange={(e) => setDateRangeFrom(e.target.value)}
-                    className="pl-8"
-                  />
-                  <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-medium mb-2">Status</p>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="ghost"
+                    className={`flex items-center gap-1 rounded-full text-sm ${
+                      flaggedFilter.Yes ? "border border-gray-400 font-medium" : ""
+                    }`}
+                    onClick={() =>
+                      setFlaggedFilter((prev) => ({
+                        ...prev,
+                        Yes: !prev.Yes,
+                        No: prev.Yes ? prev.No : false,
+                      }))
+                    }
+                  >
+                    <span className="h-2 w-2 rounded-full bg-red-500" />
+                    Yes
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className={`flex items-center gap-1 rounded-full text-sm ${
+                      flaggedFilter.No ? "border border-gray-400 font-medium" : ""
+                    }`}
+                    onClick={() =>
+                      setFlaggedFilter((prev) => ({
+                        ...prev,
+                        No: !prev.No,
+                        Yes: prev.No ? prev.Yes : false,
+                      }))
+                    }
+                  >
+                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                    No
+                  </Button>
                 </div>
-                <div className="relative flex-1">
+              </div>
+              <div>
+                <p className="text-sm font-medium mb-2">Service Type</p>
+                <Select
+                  value={serviceTypeFilter}
+                  onValueChange={setServiceTypeFilter}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Service Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    {serviceTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <p className="text-sm font-medium mb-2">Rating Range</p>
+                <div className="flex space-x-2">
                   <Input
-                    type="date"
-                    value={dateRangeTo}
-                    onChange={(e) => setDateRangeTo(e.target.value)}
-                    className="pl-8"
+                    type="number"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    placeholder="4.5"
+                    value={ratingMin}
+                    onChange={(e) => setRatingMin(e.target.value)}
+                    className="w-1/2"
                   />
-                  <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    placeholder="5.0"
+                    value={ratingMax}
+                    onChange={(e) => setRatingMax(e.target.value)}
+                    className="w-1/2"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Date Range</p>
+                <div className="flex space-x-2">
+                  <div className="relative flex-1">
+                    <Input
+                      type="date"
+                      value={dateRangeFrom}
+                      onChange={(e) => setDateRangeFrom(e.target.value)}
+                      className="pl-8"
+                    />
+                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="relative flex-1">
+                    <Input
+                      type="date"
+                      value={dateRangeTo}
+                      onChange={(e) => setDateRangeTo(e.target.value)}
+                      className="pl-8"
+                    />
+                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -356,7 +409,7 @@ export default function ReviewTable({
               <p className="text-sm">Go to page</p>
               <Input
                 type="number"
-                min={1}
+                min="1"
                 max={totalPages}
                 value={currentPage}
                 onChange={(e) => goToPage(Number(e.target.value))}

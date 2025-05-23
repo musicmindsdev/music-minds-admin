@@ -216,7 +216,7 @@ export default function ExportModal({
                 </div>
                 <Button
                   onClick={handleExport}
-                  className="w-[280px] text-white rounded-md bg-blue-600 hover:bg-blue-700"
+                  className="w-[280px] text-white rounded-md"
                 >
                   Export
                 </Button>

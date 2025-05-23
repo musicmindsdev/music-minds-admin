@@ -54,10 +54,6 @@ const routes = [
         {
           label: "Announcements",
           href: "/content-management/announcements",
-        },
-        {
-          label: "Transactions",
-          href: "/content-management/transactions",
         }
       ],
     },
@@ -69,10 +65,6 @@ const routes = [
         {
           label: "Support Tickets",
           href: "/support-management",
-        },
-        {
-          label: "Direct Messages",
-          href: "/support-management/messages",
         },
         {
           label: "Broadcast Messages",

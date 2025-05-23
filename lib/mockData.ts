@@ -362,3 +362,54 @@ export const usersData = [
       flagged: "No",
     },
   ];
+
+  export const announcementData = [
+    {
+      id: "ANN001",
+      title: "New Feature Update",
+      createdBy: "Daniel Adaeri C.",
+      role: "Admin",
+      status: "Published",
+      publishedDate: "19/04/25 - 9:00 A.M.",
+    },
+    {
+      id: "ANN002",
+      title: "New Feature Update",
+      createdBy: "Michael Ajobi E...",
+      role: "Super Admin",
+      status: "Published",
+      publishedDate: "19/04/25 - 9:00 A.M.",
+    },
+    {
+      id: "ANN003",
+      title: "New Feature Update",
+      createdBy: "Davida Nathan...",
+      role: "Super Admin",
+      status: "Draft",
+      publishedDate: "19/04/25 - 9:00 A.M.",
+    },
+    {
+      id: "ANN004",
+      title: "New Feature Update",
+      createdBy: "Briana Radiel Fr...",
+      role: "Super Admin",
+      status: "Archived",
+      publishedDate: "19/04/25 - 9:00 A.M.",
+    },
+    {
+      id: "ANN005",
+      title: "New Feature Update",
+      createdBy: "Thank-God Ferd...",
+      role: "Super Admin",
+      status: "Archived",
+      publishedDate: "19/04/25 - 9:00 A.M.",
+    },
+    {
+      id: "ANN006",
+      title: "New Feature Update",
+      createdBy: "Amakiri Justina...",
+      role: "Super Admin",
+      status: "Draft",
+      publishedDate: "19/04/25 - 9:00 A.M.",
+    },
+  ];

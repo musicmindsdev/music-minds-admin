@@ -31,7 +31,7 @@ const parseDate = (dateString: string): Date => {
   const [datePart, timePart] = dateString.split(" - ");
   const match = timePart.match(/(\d+):(\d+)\s*(AM|PM)/i);
   if (!match) throw new Error("Invalid time format");
-  const [_, hour, minute, period] = match;
+  const [ hour, minute, period] = match;
   let hours = parseInt(hour) % 12 + (period.toLowerCase().includes("p") ? 12 : 0);
   if (parseInt(hour) === 12 && period.toLowerCase().includes("a")) hours = 0;
   const [day, month, year] = datePart.split("/");
@@ -47,7 +47,6 @@ interface ReviewTableProps {
 export default function ReviewTable({
   showCheckboxes = false,
   showPagination = false,
-  headerText = "REVIEW MANAGEMENT",
 }: ReviewTableProps) {
   const [flaggedFilter, setFlaggedFilter] = useState({ Yes: false, No: false });
   const [serviceTypeFilter, setServiceTypeFilter] = useState("all");

@@ -413,3 +413,63 @@ export const usersData = [
       publishedDate: "19/04/25 - 9:00 A.M.",
     },
   ];
+
+  export const supportTicketData = [
+    {
+      id: "AN-001",
+      userName: "Daniel Adaeri C.",
+      issue: "Payment Failed",
+      priority: "High",
+      status: "In progress",
+      createdDate: "19/04/25 - 9:00 AM",
+    },
+    {
+      id: "AN-002",
+      userName: "Michael Ajobi E...",
+      issue: "Failed Booking",
+      priority: "Medium",
+      status: "Resolved",
+      createdDate: "19/04/25 - 9:00 AM",
+    },
+    {
+      id: "AN-003",
+      userName: "Davida Nathan...",
+      issue: "Login Issue",
+      priority: "Low",
+      status: "Open",
+      createdDate: "19/04/25 - 9:00 AM",
+    },
+    {
+      id: "AN-004",
+      userName: "Briana Radiel Fr...",
+      issue: "Login Issue",
+      priority: "Low",
+      status: "In progress",
+      createdDate: "19/04/25 - 9:00 AM",
+    },
+    {
+      id: "AN-005",
+      userName: "Thank-God Ferd...",
+      issue: "Failed OTP",
+      priority: "Medium",
+      status: "Resolved",
+      createdDate: "19/04/25 - 9:00 AM",
+    },
+    {
+      id: "AN-006",
+      userName: "Amakiri Justina...",
+      issue: "Payment Failed",
+      priority: "High",
+      status: "Open",
+      createdDate: "19/04/25 - 9:00 AM",
+    },
+    // Add more entries to reach 102 for pagination testing
+    // ...Array.from({ length: 96 }, (_, i) => ({
+    //   id: `AN-00${i + 7}`.slice(-6),
+    //   userName: `User ${i + 7}...`,
+    //   issue: `Issue ${i + 7}`,
+    //   priority: ["High", "Medium", "Low"][Math.floor(Math.random() * 3)],
+    //   status: ["In progress", "Resolved", "Open"][Math.floor(Math.random() * 3)],
+    //   createdDate: "19/04/25 - 9:00 AM",
+    // })),
+  ];

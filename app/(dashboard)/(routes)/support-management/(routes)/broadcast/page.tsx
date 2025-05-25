@@ -3,17 +3,19 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CiExport } from "react-icons/ci";
-import { AiOutlineSend } from "react-icons/ai";
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
 import ExportModal from "@/components/ExportModal";
 import BroadcastMessagesTable from "../../_components/BroadcastMessagesTable";
+import { AiOutlineMessage } from "react-icons/ai";
+import SendMessageModal from "../../_components/SendMessageModal";
 
 export default function BroadcastMessagesPage() {
   const [activeTab, setActiveTab] = useState("Push Notification");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isSendMessageModalOpen, setIsSendMessageModalOpen] = useState(false);
 
   const handleExport = (data: {
     statusFilter: Record<string, boolean>;
@@ -31,6 +33,17 @@ export default function BroadcastMessagesPage() {
     // Add export logic here (e.g., generate CSV/JSON)
   };
 
+  const handleSendMessage = (data: {
+    messageType: string;
+    status: string;
+    recipientType: string;
+    title: string;
+    message: string;
+  }) => {
+    console.log("Sending Broadcast Message:", data);
+    // Add API call or logic to save the message here
+  };
+
   return (
     <div>
       <div className="p-6 space-y-6">
@@ -40,9 +53,9 @@ export default function BroadcastMessagesPage() {
             <Button
               variant="outline"
               className="flex items-center space-x-2"
-              onClick={() => console.log("Send Message clicked")}
+              onClick={() => setIsSendMessageModalOpen(true)}
             >
-              <AiOutlineSend className="mr-2" />
+              <AiOutlineMessage className="mr-2" />
               <span className="hidden md:inline">Send Message</span>
             </Button>
             <Button
@@ -110,6 +123,11 @@ export default function BroadcastMessagesPage() {
           { label: "Message", value: "Message" },
         ]}
         onExport={handleExport}
+      />
+      <SendMessageModal
+        isOpen={isSendMessageModalOpen}
+        onClose={() => setIsSendMessageModalOpen(false)}
+        onSave={handleSendMessage}
       />
     </div>
   );

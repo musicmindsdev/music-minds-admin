@@ -25,6 +25,8 @@ import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { broadcastMessageData } from "@/lib/mockData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {  Send, Trash2 } from "lucide-react"; // Added icons
+import { TbEdit } from "react-icons/tb";
 
 // Helper function to parse date string "DD/MM/YY - H:MM A.M./P.M." to Date object
 const parseDate = (dateString: string): Date => {
@@ -60,10 +62,11 @@ export default function BroadcastMessagesTable({
   });
   const [selectedMessages, setSelectedMessages] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [messages, setMessages] = useState(broadcastMessageData); // Local state for mock updates
   const messagesPerPage = 7;
 
   // Filter messages based on activeTab and other criteria
-  const filteredMessages = broadcastMessageData.filter((message) => {
+  const filteredMessages = messages.filter((message) => {
     const queryMatch =
       searchQuery === "" ||
       message.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -169,6 +172,43 @@ export default function BroadcastMessagesTable({
     }
   };
 
+  // Action Handlers (to be replaced with API calls)
+  const handleEdit = (messageId: string) => {
+    const message = messages.find((msg) => msg.id === messageId);
+    console.log("Edit Message:", message);
+    // Future: Open SendMessageModal with message details pre-filled
+  };
+
+  const handleSendNow = (messageId: string) => {
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === messageId
+          ? { ...msg, status: "Sent", publishedDate: new Date().toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true }).replace(",", " - ") }
+          : msg
+      )
+    );
+    console.log("Send Now:", messageId);
+    // Future: Make API call to send the message
+  };
+
+  const handleSchedule = (messageId: string) => {
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === messageId
+          ? { ...msg, status: "Scheduled", publishedDate: "N/A" } // Mock update; real date would come from backend
+          : msg
+      )
+    );
+    console.log("Schedule Message:", messageId);
+    // Future: Open modal to set schedule date and make API call
+  };
+
+  const handleDelete = (messageId: string) => {
+    setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+    console.log("Delete Message:", messageId);
+    // Future: Make API call to delete the message
+  };
+
   return (
     <>
       <div className="relative mt-4 flex items-center pb-2 space-x-2">
@@ -178,7 +218,7 @@ export default function BroadcastMessagesTable({
             placeholder="Search for user by Name, Email or ID"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 p-2 border rounded-lg w-full  text-gray-700"
+            className="pl-8 p-2 border rounded-lg w-full text-gray-700"
           />
         </div>
         <DropdownMenu>
@@ -313,8 +353,21 @@ export default function BroadcastMessagesTable({
                     <Button variant="ghost"><EllipsisVertical /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => console.log("View Details:", message.id)}>
-                      View Details
+                    <DropdownMenuItem onClick={() => handleEdit(message.id)}>
+                      <TbEdit className="mr-2 h-4 w-4" /> Edit
+                    </DropdownMenuItem>
+                    {(message.status === "Draft" || message.status === "Scheduled") && (
+                      <DropdownMenuItem onClick={() => handleSendNow(message.id)}>
+                        <Send className="mr-2 h-4 w-4" /> Send Now
+                      </DropdownMenuItem>
+                    )}
+                    {message.status === "Draft" && (
+                      <DropdownMenuItem onClick={() => handleSchedule(message.id)}>
+                        <Calendar className="mr-2 h-4 w-4" /> Schedule
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => handleDelete(message.id)} className="text-[#FF3B30]">
+                      <Trash2 className="h-4 w-4 mr-2 text-[#FF3B30]" /> Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

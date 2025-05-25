@@ -12,11 +12,17 @@ interface ExportModalProps {
   tabs?: { value: string; label: string }[];
   defaultTab?: string;
   statusFilters?: { label: string; value: string }[];
+  priorityFilters?: { label: string; value: string }[];
+  messageTypeFilters?: { label: string; value: string }[]; // Added messageTypeFilters prop
+  recipientTypeFilters?: { label: string; value: string }[]; // Added recipientTypeFilters prop
   roleFilters?: { label: string; value: string }[];
   fieldOptions: { label: string; value: string }[];
   adminRoleOptions?: { label: string; value: string }[];
   onExport: (data: {
     statusFilter: Record<string, boolean>;
+    priorityFilter: Record<string, boolean>;
+    messageTypeFilter: Record<string, boolean>; // Added messageTypeFilter to onExport data
+    recipientTypeFilter: Record<string, boolean>; // Added recipientTypeFilter to onExport data
     roleFilter: string;
     dateRangeFrom: string;
     dateRangeTo: string;
@@ -33,6 +39,9 @@ export default function ExportModal({
   tabs = [{ value: "members", label: "Members" }],
   defaultTab = "members",
   statusFilters = [],
+  priorityFilters = [],
+  messageTypeFilters = [], // Added messageTypeFilters default
+  recipientTypeFilters = [], // Added recipientTypeFilters default
   roleFilters = [],
   fieldOptions,
   adminRoleOptions = [],
@@ -40,8 +49,17 @@ export default function ExportModal({
 }: ExportModalProps) {
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [statusFilter, setStatusFilter] = useState<Record<string, boolean>>(
-    statusFilters.reduce((acc, { value }) => ({ ...acc, [value]: false }), {})
+    statusFilters.reduce((acc, { value }) => ({ ...acc, [value]: value === "All" }), {})
   );
+  const [priorityFilter, setPriorityFilter] = useState<Record<string, boolean>>(
+    priorityFilters.reduce((acc, { value }) => ({ ...acc, [value]: false }), {})
+  );
+  const [messageTypeFilter, setMessageTypeFilter] = useState<Record<string, boolean>>(
+    messageTypeFilters.reduce((acc, { value }) => ({ ...acc, [value]: value === "All" }), {})
+  ); // Added messageTypeFilter state
+  const [recipientTypeFilter, setRecipientTypeFilter] = useState<Record<string, boolean>>(
+    recipientTypeFilters.reduce((acc, { value }) => ({ ...acc, [value]: value === "All" }), {})
+  ); // Added recipientTypeFilter state
   const [roleFilter, setRoleFilter] = useState("all");
   const [adminRole, setAdminRole] = useState("");
   const [dateRangeFrom, setDateRangeFrom] = useState("");
@@ -51,9 +69,81 @@ export default function ExportModal({
     fieldOptions.reduce((acc, { value }) => ({ ...acc, [value]: true }), {})
   );
 
+  // Handle "All" logic for Status Filter
+  const handleStatusFilterChange = (value: string) => {
+    if (value === "All") {
+      setStatusFilter(
+        statusFilters.reduce((acc, { value }) => ({ ...acc, [value]: value === "All" }), {})
+      );
+    } else {
+      setStatusFilter((prev) => {
+        const newState = { ...prev, [value]: !prev[value] };
+        // If "All" was selected, deselect it
+        if (prev.All) {
+          newState.All = false;
+        }
+        // If all other options are deselected, select "All"
+        const otherOptions = statusFilters.filter((f) => f.value !== "All");
+        if (!otherOptions.some((f) => newState[f.value])) {
+          newState.All = true;
+        }
+        return newState;
+      });
+    }
+  };
+
+  // Handle "All" logic for Message Type Filter
+  const handleMessageTypeFilterChange = (value: string) => {
+    if (value === "All") {
+      setMessageTypeFilter(
+        messageTypeFilters.reduce((acc, { value }) => ({ ...acc, [value]: value === "All" }), {})
+      );
+    } else {
+      setMessageTypeFilter((prev) => {
+        const newState = { ...prev, [value]: !prev[value] };
+        // If "All" was selected, deselect it
+        if (prev.All) {
+          newState.All = false;
+        }
+        // If all other options are deselected, select "All"
+        const otherOptions = messageTypeFilters.filter((f) => f.value !== "All");
+        if (!otherOptions.some((f) => newState[f.value])) {
+          newState.All = true;
+        }
+        return newState;
+      });
+    }
+  };
+
+  // Handle "All" logic for Recipient Type Filter
+  const handleRecipientTypeFilterChange = (value: string) => {
+    if (value === "All") {
+      setRecipientTypeFilter(
+        recipientTypeFilters.reduce((acc, { value }) => ({ ...acc, [value]: value === "All" }), {})
+      );
+    } else {
+      setRecipientTypeFilter((prev) => {
+        const newState = { ...prev, [value]: !prev[value] };
+        // If "All" was selected, deselect it
+        if (prev.All) {
+          newState.All = false;
+        }
+        // If all other options are deselected, select "All"
+        const otherOptions = recipientTypeFilters.filter((f) => f.value !== "All");
+        if (!otherOptions.some((f) => newState[f.value])) {
+          newState.All = true;
+        }
+        return newState;
+      });
+    }
+  };
+
   const handleExport = () => {
     onExport({
       statusFilter,
+      priorityFilter,
+      messageTypeFilter, // Added messageTypeFilter to exported data
+      recipientTypeFilter, // Added recipientTypeFilter to exported data
       roleFilter,
       dateRangeFrom,
       dateRangeTo,
@@ -102,8 +192,65 @@ export default function ExportModal({
                         className={`flex items-center gap-1 rounded-md text-sm ${
                           statusFilter[value] ? "border border-gray-400 font-medium" : ""
                         }`}
+                        onClick={() => handleStatusFilterChange(value)}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {messageTypeFilters.length > 0 && (
+                <div>
+                  <p className="text-xs font-light mb-2">Message Type</p>
+                  <div className="flex space-x-2">
+                    {messageTypeFilters.map(({ label, value }) => (
+                      <Button
+                        key={value}
+                        variant={messageTypeFilter[value] ? "default" : "outline"}
+                        className={`flex items-center gap-1 rounded-md text-sm ${
+                          messageTypeFilter[value] ? "border border-gray-400 font-medium" : ""
+                        }`}
+                        onClick={() => handleMessageTypeFilterChange(value)}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {recipientTypeFilters.length > 0 && (
+                <div>
+                  <p className="text-xs font-light mb-2">Recipient Type</p>
+                  <div className="flex space-x-2">
+                    {recipientTypeFilters.map(({ label, value }) => (
+                      <Button
+                        key={value}
+                        variant={recipientTypeFilter[value] ? "default" : "outline"}
+                        className={`flex items-center gap-1 rounded-md text-sm ${
+                          recipientTypeFilter[value] ? "border border-gray-400 font-medium" : ""
+                        }`}
+                        onClick={() => handleRecipientTypeFilterChange(value)}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {priorityFilters.length > 0 && (
+                <div>
+                  <p className="text-xs font-light mb-2">Priority</p>
+                  <div className="flex space-x-2">
+                    {priorityFilters.map(({ label, value }) => (
+                      <Button
+                        key={value}
+                        variant={priorityFilter[value] ? "default" : "outline"}
+                        className={`flex items-center gap-1 rounded-md text-sm ${
+                          priorityFilter[value] ? "border border-gray-400 font-medium" : ""
+                        }`}
                         onClick={() =>
-                          setStatusFilter((prev) => ({
+                          setPriorityFilter((prev) => ({
                             ...prev,
                             [value]: !prev[value],
                           }))

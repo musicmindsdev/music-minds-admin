@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Filter, Search, EllipsisVertical,  Trash } from "lucide-react";
+import { Filter, Search, EllipsisVertical,  Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -276,7 +276,7 @@ export default function AnnouncementTable({
                       Archive
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => console.log("Delete:", announcement.id)} className="text-[#FF3B30]">
-                      <Trash className="h-4 w-4 mr-2 text-[#FF3B30]" />
+                      <Trash2 className="h-4 w-4 mr-2 text-[#FF3B30]" />
                       Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>

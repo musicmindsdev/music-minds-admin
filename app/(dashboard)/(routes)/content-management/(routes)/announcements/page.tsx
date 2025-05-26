@@ -10,7 +10,7 @@ import { PiNotificationBold } from "react-icons/pi";
 import ExportModal from "@/components/ExportModal";
 import { CiExport } from "react-icons/ci";
 import AnnouncementTable from "../../_components/AnnouncementTable";
-import CreateAnnouncementModal from "../../_components/CreateAnnouncementModal";
+import CreateContentModal from "@/components/CreateContentModal";
 
 export default function AnnouncementsPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -87,10 +87,11 @@ export default function AnnouncementsPage() {
         ]}
         onExport={handleExport}
       />
-      <CreateAnnouncementModal
+      <CreateContentModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSave={handleCreate}
+        contentType="Announcement"
       />
     </div>
   );

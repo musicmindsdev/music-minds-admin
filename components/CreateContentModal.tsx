@@ -12,10 +12,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Editor } from "@/components/Editor"; // Assuming your Editor component is correctly implemented
+import { Editor } from "@/components/Editor";
 import { Trash } from "lucide-react";
 
-interface CreateAnnouncementModalProps {
+interface CreateContentModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: (data: {
@@ -23,25 +23,26 @@ interface CreateAnnouncementModalProps {
         status: string;
         title: string;
         content: string;
-        mediaFile?: File | null; // Added optional mediaFile for visual announcements
+        mediaFile?: File | null;
     }) => void;
+    contentType: "Announcement" | "Article"; // Determines the context (Announcement or Article)
 }
 
-export default function CreateAnnouncementModal({
+export default function CreateContentModal({
     isOpen,
     onClose,
     onSave,
-}: CreateAnnouncementModalProps) {
+    contentType,
+}: CreateContentModalProps) {
     const [type, setType] = useState("Textual");
     const [status, setStatus] = useState("Draft");
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
-    const [mediaFile, setMediaFile] = useState<File | null>(null); // State for the selected media file
-    const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null); // State for the preview URL
+    const [mediaFile, setMediaFile] = useState<File | null>(null);
+    const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null);
 
-    const fileInputRef = useRef<HTMLInputElement>(null); // Ref for the hidden file input
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Effect to clean up object URL when component unmounts or media changes
     useEffect(() => {
         return () => {
             if (mediaPreviewUrl) {
@@ -50,7 +51,6 @@ export default function CreateAnnouncementModal({
         };
     }, [mediaPreviewUrl]);
 
-    // Reset states when the modal is opened/closed to ensure fresh form
     useEffect(() => {
         if (isOpen) {
             setType("Textual");
@@ -65,12 +65,11 @@ export default function CreateAnnouncementModal({
     const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            // Basic size validation (10MB)
             if (file.size > 10 * 1024 * 1024) {
                 alert("File size exceeds 10MB limit.");
                 setMediaFile(null);
                 if (fileInputRef.current) {
-                    fileInputRef.current.value = ''; // Clear the file input value
+                    fileInputRef.current.value = '';
                 }
                 return;
             }
@@ -86,7 +85,7 @@ export default function CreateAnnouncementModal({
         }
         setMediaPreviewUrl(null);
         if (fileInputRef.current) {
-            fileInputRef.current.value = ''; // Clear the file input value
+            fileInputRef.current.value = '';
         }
     };
 
@@ -95,16 +94,15 @@ export default function CreateAnnouncementModal({
             type,
             status,
             title,
-            content: content.slice(0, type === "Textual" ? 1000 : 500), // Apply correct content limit
+            content: content.slice(0, type === "Textual" ? 1000 : 500),
         };
 
         if (type === "Visual") {
-            // Ensure a media file is selected if it's a visual announcement
             if (!mediaFile) {
-                alert("Please upload a media file for Visual announcement.");
-                return; // Prevent saving if no file is selected for visual type
+                alert(`Please upload a media file for ${contentType} (Visual type).`);
+                return;
             }
-            onSave({ ...dataToSave, mediaFile }); // Pass mediaFile for visual type
+            onSave({ ...dataToSave, mediaFile });
         } else {
             onSave(dataToSave);
         }
@@ -114,32 +112,29 @@ export default function CreateAnnouncementModal({
     const contentCharLimit = type === "Textual" ? 1000 : 500;
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose} >
+        <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogOverlay className="backdrop-blur-xs">
-                {/* DialogContent remains flexible, auto-adjusting height */}
                 <DialogContent
-                    className={`rounded-lg p-6 transition-all duration-300 ${type === "Visual" ? "sm:max-w-[950px]" : "sm:max-w-[571px]"
-                        }`}
+                    className={`rounded-lg p-6 transition-all duration-300 ${type === "Visual" ? "sm:max-w-[950px]" : "sm:max-w-[571px]"}`}
                 >
                     <DialogHeader className="flex justify-between items-start pb-4">
                         <DialogTitle className="text-lg font-semibold">
-                            Create Announcement
+                            Create {contentType}
                         </DialogTitle>
                     </DialogHeader>
 
-                    {/* Announcement Type - Always full width */}
                     <div className="space-y-2 mb-2">
-                        <Label>Announcement Type</Label>
+                        <Label>{contentType} Type</Label>
                         <div className="flex space-x-2">
                             <Button
                                 variant={type === "Textual" ? "default" : "outline"}
                                 className="rounded-lg"
                                 onClick={() => {
                                     setType("Textual");
-                                    setMediaFile(null); // Clear media when switching to Textual
+                                    setMediaFile(null);
                                     setMediaPreviewUrl(null);
                                     if (fileInputRef.current) {
-                                        fileInputRef.current.value = ''; // Clear file input
+                                        fileInputRef.current.value = '';
                                     }
                                 }}
                             >
@@ -150,7 +145,7 @@ export default function CreateAnnouncementModal({
                                 className="rounded-lg"
                                 onClick={() => {
                                     setType("Visual");
-                                    setContent(""); // Optionally clear content when switching to Visual
+                                    setContent("");
                                 }}
                             >
                                 Visual
@@ -158,13 +153,8 @@ export default function CreateAnnouncementModal({
                         </div>
                     </div>
 
-                    {/* Main Content Area - Conditional layout (flex for visual, block for textual) */}
-                    {/* Height is determined by the content of its children */}
-                    <div className={` ${type === "Visual" ? "flex flex-row gap-8" : "block"}`}>
-                        {/* Left Column (Status, Title, Content, Upload Media, AND MOVED FOOTER) */}
-                        {/* Added flex flex-col to stack content and footer vertically */}
+                    <div className={`${type === "Visual" ? "flex flex-row gap-8" : "block"}`}>
                         <div className={`${type === "Visual" ? "flex-1 flex flex-col" : "w-full"}`}>
-                            {/* This div wraps the form fields and takes remaining vertical space */}
                             <div className="space-y-6 flex-1 overflow-y-auto">
                                 <div className="space-y-2">
                                     <Label>Status</Label>
@@ -184,7 +174,7 @@ export default function CreateAnnouncementModal({
                                             value={title}
                                             onChange={(e) => setTitle(e.target.value.slice(0, 100))}
                                             className="w-full p-2 border rounded-lg bg-white"
-                                            placeholder="Enter Title..."
+                                            placeholder={`Enter ${contentType} Title...`}
                                         />
                                         <span className="absolute right-2 top-2 text-sm text-gray-500">
                                             {title.length}/100
@@ -192,7 +182,6 @@ export default function CreateAnnouncementModal({
                                     </div>
                                 </div>
 
-                                {/* Upload Media - Conditionally rendered within the LEFT column */}
                                 {type === "Visual" && (
                                     <div className="space-y-2">
                                         <Label>Upload Media</Label>
@@ -226,10 +215,7 @@ export default function CreateAnnouncementModal({
                                         </span>
                                     </div>
                                 </div>
-                            </div> {/* End of flex-1 overflow-y-auto wrapper for form fields */}
-
-                            {/* DialogFooter - MOVED HERE, inside the left column */}
-                            {/* The pt-6 provides spacing from the content above */}
+                            </div>
                             <DialogFooter className="flex justify-between pt-6">
                                 <Button
                                     variant="outline"
@@ -245,27 +231,23 @@ export default function CreateAnnouncementModal({
                                     Save
                                 </Button>
                             </DialogFooter>
-                        </div> {/* End of Left Column */}
+                        </div>
 
-                        {/* Right Column (ONLY Preview) - Only for Visual */}
-                        {/* flex-1 for width, flex flex-col h-full to match left column's height */}
                         {type === "Visual" && (
                             <div className="flex-1 flex flex-col h-full">
-                                {/* Inner wrapper takes remaining height, is flex column */}
                                 <div className="space-y-2 flex-1 flex flex-col">
                                     <Label className="flex justify-between items-center">
                                         <span>Preview</span>
                                         {mediaFile && (
                                             <span
-                                                className="text-red-500 text-sm cursor-pointer hover:underline flex "
+                                                className="text-red-500 text-sm cursor-pointer hover:underline flex"
                                                 onClick={handleRemoveMedia}
                                             >
                                                 <Trash className="h-4 w-4 mr-2 text-[#FF3B30]" />
-                                              <p>Remove Media</p> 
+                                                <p>Remove Media</p>
                                             </span>
                                         )}
                                     </Label>
-                                    {/* Preview box fills remaining space dynamically */}
                                     <div className="w-full flex-1 border rounded-lg bg-card flex items-center justify-center overflow-hidden">
                                         {mediaPreviewUrl ? (
                                             mediaFile?.type.startsWith("image/") ? (
@@ -307,7 +289,7 @@ export default function CreateAnnouncementModal({
                                 </div>
                             </div>
                         )}
-                    </div> {/* End of Main Content Area (columns) */}
+                    </div>
                 </DialogContent>
             </DialogOverlay>
         </Dialog>

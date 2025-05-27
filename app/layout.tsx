@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import "./styles/nprogress-custom.css";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { camptonFont } from "@/components/auth/header";
+import NProgressWrapper from "@/NprogressWrapper";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -23,8 +25,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster richColors position="top-right" />
+          <NProgressWrapper>
+            {children}
+            <Toaster richColors position="top-right" />
+          </NProgressWrapper>
         </ThemeProvider>
       </body>
     </html>

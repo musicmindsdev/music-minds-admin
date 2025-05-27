@@ -1,0 +1,25 @@
+body #nprogress .bar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    z-index: 99999 !important; /* Even higher z-index */
+  }
+
+#nprogress .bar {
+    background: #5243FE;
+    height: 3px;
+    transition: opacity 0.3s ease;
+  }
+
+  #nprogress .bar.nprogress-done {
+    opacity: 0; /* Ensure it fades out when done */
+  }
+  
+  #nprogress .spinner-icon {
+    width: 20px;
+    height: 20px;
+    border: solid 3px transparent;
+    border-top-color: #5243FE;
+    border-left-color: #5243FE;
+  }

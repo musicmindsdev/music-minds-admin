@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { camptonFont } from "@/components/auth/header";
 import NProgressWrapper from "@/NprogressWrapper";
+import { Suspense } from "react"; 
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -25,10 +26,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <NProgressWrapper>
-            {children}
-            <Toaster richColors position="top-right" />
-          </NProgressWrapper>
+          <Suspense fallback={null}>
+            <NProgressWrapper>
+              {children}
+              <Toaster richColors position="top-right" />
+            </NProgressWrapper>
+          </Suspense>
         </ThemeProvider>
       </body>
     </html>

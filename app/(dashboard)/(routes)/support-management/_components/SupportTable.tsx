@@ -310,14 +310,34 @@ export default function SupportTicketTable({
                   {truncateText(ticket.userName, 15)}
                 </div>
               </TableCell>
-              <TableCell>{ticket.issue}</TableCell>
               <TableCell>
-                <span className={`px-2 py-1 rounded-full ${getPriorityColor(ticket.priority)}`}>
+                
+                {ticket.issue}</TableCell>
+              <TableCell>
+                <span className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${getPriorityColor(ticket.priority)}`}>
+                <span
+                    className={`h-2 w-2 rounded-full ${
+                      ticket.priority === "High"
+                        ? "bg-[#FF3B30]"
+                        : ticket.priority === "Medium"
+                        ? "bg-[#E2A300]"
+                        : "bg-green-500"
+                    }`}
+                  />
                   {ticket.priority}
                 </span>
               </TableCell>
               <TableCell>
-                <span className={`px-2 py-1 rounded-full ${getStatusColor(ticket.status)}`}>
+                <span className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${getStatusColor(ticket.status)}`}>
+                <span
+                    className={`h-2 w-2 rounded-full ${
+                      ticket.status === "Resolved"
+                        ? "bg-green-500"
+                        : ticket.status === "Open"
+                        ? "bg-[#E2A300]"
+                        : "bg-[#0065FF]"
+                    }`}
+                  />
                   {ticket.status}
                 </span>
               </TableCell>

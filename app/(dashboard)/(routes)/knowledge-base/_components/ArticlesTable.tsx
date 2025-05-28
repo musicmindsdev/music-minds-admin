@@ -263,7 +263,16 @@ export default function ArticlesTable({
               <TableCell>{truncateText(article.title, 20)}</TableCell>
               <TableCell>{article.category}</TableCell>
               <TableCell>
-                <span className={`px-2 py-1 rounded-full ${getStatusColor(article.status)}`}>
+                <span className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${getStatusColor(article.status)}`}>
+                <span
+                    className={`h-2 w-2 rounded-full ${
+                      article.status === "Published"
+                        ? "bg-green-500"
+                        : article.status === "Archived"
+                        ? "bg-[#0065FF]"
+                        : "bg-gray-500"
+                    }`}
+                  />
                   {article.status}
                 </span>
               </TableCell>

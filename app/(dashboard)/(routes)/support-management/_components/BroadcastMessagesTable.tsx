@@ -342,7 +342,16 @@ export default function BroadcastMessagesTable({
               </TableCell>
               <TableCell>{message.recipientType}</TableCell>
               <TableCell>
-                <span className={`px-2 py-1 rounded-full ${getStatusColor(message.status)}`}>
+                <span className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${getStatusColor(message.status)}`}>
+                <span
+                    className={`h-2 w-2 rounded-full ${
+                      message.status === "Sent"
+                        ? "bg-green-500"
+                        : message.status === "Scheduled"
+                        ? "bg-[#E2A300]"
+                        : "bg-gray-500"
+                    }`}
+                  />
                   {message.status}
                 </span>
               </TableCell>

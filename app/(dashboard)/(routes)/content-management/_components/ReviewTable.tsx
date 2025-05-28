@@ -25,17 +25,35 @@ import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { reviewData } from "@/lib/mockData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import ReviewDetailsModal from "./ReviewDetailsModal"; // We'll update this separately
 
-// Helper function to parse date string "DD/MM/YY - H:MM A.M./P.M." to Date object
+// Define interfaces directly in this file
+export interface Reviewer {
+  name: string;
+  email: string;
+  role: string;
+}
+
+export interface Review {
+  id: string;
+  userName: string;
+  email: string;
+  serviceOffered: string;
+  rating: number;
+  reviewText: string;
+  date: string;
+  status: string;
+  flagged: string;
+  reviewer: Reviewer;
+}
+
+// Helper function to parse date string "Wed, MMM DD, YYYY HH:MM AM/PM" to Date object
 const parseDate = (dateString: string): Date => {
-  const [datePart, timePart] = dateString.split(" - ");
-  const match = timePart.match(/(\d+):(\d+)\s*(AM|PM)/i);
-  if (!match) throw new Error("Invalid time format");
-  const [ hour, minute, period] = match;
-  let hours = parseInt(hour) % 12 + (period.toLowerCase().includes("p") ? 12 : 0);
-  if (parseInt(hour) === 12 && period.toLowerCase().includes("a")) hours = 0;
-  const [day, month, year] = datePart.split("/");
-  return new Date(parseInt(`20${year}`), parseInt(month) - 1, parseInt(day), hours, parseInt(minute));
+  const [, month, day, year, time] = dateString.split(/,\s| /);
+  const [hour, minute, period] = time.split(/:| /);
+  let hours = parseInt(hour) % 12 + (period.toLowerCase().includes("pm") ? 12 : 0);
+  if (parseInt(hour) === 12 && period.toLowerCase().includes("am")) hours = 0;
+  return new Date(`${month} ${day}, ${year} ${hours}:${minute}:00`);
 };
 
 interface ReviewTableProps {
@@ -57,12 +75,14 @@ export default function ReviewTable({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedReviews, setSelectedReviews] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const reviewsPerPage = 10;
 
   // Get unique service types from reviewData
   const serviceTypes = [...new Set(reviewData.map((review) => review.serviceOffered))];
 
-  const filteredReviews = reviewData.filter((review) => {
+  const filteredReviews = reviewData.filter((review: Review) => {
     const query = searchQuery.toLowerCase();
     const searchMatch =
       searchQuery === "" ||
@@ -72,7 +92,7 @@ export default function ReviewTable({
       (review.reviewText ?? "").toLowerCase().includes(query);
 
     const flaggedMatch =
-      (Object.values(flaggedFilter).every((val) => !val) || // No filters selected, show all
+      (Object.values(flaggedFilter).every((val) => !val) ||
        (flaggedFilter.Yes && review.flagged === "Yes") ||
        (flaggedFilter.No && review.flagged === "No"));
 
@@ -86,18 +106,14 @@ export default function ReviewTable({
     let dateMatch = true;
     if (dateRangeFrom || dateRangeTo) {
       const reviewDate = parseDate(review.date);
-      const fromDate = dateRangeFrom
-        ? new Date(dateRangeFrom)
-        : null;
-      const toDate = dateRangeTo
-        ? new Date(dateRangeTo)
-        : null;
+      const fromDate = dateRangeFrom ? new Date(dateRangeFrom) : null;
+      const toDate = dateRangeTo ? new Date(dateRangeTo) : null;
       if (fromDate) {
-        fromDate.setHours(0, 0, 0, 0); // Start of the day
+        fromDate.setHours(0, 0, 0, 0);
         if (reviewDate < fromDate) dateMatch = false;
       }
       if (toDate) {
-        toDate.setHours(23, 59, 59, 999); // End of the day
+        toDate.setHours(23, 59, 59, 999);
         if (reviewDate > toDate) dateMatch = false;
       }
     }
@@ -139,6 +155,11 @@ export default function ReviewTable({
   const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + "...";
+  };
+
+  const handleViewDetails = (review: Review) => {
+    setSelectedReview(review);
+    setIsModalOpen(true);
   };
 
   return (
@@ -308,7 +329,7 @@ export default function ReviewTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedReviews.map((review) => (
+          {paginatedReviews.map((review: Review) => (
             <TableRow key={review.id}>
               {showCheckboxes && (
                 <TableCell>
@@ -359,7 +380,7 @@ export default function ReviewTable({
                     <Button variant="ghost"><EllipsisVertical /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => console.log("View Details:", review.id)}>
+                    <DropdownMenuItem onClick={() => handleViewDetails(review)}>
                       <Eye className="h-4 w-4 mr-2" />
                       View Details
                     </DropdownMenuItem>
@@ -418,6 +439,24 @@ export default function ReviewTable({
                 Go
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+      {isModalOpen && (
+        <div
+          className="fixed inset-0 backdrop-blur-xs bg-opacity-50 z-50"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div
+            className="fixed right-0 top-0 h-full w-[35%] bg-card shadow-lg transform transition-transform duration-300 ease-in-out"
+            style={{ transform: isModalOpen ? "translateX(0)" : "translateX(100%)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ReviewDetailsModal
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              review={selectedReview}
+            />
           </div>
         </div>
       )}

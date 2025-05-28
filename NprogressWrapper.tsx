@@ -9,14 +9,15 @@ export default function NProgressWrapper({ children }: { children: React.ReactNo
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    console.log("Route change started:", pathname, searchParams.toString());
     NProgress.configure({ showSpinner: false, speed: 500, easing: "ease" });
     NProgress.start();
 
-    return () => {
-      console.log("Route change completed:", pathname, searchParams.toString());
+    // Delay stopping the bar to simulate content load
+    const doneTimeout = setTimeout(() => {
       NProgress.done();
-    };
+    }, 400); // Adjust this value if needed
+
+    return () => clearTimeout(doneTimeout);
   }, [pathname, searchParams]);
 
   return <>{children}</>;

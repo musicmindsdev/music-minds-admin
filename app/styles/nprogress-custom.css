@@ -6,15 +6,22 @@ body #nprogress .bar {
     z-index: 99999 !important; /* Even higher z-index */
   }
 
-#nprogress .bar {
-    background: #5243FE;
-    height: 3px;
-    transition: opacity 0.3s ease;
-  }
 
-  #nprogress .bar.nprogress-done {
-    opacity: 0; /* Ensure it fades out when done */
-  }
+#nprogress .bar {
+  background: #5243FE;
+  height: 3px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 99999;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+#nprogress .bar.nprogress-done {
+  opacity: 0;
+  transform: translateY(-100%);
+}
   
   #nprogress .spinner-icon {
     width: 20px;

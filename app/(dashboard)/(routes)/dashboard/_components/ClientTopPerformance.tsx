@@ -9,9 +9,8 @@ import {
   import { useState } from "react";
   import { Card, CardContent, CardHeader } from "@/components/ui/card";
   import { Button } from "@/components/ui/button";
-  import Image from "next/image";
-  import Lis from "@/public/grid-6.svg";
-  import Crd from "@/public/menu-board.svg"
+import CardView from "@/components/svg icons/CardView";
+import ListView from "@/components/svg icons/ListView";
   
   interface ClientPerformer {
     rank: string;
@@ -62,19 +61,25 @@ import {
           <h3 className="font-light text-sm">TOP PERFORMERS</h3>
           <div className="space-x-2">
           <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsCardView(false)}
-            >
-              <Image src={Crd} alt="" className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsCardView(true)}
-            >
-              <Image src={Lis} alt="" className="h-5 w-5" />
-            </Button>
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsCardView(false)}
+          >
+            <CardView
+              className="h-5 w-5"
+              color={isCardView ? "#C3C3C3" : "#5243FE"}
+            />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsCardView(true)}
+          >
+            <ListView
+              className="h-5 w-5"
+              color={isCardView ? "#5243FE" : "#C3C3C3"}
+            />
+          </Button>
           </div>
         </div>
         {isCardView ? (

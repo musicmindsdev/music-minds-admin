@@ -537,7 +537,7 @@ export default function BookingTable({
       />
       {isDetailsModalOpen && (
         <div
-          className="fixed inset-0 backdrop-blur-xs z-50"
+          className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50"
           onClick={() => setIsDetailsModalOpen(false)}
         >
           <div

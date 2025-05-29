@@ -42,7 +42,7 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         <div className="flex items-center space-x-2">
         
           <Button variant="ghost" className="p-0 h-auto" onClick={onClose}>
-            <X className="h-5 w-5 text-black" />
+            <X className="h-5 w-5 " />
           </Button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import {
   Table,
   TableBody,
@@ -28,6 +28,26 @@ import { FaCheck, FaBan } from "react-icons/fa6";
 import ExportModal from "@/components/ExportModal";
 import { bookingsData } from "@/lib/mockData";
 import { usePathname, useRouter } from "next/navigation";
+import BookingDetailsModal from "../../content-management/_components/BookingDetailsModal";
+
+// Define the Booking interface
+export interface Booking {
+  scheduledDate: ReactNode;
+  scheduledTime: ReactNode;
+  location: ReactNode;
+  paymentAmount: ReactNode;
+  platformFee: ReactNode;
+  transactionId: ReactNode;
+  id: string;
+  clientName: string;
+  clientEmail: string;
+  providerName: string;
+  providerEmail: string;
+  serviceOffered: string;
+  totalAmount: string;
+  status: string;
+  lastLogin: string;
+}
 
 // Helper function to parse date string "MMM DD, YYYY • HH:MM AM/PM" to Date object
 const parseDate = (dateString: string): Date => {
@@ -77,14 +97,16 @@ export default function BookingTable({
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const bookingsPerPage = 10;
 
   const pathname = usePathname();
   const router = useRouter();
 
-  const filteredBookings = bookingsData.filter((booking) => {
+  const filteredBookings = bookingsData.filter((booking: Booking) => {
     const query = searchQuery.toLowerCase();
     const searchMatch =
       searchQuery === "" ||
@@ -102,8 +124,14 @@ export default function BookingTable({
       const bookingDate = parseDate(booking.lastLogin);
       const fromDate = dateRangeFrom ? new Date(dateRangeFrom) : null;
       const toDate = dateRangeTo ? new Date(dateRangeTo) : null;
-      if (fromDate && bookingDate < fromDate) dateMatch = false;
-      if (toDate && bookingDate > toDate) dateMatch = false;
+      if (fromDate) {
+        fromDate.setHours(0, 0, 0, 0);
+        if (bookingDate < fromDate) dateMatch = false;
+      }
+      if (toDate) {
+        toDate.setHours(23, 59, 59, 999);
+        if (bookingDate > toDate) dateMatch = false;
+      }
     }
 
     return searchMatch && statusMatch && dateMatch;
@@ -144,6 +172,11 @@ export default function BookingTable({
     if (pathname !== "/content-management") {
       router.push("/content-management");
     }
+  };
+
+  const handleViewDetails = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setIsDetailsModalOpen(true);
   };
 
   const handleApprove = () => {
@@ -190,7 +223,7 @@ export default function BookingTable({
       <div className="flex justify-between items-center">
         <p className="font-light text-sm">{headerText}</p>
         <div className="flex space-x-2">
-        {pathname !== "/content-management" && (
+          {pathname !== "/content-management" && (
             <Button variant="link" className="text-blue-600 hover:text-blue-800" onClick={handleViewAll}>
               View all Bookings
             </Button>
@@ -207,7 +240,7 @@ export default function BookingTable({
         </div>
       </div>
       <div className="relative mt-4 flex items-center pb-2">
-      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <input
           placeholder="Search for user by Name, Email or ID"
           value={searchQuery}
@@ -339,7 +372,7 @@ export default function BookingTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedBookings.map((booking) => (
+          {paginatedBookings.map((booking: Booking) => (
             <TableRow key={booking.id}>
               {showCheckboxes && (
                 <TableCell>
@@ -356,7 +389,7 @@ export default function BookingTable({
               <TableCell>{booking.totalAmount}</TableCell>
               <TableCell>
                 <span
-                  className={`flex items-center justify-center gap-1 rounded-full ${
+                  className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 text-xs ${
                     booking.status === "Confirmed"
                       ? "bg-green-100 text-green-600"
                       : booking.status === "Pending"
@@ -383,7 +416,7 @@ export default function BookingTable({
                     <Button variant="ghost"><EllipsisVertical /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => console.log("View Details:", booking.id)}>
+                    <DropdownMenuItem onClick={() => handleViewDetails(booking)}>
                       <Eye className="h-4 w-4 mr-2" />
                       View Details
                     </DropdownMenuItem>
@@ -490,7 +523,7 @@ export default function BookingTable({
           { label: "Pending", value: "Pending" },
           { label: "Cancelled", value: "Cancelled" },
         ]}
-        roleFilters={[]} // No role filters for bookings, can be expanded if needed
+        roleFilters={[]}
         fieldOptions={[
           { label: "Booking ID", value: "Booking ID" },
           { label: "Client Name", value: "Client Name" },
@@ -502,6 +535,24 @@ export default function BookingTable({
         ]}
         onExport={handleExport}
       />
+      {isDetailsModalOpen && (
+        <div
+          className="fixed inset-0 backdrop-blur-xs z-50"
+          onClick={() => setIsDetailsModalOpen(false)}
+        >
+          <div
+            className="fixed right-0 top-0 h-full w-[35%] bg-white shadow-lg transform transition-transform duration-300 ease-in-out"
+            style={{ transform: isDetailsModalOpen ? "translateX(0)" : "translateX(100%)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <BookingDetailsModal
+              isOpen={isDetailsModalOpen}
+              onClose={() => setIsDetailsModalOpen(false)}
+              booking={selectedBooking}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }

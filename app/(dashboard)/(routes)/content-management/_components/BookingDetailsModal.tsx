@@ -1,14 +1,8 @@
 import * as React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { X, CheckCircle, Ban } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { X } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { EllipsisVertical } from "lucide-react";
 import { Booking } from "../../dashboard/_components/BookingTable";
 import { reviewData } from "@/lib/mockData"; 
 
@@ -22,7 +16,7 @@ interface BookingDetailsModalProps {
 }
 
 const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
-  isOpen,
+
   onClose,
   booking,
 }) => {
@@ -64,13 +58,13 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </Avatar>
             <div>
               <h3 className="text-base font-medium text-black">{booking.clientName}</h3>
-              <p className="text-xs text-gray-400">Client's Information</p>
+              <p className="text-xs text-gray-400">Client&apos;s Information</p>
             </div>
           </div>
         </div>
         {/* Provider Info */}
         <div className="space-y-2">
-          <p className="text-xs text-gray-500"> Service Provider's Information</p>
+          <p className="text-xs text-gray-500"> Service Provider&apos;s Information</p>
           <div className="flex items-center gap-4">
             <Avatar className="w-12 h-12">
               <AvatarImage src="/placeholder-avatar.jpg" alt={booking.providerName} />

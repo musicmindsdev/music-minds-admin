@@ -20,11 +20,19 @@ interface User {
 interface Booking {
   id: string;
   clientName: string;
+  clientEmail: string;
   providerName: string;
+  providerEmail: string;
   serviceOffered: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  location: string;
   totalAmount: string;
   status: string;
   lastLogin: string;
+  paymentAmount: string;
+  platformFee: string;
+  transactionId: string;
 }
 
 interface Transaction {

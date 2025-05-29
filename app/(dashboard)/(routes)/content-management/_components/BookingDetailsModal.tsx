@@ -38,7 +38,7 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     <div className="h-full p-6 overflow-y-auto">
       {/* Header */}
       <div className="flex justify-between items-center border-b border-gray-200 pb-4">
-        <h2 className="text-base font-medium text-black">Booking ID: {booking.id}</h2>
+        <h2 className="text-base font-medium">Booking ID: {booking.id}</h2>
         <div className="flex items-center space-x-2">
         
           <Button variant="ghost" className="p-0 h-auto" onClick={onClose}>
@@ -57,7 +57,7 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <AvatarFallback>{booking.clientName.charAt(0)}</AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="text-base font-medium text-black">{booking.clientName}</h3>
+              <h3 className="text-base font-medium">{booking.clientName}</h3>
               <p className="text-xs text-gray-400">Client&apos;s Information</p>
             </div>
           </div>
@@ -71,14 +71,14 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <AvatarFallback>{booking.providerName.charAt(0)}</AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="text-base font-medium text-black">{booking.providerName}</h3>
+              <h3 className="text-base font-medium ">{booking.providerName}</h3>
               <p className="text-xs text-gray-400">Provider</p>
             </div>
           </div>
         </div>
         {/* Booking Details */}
         <div className="space-y-4">
-          <h3 className="text-base font-medium text-black">Booking Details</h3>
+          <h3 className="text-base font-medium">Booking Details</h3>
           <div>
             <p className="text-xs  flex gap-2">Service Type:  <p className="text-sm font-medium">{booking.serviceOffered}</p></p>
            
@@ -156,7 +156,7 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         </div>
         {/* Ratings & Review */}
         <div className="space-y-4">
-          <h3 className="text-base font-medium text-black">Ratings & Review</h3>
+          <h3 className="text-base font-medium ">Ratings & Review</h3>
           <div>
             <p className="text-xs font-medium text-gray-500">Rating</p>
             <p className="text-sm font-medium">

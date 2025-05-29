@@ -541,7 +541,7 @@ export default function BookingTable({
           onClick={() => setIsDetailsModalOpen(false)}
         >
           <div
-            className="fixed right-0 top-0 h-full w-[35%] bg-white shadow-lg transform transition-transform duration-300 ease-in-out"
+            className="fixed right-0 top-0 h-full w-[35%] bg-card shadow-lg transform transition-transform duration-300 ease-in-out"
             style={{ transform: isDetailsModalOpen ? "translateX(0)" : "translateX(100%)" }}
             onClick={(e) => e.stopPropagation()}
           >

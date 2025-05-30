@@ -29,27 +29,130 @@ import { TbArrowsExchange2 } from "react-icons/tb";
 import Pending from "@/public/pending.png";
 import Image from "next/image";
 import { toast } from "sonner";
+import AdminDetailsModal from "./AdminDetailsModal"; // Adjust the path as needed
 
 interface AdminTeamMember {
   id: string;
   name: string;
   email: string;
   role: string;
-  dateAdded: string;
+  inviteSent: string;
+  dateInvited: string;
+  dateInviteAccepted: string;
   lastLogin: string;
   status: "Online" | "Pending";
   image?: string;
+  permissions: string[];
+  passwordCreated: string;
+  lastChanged: string;
 }
 
-// Mock data (to be replaced with API fetch)
 const adminTeamData: AdminTeamMember[] = [
-  { id: "1", name: "Daniel Adaeri C.", email: "danieladaeri@yahoo.com", role: "Admin", dateAdded: "Pending", lastLogin: "----", status: "Pending", image: "https://api.dicebear.com/6.x/initials/svg?seed=Daniel" },
-  { id: "2", name: "Michael Ajobi E.", email: "michaelajobi@gmail.com", role: "Super Admin", dateAdded: "Today", lastLogin: "Online", status: "Online", image: "https://api.dicebear.com/6.x/initials/svg?seed=Michael" },
-  { id: "3", name: "Francis Praise...", email: "francispraisegod@yahoo.com", role: "Support", dateAdded: "Apr 15, 2025", lastLogin: "Online", status: "Online", image: "https://api.dicebear.com/6.x/initials/svg?seed=Francis" },
-  { id: "4", name: "James D. Shola", email: "jamesdshola@gmail.com", role: "Moderator", dateAdded: "Apr 3, 2025", lastLogin: "Online", status: "Online", image: "https://api.dicebear.com/6.x/initials/svg?seed=James" },
-  { id: "5", name: "Anitt Adebayo...", email: "adebayoar@gmail.com", role: "Support", dateAdded: "Mar 20, 2025", lastLogin: "10 mins ago", status: "Online", image: "https://api.dicebear.com/6.x/initials/svg?seed=Anitt" },
-  { id: "6", name: "Amakiri Justina...", email: "amakirijustin@gmail.com", role: "Support", dateAdded: "Mar 16, 2025", lastLogin: "Online", status: "Online", image: "https://api.dicebear.com/6.x/initials/svg?seed=Amakiri" },
-  { id: "7", name: "Davida Nathan...", email: "davidaakans@gmail.com", role: "Moderator", dateAdded: "Feb 28, 2025", lastLogin: "Online", status: "Online", image: "https://api.dicebear.com/6.x/initials/svg?seed=Davida" },
+  {
+    id: "1",
+    name: "Daniel Adaeri C.",
+    email: "danieladaeri@yahoo.com",
+    role: "Super Admin",
+    inviteSent: "Wed, Apr 16, 2025",
+    dateInvited: "08:45 AM",
+    dateInviteAccepted: "08:50 AM",
+    lastLogin: "----",
+    status: "Pending",
+    image: "https://api.dicebear.com/6.x/initials/svg?seed=Daniel",
+    permissions: ["Can manage users", "Can manage content", "Can moderate reviews"],
+    passwordCreated: "Wed, Apr 16, 2025",
+    lastChanged: "Mon, Apr 20, 2025",
+  },
+  {
+    id: "2",
+    name: "Michael Ajobi E.",
+    email: "michaelajobi@gmail.com",
+    role: "Super Admin",
+    inviteSent: "Today",
+    dateInvited: "N/A",
+    dateInviteAccepted: "N/A",
+    lastLogin: "Online",
+    status: "Online",
+    image: "https://api.dicebear.com/6.x/initials/svg?seed=Michael",
+    permissions: ["Can manage users", "Can manage content", "Can moderate reviews"],
+    passwordCreated: "Today",
+    lastChanged: "N/A",
+  },
+  {
+    id: "3",
+    name: "Francis Praise",
+    email: "francispraisegod@yahoo.com",
+    role: "Support",
+    inviteSent: "Apr 15, 2025",
+    dateInvited: "10:00 AM",
+    dateInviteAccepted: "N/A",
+    lastLogin: "Online",
+    status: "Online",
+    image: "https://api.dicebear.com/6.x/initials/svg?seed=Francis",
+    permissions: ["Can manage support tickets"],
+    passwordCreated: "Apr 15, 2025",
+    lastChanged: "N/A",
+  },
+  {
+    id: "4",
+    name: "James D. Shola",
+    email: "jamesdshola@gmail.com",
+    role: "Moderator",
+    inviteSent: "Apr 3, 2025",
+    dateInvited: "02:30 PM",
+    dateInviteAccepted: "N/A",
+    lastLogin: "Online",
+    status: "Online",
+    image: "https://api.dicebear.com/6.x/initials/svg?seed=James",
+    permissions: ["Can moderate reviews"],
+    passwordCreated: "Apr 3, 2025",
+    lastChanged: "N/A",
+  },
+  {
+    id: "5",
+    name: "Anitt Adebayo",
+    email: "adebayoar@gmail.com",
+    role: "Support",
+    inviteSent: "Mar 20, 2025",
+    dateInvited: "09:15 AM",
+    dateInviteAccepted: "N/A",
+    lastLogin: "10 mins ago",
+    status: "Online",
+    image: "https://api.dicebear.com/6.x/initials/svg?seed=Anitt",
+    permissions: ["Can manage support tickets"],
+    passwordCreated: "Mar 20, 2025",
+    lastChanged: "N/A",
+  },
+  {
+    id: "6",
+    name: "Amakiri Justina",
+    email: "amakirijustin@gmail.com",
+    role: "Support",
+    inviteSent: "Mar 16, 2025",
+    dateInvited: "11:00 AM",
+    dateInviteAccepted: "N/A",
+    lastLogin: "Online",
+    status: "Online",
+    image: "https://api.dicebear.com/6.x/initials/svg?seed=Amakiri",
+    permissions: ["Can manage support tickets"],
+    passwordCreated: "Mar 16, 2025",
+    lastChanged: "N/A",
+  },
+  {
+    id: "7",
+    name: "Davida Nathan",
+    email: "davidaakans@gmail.com",
+    role: "Moderator",
+    inviteSent: "Feb 28, 2025",
+    dateInvited: "01:30 PM",
+    dateInviteAccepted: "N/A",
+    lastLogin: "Online",
+    status: "Online",
+    image: "https://api.dicebear.com/6.x/initials/svg?seed=Davida",
+    permissions: ["Can moderate reviews"],
+    passwordCreated: "Feb 28, 2025",
+    lastChanged: "N/A",
+  },
 ];
 
 interface AdminTeamTableProps {
@@ -67,21 +170,23 @@ export default function AdminTable({
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [members, setMembers] = useState<AdminTeamMember[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<AdminTeamMember | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Simulated API fetch (replace with actual API call when backend is ready)
-  const fetchMembers = async () => {
-    setLoading(true);
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setMembers(adminTeamData);
-      toast.success("Admin team members loaded successfully.");
-    } /* eslint-disable @typescript-eslint/no-unused-vars */ catch (_err) {
-      toast.error("Failed to fetch admin team members.");
-    } /* eslint-enable @typescript-eslint/no-unused-vars */ finally {
-      setLoading(false);
-    }
-  };
+ // Simulated API fetch (replace with actual API call when backend is ready)
+ const fetchMembers = async () => {
+  setLoading(true);
+  try {
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setMembers(adminTeamData);
+    toast.success("Admin team members loaded successfully.");
+  } /* eslint-disable @typescript-eslint/no-unused-vars */ catch (_err) {
+    toast.error("Failed to fetch admin team members.");
+  } /* eslint-enable @typescript-eslint/no-unused-vars */ finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchMembers();
@@ -157,22 +262,27 @@ export default function AdminTable({
     setIsRemoveModalOpen(true);
   };
 
+  const handleViewDetails = (member: AdminTeamMember) => {
+    setSelectedAdmin(member);
+    setIsModalOpen(true);
+  };
+
   const closeRemoveModal = () => {
     setIsRemoveModalOpen(false);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleExport = (_data: {
-    statusFilter: Record<string, boolean>;
-    roleFilter: string;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-    adminRole?: string;
-  }) => {
-    toast.success("Data exported successfully.");
-  };
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const handleExport = (_data: {
+  statusFilter: Record<string, boolean>;
+  roleFilter: string;
+  dateRangeFrom: string;
+  dateRangeTo: string;
+  format: string;
+  fields: Record<string, boolean>;
+  adminRole?: string;
+}) => {
+  toast.success("Data exported successfully.");
+};
 
   return (
     <>
@@ -219,11 +329,7 @@ export default function AdminTable({
         </div>
       ) : filteredMembers.length === 0 ? (
         <div className="text-center py-4 text-gray-500">
-          <Image
-            src={Pending}
-            alt="No members found"
-            className="mx-auto mb-2"
-          />
+          <Image src={Pending} alt="No members found" className="mx-auto mb-2" />
           <p>No admin team members found.</p>
         </div>
       ) : (
@@ -242,7 +348,7 @@ export default function AdminTable({
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Date Added</TableHead>
+              <TableHead>Invite Sent</TableHead>
               <TableHead>Last Login</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
@@ -270,7 +376,7 @@ export default function AdminTable({
                 </TableCell>
                 <TableCell>{member.email}</TableCell>
                 <TableHead>{member.role}</TableHead>
-                <TableCell>{member.dateAdded}</TableCell>
+                <TableCell>{member.inviteSent}</TableCell>
                 <TableCell>{member.lastLogin}</TableCell>
                 <TableCell>
                   <DropdownMenu>
@@ -296,7 +402,7 @@ export default function AdminTable({
                         </>
                       ) : (
                         <>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleViewDetails(member)}>
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
@@ -362,6 +468,24 @@ export default function AdminTable({
         ]}
         onExport={handleExport}
       />
+      {isModalOpen && (
+         <div
+         className="fixed inset-0 bg-black/75  backdrop-blur-xs z-50"
+         onClick={() => setIsModalOpen(false)}
+       >
+         <div
+           className="fixed right-0 top-0 h-full w-[35%] bg-card shadow-lg transform transition-transform duration-300 ease-in-out"
+           style={{ transform: isModalOpen ? "translateX(0)" : "translateX(100%)" }}
+           onClick={(e) => e.stopPropagation()}
+         >
+        <AdminDetailsModal
+          isOpen={!!selectedAdmin}
+          onClose={() => setSelectedAdmin(null)}
+          admin={selectedAdmin ? { ...selectedAdmin, image: selectedAdmin.image || "" } : null}
+        />
+           </div>
+           </div>
+      )}
     </>
   );
 }

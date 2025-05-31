@@ -109,9 +109,6 @@ const AdminDetailsModal: React.FC<AdminDetailsModalProps> = ({  onClose, admin }
           </div>
           <div className="flex justify-end space-x-2">
           <Button variant="ghost" className="text-xs text-blue-600 border-blue-600 px-2 py-1 h-auto">
-            Edit
-          </Button>
-          <Button variant="ghost" className="text-xs text-blue-600 border-blue-600 px-2 py-1 h-auto">
             Share
           </Button>
           <Button variant="ghost" className="text-xs text-red-600 border-red-600 px-2 py-1 h-auto">

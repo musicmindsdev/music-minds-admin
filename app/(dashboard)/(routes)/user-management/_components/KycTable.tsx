@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Filter, Search, Calendar, EllipsisVertical, Eye, CheckCircle, XCircle } from "lucide-react";
+import { Filter, Search, Calendar, EllipsisVertical, Eye, XCircle, CheckCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +24,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { kycData } from "@/lib/mockData";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogOverlay,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import Image from "next/image";
+import KYCDetailsModal from "./KycDetailsModal";
+import Rectangle from "@/public/Rectangle 22482.png"
 
 // Helper function to parse date string "MMM DD, YYYY" to Date object
 const parseDate = (dateString: string): Date => {
@@ -55,6 +65,8 @@ export default function KYCTable({
   const [selectedKYC, setSelectedKYC] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const kycPerPage = 10;
+  const [selectedKYCId, setSelectedKYCId] = useState<string | null>(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
   const filteredKYC = kycData.filter((kyc) => {
     const query = searchQuery.toLowerCase();
@@ -110,6 +122,65 @@ export default function KYCTable({
       setCurrentPage(page);
     }
   };
+
+  const handleViewDetails = (kycId: string) => {
+    setSelectedKYCId(kycId);
+  };
+
+  const handleApprove = async (kycId: string) => {
+    try {
+      // Simulate API call to approve KYC (uncomment when backend is ready)
+      /*
+      await fetch(`/api/kyc/${kycId}/approve`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      */
+      // setKYCData((prev) =>
+      //   prev.map((kyc) =>
+      //     kyc.id === kycId ? { ...kyc, kycStatus: "Approved" } : kyc
+      //   )
+      // );
+      console.log(kycId);
+    } catch (err) {
+      console.error("Failed to approve KYC:", err);
+    }
+  };
+
+  const handleDecline = async (kycId: string) => {
+    try {
+      // Simulate API call to decline KYC (uncomment when backend is ready)
+      /*
+      await fetch(`/api/kyc/${kycId}/decline`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      */
+      // setKYCData((prev) =>
+      //   prev.map((kyc) =>
+      //     kyc.id === kycId ? { ...kyc, kycStatus: "Declined" } : kyc
+      //   )
+      // );
+      console.log(kycId);
+    } catch (err) {
+      console.error("Failed to decline KYC:", err);
+    }
+  };
+
+  const handlePreview = () => {
+    setIsPreviewModalOpen(true);
+    setSelectedKYCId(null); 
+  };
+
+  // Mock function to update kycData (replace with actual state management or context)
+  // const setKYCData = (newData: typeof kycData) => {
+  //   This would typically update a global state or context
+  //   console.log("KYC Data updated:", newData);
+  // };
 
   return (
     <>
@@ -294,7 +365,7 @@ export default function KYCTable({
                     <Button variant="ghost"><EllipsisVertical /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => console.log("View Details:", kyc.id)}>
+                    <DropdownMenuItem onClick={() => handleViewDetails(kyc.id)}>
                       <Eye className="h-4 w-4 mr-2" />
                       View Details
                     </DropdownMenuItem>
@@ -356,6 +427,36 @@ export default function KYCTable({
           </div>
         </div>
       )}
+      <KYCDetailsModal
+        isOpen={!!selectedKYCId}
+        onClose={() => setSelectedKYCId(null)}
+        kycId={selectedKYCId}
+        onApprove={handleApprove}
+        onDecline={handleDecline}
+        onPreview={handlePreview}
+        kycData={kycData} // Updated to use full kycData instead of paginatedKYC for modal
+      />
+      <Dialog open={isPreviewModalOpen} onOpenChange={setIsPreviewModalOpen}>
+      <DialogOverlay className="backdrop-blur-xs" />
+        <DialogContent className="sm:max-w-[500px] rounded-tl-lg rounded-tr-lg shadow-lg border">
+          <DialogHeader className="border-b pb-4">
+            <div className="flex justify-between items-center">
+              <DialogTitle className="text-lg font-medium">File Preview</DialogTitle>
+           
+            </div>
+            <p className="text-sm text-gray-500 mt-2">certificate.jpg</p>
+          </DialogHeader>
+          <div className="flex justify-center p-6">
+            <Image
+              src={Rectangle}
+              alt="Certificate Preview"
+              width={400}
+              height={400}
+              className="rounded-lg"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

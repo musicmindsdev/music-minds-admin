@@ -30,6 +30,8 @@ import Pending from "@/public/pending.png";
 import Image from "next/image";
 import { toast } from "sonner";
 import AdminDetailsModal from "./AdminDetailsModal"; // Adjust the path as needed
+import InviteAdminModal from "@/components/invite-admin-modal";
+import ChangeRoleModal from "./ChangeRoleModal"; // Adjust the path as needed
 
 interface AdminTeamMember {
   id: string;
@@ -172,21 +174,28 @@ export default function AdminTable({
   const [loading, setLoading] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminTeamMember | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isInviteAdminModalOpen, setIsInviteAdminModalOpen] = useState(false);
+  const [isChangeRoleModalOpen, setIsChangeRoleModalOpen] = useState(false);
+  const [adminToChangeRole, setAdminToChangeRole] = useState<AdminTeamMember | null>(null);
 
- // Simulated API fetch (replace with actual API call when backend is ready)
- const fetchMembers = async () => {
-  setLoading(true);
-  try {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setMembers(adminTeamData);
-    toast.success("Admin team members loaded successfully.");
-  } /* eslint-disable @typescript-eslint/no-unused-vars */ catch (_err) {
-    toast.error("Failed to fetch admin team members.");
-  } /* eslint-enable @typescript-eslint/no-unused-vars */ finally {
-    setLoading(false);
-  }
-};
+  const handleInviteAdmin = () => {
+    setIsInviteAdminModalOpen(true);
+  };
+
+  // Simulated API fetch (replace with actual API call when backend is ready)
+  const fetchMembers = async () => {
+    setLoading(true);
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setMembers(adminTeamData);
+      toast.success("Admin team members loaded successfully.");
+    } /* eslint-disable @typescript-eslint/no-unused-vars */ catch (_err) {
+      toast.error("Failed to fetch admin team members.");
+    } /* eslint-enable @typescript-eslint/no-unused-vars */ finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchMembers();
@@ -271,25 +280,51 @@ export default function AdminTable({
     setIsRemoveModalOpen(false);
   };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const handleExport = (_data: {
-  statusFilter: Record<string, boolean>;
-  roleFilter: string;
-  dateRangeFrom: string;
-  dateRangeTo: string;
-  format: string;
-  fields: Record<string, boolean>;
-  adminRole?: string;
-}) => {
-  toast.success("Data exported successfully.");
-};
+  const handleOpenChangeRoleModal = (member: AdminTeamMember) => {
+    setAdminToChangeRole(member);
+    setIsChangeRoleModalOpen(true);
+  };
+
+  const handleChangeRole = (adminId: string, newRole: string) => {
+    setMembers((prev) =>
+      prev.map((member) =>
+        member.id === adminId
+          ? {
+              ...member,
+              role: newRole,
+              permissions:
+                newRole === "Super Admin" || newRole === "Admin"
+                  ? ["Can manage users", "Can manage content", "Can moderate reviews"]
+                  : newRole === "Support"
+                  ? ["Can manage support tickets"]
+                  : ["Can moderate reviews"],
+            }
+          : member
+      )
+    );
+    setIsChangeRoleModalOpen(false);
+    setAdminToChangeRole(null);
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleExport = (_data: {
+    statusFilter: Record<string, boolean>;
+    roleFilter: string;
+    dateRangeFrom: string;
+    dateRangeTo: string;
+    format: string;
+    fields: Record<string, boolean>;
+    adminRole?: string;
+  }) => {
+    toast.success("Data exported successfully.");
+  };
 
   return (
     <>
       <div className="flex justify-between items-center mb-4">
         <p className="font-light text-sm">Admin Team</p>
         <div className="flex space-x-2">
-          <Button variant="outline" className="text-blue-600">
+          <Button onClick={handleInviteAdmin} variant="outline" className="text-blue-600">
             Invite Member
           </Button>
           {showExportButton && (
@@ -406,7 +441,7 @@ const handleExport = (_data: {
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleOpenChangeRoleModal(member)}>
                             <TbArrowsExchange2 className="h-4 w-4 mr-2" />
                             Change Role
                           </DropdownMenuItem>
@@ -468,24 +503,34 @@ const handleExport = (_data: {
         ]}
         onExport={handleExport}
       />
+      <InviteAdminModal
+        isOpen={isInviteAdminModalOpen}
+        onClose={() => setIsInviteAdminModalOpen(false)}
+      />
       {isModalOpen && (
-         <div
-         className="fixed inset-0 bg-black/75  backdrop-blur-xs z-50"
-         onClick={() => setIsModalOpen(false)}
-       >
-         <div
-           className="fixed right-0 top-0 h-full w-[35%] bg-card shadow-lg transform transition-transform duration-300 ease-in-out"
-           style={{ transform: isModalOpen ? "translateX(0)" : "translateX(100%)" }}
-           onClick={(e) => e.stopPropagation()}
-         >
-        <AdminDetailsModal
-          isOpen={!!selectedAdmin}
-          onClose={() => setSelectedAdmin(null)}
-          admin={selectedAdmin ? { ...selectedAdmin, image: selectedAdmin.image || "" } : null}
-        />
-           </div>
-           </div>
+        <div
+          className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div
+            className="fixed right-0 top-0 h-full w-[35%] bg-card shadow-lg transform transition-transform duration-300 ease-in-out"
+            style={{ transform: isModalOpen ? "translateX(0)" : "translateX(100%)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <AdminDetailsModal
+              isOpen={!!selectedAdmin}
+              onClose={() => setSelectedAdmin(null)}
+              admin={selectedAdmin ? { ...selectedAdmin, image: selectedAdmin.image || "" } : null}
+            />
+          </div>
+        </div>
       )}
+      <ChangeRoleModal
+        isOpen={isChangeRoleModalOpen}
+        onClose={() => setIsChangeRoleModalOpen(false)}
+        admin={adminToChangeRole ? { ...adminToChangeRole, image: adminToChangeRole.image || "" } : null}
+        onChangeRole={handleChangeRole}
+      />
     </>
   );
 }

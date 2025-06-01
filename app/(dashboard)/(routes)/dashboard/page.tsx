@@ -201,7 +201,7 @@ export default function DashboardPage() {
         autoplay={{ delay: 3000, disableOnInteraction: false, pauseOnMouseEnter: true }}
       >
         <SwiperSlide>
-          <Card className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <Card className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 border-0">
             <div>
               <CardContent className="flex gap-2">
                 <PiUsersThreeBold
@@ -300,7 +300,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {stats.map((stat, index) => (
-        <Card key={index} className="shadow-sm">
+        <Card key={index} className="shadow-sm border-0">
           <CardContent className="flex items-center justify-between px-3">
             <div className="flex items-center gap-4">
               {stat.icon}

@@ -1,11 +1,12 @@
 // components/KYCDetailsModal.tsx
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import {  X } from "lucide-react";
+import { X } from "lucide-react"; // Using User for Identity Verification, FileText for Upload Certification
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Image from "next/image";
-import Rectangle from "@/public/Rectangle 22482.png"
+import Rectangle from "@/public/Rectangle 22482.png";
 import Maximise from "@/components/svg icons/Maximise";
+import KycStepper from "@/components/kycStepper";
 
 interface KYCDetailsModalProps {
   isOpen: boolean;
@@ -30,18 +31,18 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({
 
   if (!isOpen || !kycId || !kyc) return null;
 
-//   const getStepperProgress = (): string => {
-//     switch (kyc.kycStatus) {
-//       case "Approved":
-//         return "100%";
-//       case "Submitted":
-//         return "50%";
-//       case "Declined":
-//         return "0%";
-//       default:
-//         return "0%";
-//     }
-//   };
+  // const getStepperProgress = (): string => {
+  //   switch (kyc.kycStatus) {
+  //     case "Approved":
+  //       return "100%";
+  //     case "Submitted":
+  //       return "50%";
+  //     case "Declined":
+  //       return "0%";
+  //     default:
+  //       return "0%";
+  //   }
+  // };
 
   return (
     <div
@@ -61,41 +62,12 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({
             </Button>
           </div>
           <div className="mt-4">
-            {/* Stepper */}
-            {/* <div className="flex items-center mb-6">
-              <div className="flex-1 h-1 bg-gray-200">
-                <div
-                  className="h-1 bg-blue-500"
-                  style={{ width: getStepperProgress() }}
-                />
-              </div>
-              <div className="flex space-x-4 ml-4">
-                <div className="flex flex-col items-center">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      getStepperProgress() === "50%" ? "bg-blue-500 text-white" : "bg-gray-300"
-                    }`}
-                  >
-                    <span>1</span>
-                  </div>
-                  <span className="text-sm mt-2">Identity Verification</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      getStepperProgress() === "100%" ? "bg-blue-500 text-white" : "bg-gray-300"
-                    }`}
-                  >
-                    <span>2</span>
-                  </div>
-                  <span className="text-sm mt-2">Upload Certification</span>
-                </div>
-              </div>
-            </div> */}
+            {/* Stepper with Progress */}
+            <KycStepper/>
             {/* User Details */}
-            <div className="space-y-4">
+            <div className="space-y-4 mt-4">
               <div>
-                <p className="text-sm font-medium">User Information</p>
+                <p className="text-sm font-light">User Information</p>
                 <div className="flex items-center gap-3 mt-2">
                   <Avatar className="h-12 w-12">
                     <AvatarImage src="/placeholder-avatar.jpg" alt={kyc.name} />
@@ -108,28 +80,27 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({
                 </div>
               </div>
               <div>
-                <p className="text-xs text-light">Studio Name</p>
+                <p className="text-xs font-light">Studio Name</p>
                 <p className="text-sm font-medium">{kyc.studioName || "N/A"}</p>
               </div>
               <div>
-                <p className="text-xs text-light">Studio Website</p>
+                <p className="text-xs font-light">Studio Website</p>
                 <p className="text-sm font-medium">{kyc.website || "N/A"}</p>
               </div>
               <div>
-                <p className="text-xs text-light">Email</p>
+                <p className="text-xs font-light">Email</p>
                 <p className="text-sm font-medium">{kyc.email}</p>
               </div>
               <div>
-                <p className="text-xs text-light">Phone Number</p>
+                <p className="text-xs font-light">Phone Number</p>
                 <p className="text-sm font-medium">{kyc.phone || "N/A"}</p>
               </div>
               <div>
-                <p className="text-xs text-light">Address, City, Province</p>
+                <p className="text-xs font-light">Address, City, Province</p>
                 <p className="text-sm flex gap-2"> Address: <p className="font-medium">{kyc.address || "N/A"}</p></p>
                 <p className="text-sm flex gap-2"> City: <p className="font-medium">{kyc.city || "N/A"}</p></p>
                 <p className="text-sm flex gap-2"> Province: <p className="font-medium">{kyc.province || "N/A"}</p></p>
               </div>
-              <div></div>
               <div>
                 <p className="text-xs">KYC Status</p>
                 <span

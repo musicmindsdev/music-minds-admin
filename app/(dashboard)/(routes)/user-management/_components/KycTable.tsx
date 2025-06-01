@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Filter, Search, Calendar, EllipsisVertical, Eye, XCircle, CheckCircle } from "lucide-react";
+import { Filter, Search, Calendar, EllipsisVertical, XCircle, CheckCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +33,13 @@ import {
 } from "@/components/ui/dialog";
 import Image from "next/image";
 import KYCDetailsModal from "./KycDetailsModal";
-import Rectangle from "@/public/Rectangle 22482.png"
+import Rectangle from "@/public/Rectangle 22482.png";
+import { FaRegCircleCheck } from "react-icons/fa6";
+import { GoCircleSlash } from "react-icons/go";
+import { PiEye } from "react-icons/pi";
+import Modal from "@/components/Modal";
+import Slash from "@/components/svg icons/slash";
+import Tick from "@/components/svg icons/tick";
 
 // Helper function to parse date string "MMM DD, YYYY" to Date object
 const parseDate = (dateString: string): Date => {
@@ -54,6 +60,8 @@ export default function KYCTable({
   showCheckboxes = false,
   showPagination = false,
 }: KYCTableProps) {
+  const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState({
     Approved: false,
     Submitted: false,
@@ -125,6 +133,34 @@ export default function KYCTable({
 
   const handleViewDetails = (kycId: string) => {
     setSelectedKYCId(kycId);
+  };
+
+  const handleDeclineModal = () => {
+    console.log("Declining user kyc:", selectedKYCId);
+    setSelectedKYCId(null);
+    setIsDeclineModalOpen(false);
+  };
+
+  const openDeclineModal = () => {
+    setIsDeclineModalOpen(true);
+  };
+
+  const closeDeclineModal = () => {
+    setIsDeclineModalOpen(false);
+  };
+
+  const handleApproveModal = () => {
+    console.log("Approving user kyc:", selectedKYCId);
+    setSelectedKYCId(null);
+    setIsDeclineModalOpen(false);
+  };
+
+  const openApproveModal = () => {
+    setIsApproveModalOpen(true);
+  };
+
+  const closeApproveModal = () => {
+    setIsApproveModalOpen(false);
   };
 
   const handleApprove = async (kycId: string) => {
@@ -365,10 +401,27 @@ export default function KYCTable({
                     <Button variant="ghost"><EllipsisVertical /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleViewDetails(kyc.id)}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </DropdownMenuItem>
+                    {kyc.kycStatus === "Submitted" ? (
+                      <>
+                        <DropdownMenuItem onClick={() => handleViewDetails(kyc.id)}>
+                          <PiEye className="h-4 w-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={openApproveModal}>
+                          <FaRegCircleCheck className="h-4 w-4 mr-2 " />
+                          Approve KYC
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={openDeclineModal} className="text-red-600">
+                          <GoCircleSlash  className="h-4 w-4 mr-2 text-red-600" />
+                          Decline KYC
+                        </DropdownMenuItem>
+                      </>
+                    ) : (
+                      <DropdownMenuItem onClick={() => handleViewDetails(kyc.id)}>
+                        <PiEye className="h-4 w-4 mr-2" />
+                        View Details
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
@@ -427,6 +480,32 @@ export default function KYCTable({
           </div>
         </div>
       )}
+        <Modal
+              isOpen={isDeclineModalOpen}
+              onClose={closeDeclineModal}
+              title="Deletion"
+              icon={<Slash className="" />}
+              iconBgColor="#FEE2E2"
+              message1="Declining KYC?"
+              message="Are you sure you want to decline this user&apos;s KYC?"
+              cancelText="No, I don't"
+              confirmText="Yes, decline"
+              confirmButtonColor="#EF4444"
+              onConfirm={handleDeclineModal}
+            />
+            <Modal
+                    isOpen={isApproveModalOpen}
+                    onClose={closeApproveModal}
+                    title="Activation"
+                    icon={<Tick className="" />}
+                    iconBgColor="#D6FCE0"
+                    message1="Approving KYC?"
+                    message="Are you sure you want to approve this user&apos;s KYC?"
+                    cancelText="No, I don't"
+                    confirmText="Yes, approve"
+                    confirmButtonColor="#00A424"
+                    onConfirm={handleApproveModal}
+                  />
       <KYCDetailsModal
         isOpen={!!selectedKYCId}
         onClose={() => setSelectedKYCId(null)}
@@ -434,15 +513,14 @@ export default function KYCTable({
         onApprove={handleApprove}
         onDecline={handleDecline}
         onPreview={handlePreview}
-        kycData={kycData} // Updated to use full kycData instead of paginatedKYC for modal
+        kycData={kycData}
       />
       <Dialog open={isPreviewModalOpen} onOpenChange={setIsPreviewModalOpen}>
-      <DialogOverlay className="backdrop-blur-xs" />
+        <DialogOverlay className="backdrop-blur-xs" />
         <DialogContent className="sm:max-w-[500px] rounded-tl-lg rounded-tr-lg shadow-lg border">
           <DialogHeader className="border-b pb-4">
             <div className="flex justify-between items-center">
               <DialogTitle className="text-lg font-medium">File Preview</DialogTitle>
-           
             </div>
             <p className="text-sm text-gray-500 mt-2">certificate.jpg</p>
           </DialogHeader>

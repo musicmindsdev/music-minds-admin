@@ -27,6 +27,8 @@ import { announcementData } from "@/lib/mockData";
 import { HiOutlineGlobeAlt } from "react-icons/hi2";
 import { CiBookmarkMinus } from "react-icons/ci";
 import { TbEdit } from "react-icons/tb";
+import Modal from "@/components/Modal";
+import { FaTrash } from "react-icons/fa";
 
 
 
@@ -40,6 +42,7 @@ export default function AnnouncementTable({
   showCheckboxes = false,
   showPagination = false,
 }: AnnouncementTableProps) {
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState({ Published: false, Draft: false, Archived: false });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAnnouncements, setSelectedAnnouncements] = useState<string[]>([]);
@@ -98,6 +101,20 @@ export default function AnnouncementTable({
   const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + "...";
+  };
+
+  const handleDelete = () => {
+    console.log("Deleting users:", selectedAnnouncements);
+    setSelectedAnnouncements([]);
+    setIsDeleteModalOpen(false);
+  };
+
+  const openDeleteModal = () => {
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
   };
 
   return (
@@ -275,7 +292,7 @@ export default function AnnouncementTable({
                         <CiBookmarkMinus className="h-4 w-4 mr-2"/>
                       Archive
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => console.log("Delete:", announcement.id)} className="text-[#FF3B30]">
+                    <DropdownMenuItem onClick={openDeleteModal} className="text-[#FF3B30]">
                       <Trash2 className="h-4 w-4 mr-2 text-[#FF3B30]" />
                       Delete
                     </DropdownMenuItem>
@@ -337,6 +354,20 @@ export default function AnnouncementTable({
           </div>
         </div>
       )}
+
+        <Modal
+              isOpen={isDeleteModalOpen}
+              onClose={closeDeleteModal}
+              title="Deletion"
+              icon={<FaTrash className="h-8 w-8 text-red-500" />}
+              iconBgColor="#FEE2E2"
+              message1="Deleting Announcements?"
+              message="Are you sure you want to delete this announcement?"
+              cancelText="No, I don't"
+              confirmText="Yes, delete"
+              confirmButtonColor="#EF4444"
+              onConfirm={handleDelete}
+            />
     </>
   );
 }

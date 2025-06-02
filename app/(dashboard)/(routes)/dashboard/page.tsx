@@ -491,7 +491,7 @@ export default function DashboardPage() {
         <Card className="rounded-none">
           <CardHeader>
             {activeTab === "users" && <UserTable />}
-            {activeTab === "bookings" && <BookingTable />}
+            {activeTab === "bookings" && <BookingTable bookings={[]} />}
             {activeTab === "transactions" && <TransactionTable />}
           </CardHeader>
         </Card>

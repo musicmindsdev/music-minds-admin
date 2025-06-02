@@ -45,12 +45,24 @@ const parseUserDate = (dateString: string): Date => {
   return new Date(2000 + year, month - 1, day, hours, minutes);
 };
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  profileType: string;
+  status: "Active" | "Suspended" | "Deactivated";
+  verified: boolean;
+  lastLogin: string;
+  image: string;
+}
+
 interface UserTableProps {
   showCheckboxes?: boolean;
   showPagination?: boolean;
   showExportButton?: boolean;
   onExport?: () => void;
   headerText?: string;
+  onViewDetails?: (user: User) => void; // Add new prop for handling view details
 }
 
 export default function UserTable({
@@ -58,6 +70,7 @@ export default function UserTable({
   showPagination = false,
   showExportButton = false,
   headerText = "USER MANAGEMENT",
+  onViewDetails,
 }: UserTableProps) {
   const [statusFilter, setStatusFilter] = useState({
     Active: false,
@@ -204,6 +217,16 @@ export default function UserTable({
     fields: Record<string, boolean>;
   }) => {
     console.log("Exporting user data:", data);
+  };
+
+  const handleViewDetails = (user: (typeof usersData)[number]) => {
+    if (onViewDetails) {
+      onViewDetails({
+        ...user,
+        status: user.status as "Active" | "Suspended" | "Deactivated"
+      });
+       // Call the passed callback to update the parent state
+    }
   };
 
   return (
@@ -452,7 +475,7 @@ export default function UserTable({
                     <Button variant="ghost"><EllipsisVertical /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleViewDetails(user)}>
                       <Eye className="h-4 w-4 mr-2" />
                       View Details
                     </DropdownMenuItem>

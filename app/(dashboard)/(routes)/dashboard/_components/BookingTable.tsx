@@ -66,6 +66,7 @@ const parseDate = (dateString: string): Date => {
 };
 
 interface BookingTableProps {
+  bookings: Booking[]; // Add bookings prop to the interface
   showCheckboxes?: boolean;
   showPagination?: boolean;
   showExportButton?: boolean;
@@ -223,7 +224,7 @@ export default function BookingTable({
       <div className="flex justify-between items-center">
         <p className="font-light text-sm">{headerText}</p>
         <div className="flex space-x-2">
-          {pathname !== "/content-management" && (
+          {pathname !== "/content-management" && pathname !== "/user-management" && (
             <Button variant="link" className="text-blue-600 hover:text-blue-800" onClick={handleViewAll}>
               View all Bookings
             </Button>

@@ -24,8 +24,7 @@ export default function BookingsPage() {
             showPagination={true}
             showExportButton={true}
             onExport={handleExport}
-            headerText="All Bookings"
-          />
+            headerText="All Bookings" bookings={[]}          />
         </CardContent>
       </Card>
     </div>

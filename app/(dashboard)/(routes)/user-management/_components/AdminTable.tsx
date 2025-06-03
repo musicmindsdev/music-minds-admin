@@ -49,7 +49,7 @@ interface AdminTeamMember {
   lastChanged: string;
 }
 
-const adminTeamData: AdminTeamMember[] = [
+export const adminTeamData: AdminTeamMember[] = [
   {
     id: "1",
     name: "Daniel Adaeri C.",

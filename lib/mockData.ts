@@ -725,3 +725,79 @@ export const articleData = [
   //   createdBy: `Author ${i + 7}...`,
   // })),
 ];
+
+export type AuditLog = {
+  id: string;
+  adminId: string;
+  adminName: string;
+  actionType: string;
+  target: string;
+  dateTime: string;
+  status: string;
+};
+
+export const auditLogsData: AuditLog[] = [
+  {
+    id: "AL001",
+    adminId: "1",
+    adminName: "Daniel Adaeri C.",
+    actionType: "User Suspended",
+    target: "User ID: 0001",
+    dateTime: "Jun 02, 2025 • 10:30 PM",
+    status: "Success",
+  },
+  {
+    id: "AL002",
+    adminId: "2",
+    adminName: "Michael Ajobi E.",
+    actionType: "Booking Approved",
+    target: "Booking ID: BK001",
+    dateTime: "Jun 03, 2025 • 12:10 AM",
+    status: "Success",
+  },
+  {
+    id: "AL003",
+    adminId: "3",
+    adminName: "Francis Praise",
+    actionType: "Support Ticket Resolved",
+    target: "Ticket ID: ST001",
+    dateTime: "Jun 02, 2025 • 09:00 PM",
+    status: "Success",
+  },
+  {
+    id: "AL004",
+    adminId: "4",
+    adminName: "James D. Shola",
+    actionType: "Review Moderated",
+    target: "Review ID: RV001",
+    dateTime: "Jun 02, 2025 • 08:45 PM",
+    status: "Success",
+  },
+  {
+    id: "AL005",
+    adminId: "5",
+    adminName: "Anitt Adebayo",
+    actionType: "Support Ticket Assigned",
+    target: "Ticket ID: ST002",
+    dateTime: "Jun 02, 2025 • 07:30 PM",
+    status: "Success",
+  },
+  {
+    id: "AL006",
+    adminId: "6",
+    adminName: "Amakiri Justina",
+    actionType: "Support Ticket Resolved",
+    target: "Ticket ID: ST003",
+    dateTime: "Jun 02, 2025 • 06:15 PM",
+    status: "Failed",
+  },
+  {
+    id: "AL007",
+    adminId: "7",
+    adminName: "Davida Nathan",
+    actionType: "Review Moderated",
+    target: "Review ID: RV002",
+    dateTime: "Jun 02, 2025 • 05:00 PM",
+    status: "Success",
+  },
+];

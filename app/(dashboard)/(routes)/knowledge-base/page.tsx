@@ -43,7 +43,7 @@ export default function ArticlesPage() {
     <div>
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-lg text-gray-700">Articles</h2>
+          <h2 className="text-lg">Articles</h2>
           <div className="flex space-x-2">
             <Button
               variant="outline"

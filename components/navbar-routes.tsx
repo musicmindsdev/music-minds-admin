@@ -9,15 +9,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import {UserPlus, Settings, LogOut, ChevronRight } from "lucide-react";
+import { UserPlus, Settings, LogOut, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MdKeyboardArrowDown } from "react-icons/md";
 import { SearchInput } from "./search-input";
 import { ModeToggle } from "./modetoggle";
 import { usersData, bookingsData, transactionsData, supportData } from "@/lib/mockData";
 import InviteAdminModal from "./invite-admin-modal";
-import Modal from "./Modal"; 
+import Modal from "./Modal";
 import { RiAlertFill } from "react-icons/ri";
 import NotificationsDropdown from "./notificationsDropdown";
 
@@ -28,22 +28,30 @@ interface NavbarRoutesProps {
   supports: typeof supportData;
 }
 
-export const NavbarRoutes = ({  supports }: NavbarRoutesProps) => {
+export const NavbarRoutes = ({
+  supports,
+}: NavbarRoutesProps) => {
   const router = useRouter();
-  const [userImage, ] = useState<string | null>(null);
   const [isInviteAdminModalOpen, setIsInviteAdminModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [user, ] = useState(() => {
+    const storedUser = localStorage.getItem("userData");
+    return storedUser
+      ? JSON.parse(storedUser)
+      : {
+          name: "Admin User",
+          email: "admin@musicminds.com",
+          role: "Administrator",
+          lastLogin: "Apr 19, 2025 • 09:00 AM",
+          image: "https://github.com/shadcn.png",
+        };
+  });
 
-  // Mock user data to be replaced with actual API data later
-  const user = {
-    name: "Admin User",
-    email: "admin@musicminds.com",
-    role: "Administrator",
-    lastLogin: "Apr 19, 2025 • 09:00 AM",
-    image: userImage || "https://github.com/shadcn.png",
-  };
+  // Sync user state with local storage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("userData", JSON.stringify(user));
+  }, [user]);
 
-  // Handlers for dropdown menu actions
   const handleSettings = () => {
     router.push("/settings");
   };
@@ -54,6 +62,7 @@ export const NavbarRoutes = ({  supports }: NavbarRoutesProps) => {
 
   const handleSignOut = () => {
     localStorage.removeItem("authToken");
+    localStorage.removeItem("userData");
     router.push("/login");
   };
 

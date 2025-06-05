@@ -102,7 +102,7 @@ export default function ProfileTab({ user, onUpdateName, onUpdateEmail, onUpdate
           {/* Edit Form (40%) */}
           <div className="w-[40%] pl-4">
             {isEditOpen && (
-              <div className="p-6 bg-white rounded-lg shadow-md">
+              <div className="p-6 bg-card rounded-lg shadow-md">
                 <div className="flex items-center  justify-center mb-6">
                   <Avatar className="h-16 w-16 relative">
                     <AvatarImage src={newImage || user.image} alt="Avatar Preview" />
@@ -147,7 +147,7 @@ export default function ProfileTab({ user, onUpdateName, onUpdateEmail, onUpdate
                     <Button variant="outline" className="border-gray-300 text-gray-600" onClick={handleCancel}>
                       Cancel
                     </Button>
-                    <Button className="bg-blue-600 text-white hover:bg-blue-700" onClick={handleSave}>
+                    <Button  onClick={handleSave}>
                       Save Changes
                     </Button>
                   </div>

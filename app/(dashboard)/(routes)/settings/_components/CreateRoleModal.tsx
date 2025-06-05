@@ -61,7 +61,7 @@ export default function CreateRoleModal({
   return (
     <Dialog open={open} onOpenChange={onClose}>
          <DialogOverlay className="backdrop-blur-xs" />
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] bg-card  p-6 ">
         <DialogHeader>
           <DialogTitle>{isEditMode ? "Edit Permissions" : "Create New Role"}</DialogTitle>
           <DialogClose className="absolute right-4 top-4" />
@@ -76,7 +76,7 @@ export default function CreateRoleModal({
               className="mt-1 bg-gray-50"
               disabled={isEditMode}
             />
-            {!isEditMode && <span className="text-xs text-gray-500">{roleName.length}/{maxLength}</span>}
+            {!isEditMode && <span className="text-xs ">{roleName.length}/{maxLength}</span>}
           </div>
           <div>
             <label className="text-sm font-medium">Permissions</label>
@@ -89,7 +89,7 @@ export default function CreateRoleModal({
                   onChange={() => handlePermissionChange(permission)}
                   className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
-                <label htmlFor={permission} className="text-sm text-gray-700">
+                <label htmlFor={permission} className="text-sm">
                   {permission}
                 </label>
               </div>

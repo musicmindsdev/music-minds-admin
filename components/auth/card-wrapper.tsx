@@ -26,7 +26,7 @@ export default function CardWrapper({ children, headerLabel, headerH1 }: CardWra
       className="w-32 h-32" 
     />
     </div>
-    <Card className="w-[600px] shadow-md p-8">
+    <Card className="w-[400px] lg:w-[600px] shadow-md p-8">
       <CardHeader>
         <Header h1={headerH1} label={headerLabel} />
       </CardHeader>

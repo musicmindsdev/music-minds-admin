@@ -65,7 +65,7 @@ function LoginForm() {
                     <Input
                       {...field}
                       placeholder="Email address or Username"
-                      className="bg-input w-[513px] h-[53px]"
+                      className="bg-input w-[300px] lg:w-[513px] h-[53px]"
                       type="email"
                       disabled={isLoading}
                     />
@@ -84,7 +84,7 @@ function LoginForm() {
                       <Input
                         {...field}
                         placeholder="Password"
-                        className="bg-input pr-10 w-[513px] h-[53px]"
+                        className="bg-input pr-10 w-[300px] lg:w-[513px] h-[53px]"
                         type={showPassword ? "text" : "password"}
                         disabled={isLoading}
                       />
@@ -126,12 +126,12 @@ function LoginForm() {
                   )}
                 />
               </div>
-              <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+              <Link href="/reset" className="text-sm text-primary hover:underline">
                 Forgot password?
               </Link>
             </div>
           </div>
-          <Button type="submit" className="w-[513px] h-[53px] font-bold" disabled={isLoading}>
+          <Button type="submit" className="w-[300px] lg:w-[513px] h-[53px] font-bold" disabled={isLoading}>
             {isLoading ? (
             <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
             ) : (

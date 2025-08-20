@@ -60,11 +60,20 @@ export const NavbarRoutes = ({
     setIsInviteAdminModalOpen(true);
   };
 
-  const handleSignOut = () => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userData");
-    router.push("/login");
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+  
+      localStorage.removeItem("userData");
+  
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
+  
 
   const openLogoutModal = () => {
     setIsLogoutModalOpen(true);

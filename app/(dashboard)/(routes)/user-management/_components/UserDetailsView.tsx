@@ -1,16 +1,33 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {  bookingsData, reviewData } from "@/lib/mockData";
-import BookingTable from "../../dashboard/_components/BookingTable";
-import ReviewTable from "../../content-management/_components/ReviewTable";
 import { IoIosArrowBack } from "react-icons/io";
 import { IoBanOutline } from "react-icons/io5";
 import Calendar from "@/components/svg icons/Calendar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Modal from "@/components/Modal";
 import { PiWarningOctagonFill } from "react-icons/pi";
 import { CheckCircle, UserRoundX } from "lucide-react";
 import { FaTrash, FaUser } from "react-icons/fa";
+import { Skeleton } from "@/components/ui/skeleton";
+import BookingTable from "../../dashboard/_components/BookingTable";
+import ReviewTable from "../../content-management/_components/ReviewTable";
+
+interface ApiUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  roles: Array<{
+    id: string;
+    name: string;
+    permissions: string[];
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface User {
   id: string;
@@ -23,45 +40,136 @@ interface User {
   image: string;
 }
 
-
 interface UserDetailsViewProps {
   user: User | null;
   onClose: () => void;
 }
 
-export default function UserDetailsView({ user, onClose }: UserDetailsViewProps) {
-    const [activeTab, setActiveTab] = useState("Bookings");
-    const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
-    const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [isActivateModalOpen, setIsActivateModalOpen] = useState(false);
-    
-  if (!user) return null;
-
-  // Filter bookings and reviews for the selected user
-  const userBookings = bookingsData.filter(
-    (booking) => booking.clientName === user.name && booking.clientEmail === user.email
+const mapApiUserToComponentUser = (apiUser: ApiUser): User => {
+  const isSuspended = apiUser.roles.some(role => 
+    role.name.toLowerCase().includes('blacklist') || 
+    role.name.toLowerCase().includes('suspended')
   );
+  
+  const status: "Active" | "Suspended" | "Deactivated" = isSuspended ? "Suspended" : "Active";
+  
+  const profileType = apiUser.roles.length > 0 
+    ? apiUser.roles[0].name 
+    : "User";
+  
+  return {
+    id: apiUser.id,
+    name: `${apiUser.firstName} ${apiUser.lastName}`,
+    email: apiUser.email,
+    profileType,
+    status,
+    verified: true,
+    lastLogin: new Date(apiUser.updatedAt).toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).replace(',', ' • '),
+    image: `https://api.dicebear.com/6.x/initials/svg?seed=${apiUser.firstName} ${apiUser.lastName}`
+  };
+};
 
-  const userReviews = reviewData.filter(
-    (review) => review.reviewer.name === user.name && review.reviewer.email === user.email
-  );
+export default function UserDetailsView({ user: initialUser, onClose }: UserDetailsViewProps) {
+  const [activeTab, setActiveTab] = useState<"Bookings" | "Reviews">("Bookings");
+  const [isSuspendModalOpen, setIsSuspendModalOpen] = useState<boolean>(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [isActivateModalOpen, setIsActivateModalOpen] = useState<boolean>(false);
+  const [user, setUser] = useState<User | null>(initialUser);
+  const [loading, setLoading] = useState<boolean>(!initialUser);
+  const [error, setError] = useState<string | null>(null);
 
-  // Calculate dynamic metrics
+  interface ApiResponse {
+    user?: ApiUser;
+    data?: ApiUser;
+    [key: string]: any;
+  }
+
+  interface Booking {
+    totalAmount: string;
+    [key: string]: any;
+  }
+
+  // Fetch user details if not provided
+  useEffect(() => {
+    if (!initialUser && user?.id) {
+      fetchUserDetails(user.id);
+    }
+  }, [initialUser, user?.id]);
+
+  const fetchUserDetails = async (userId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(`/api/users/${userId}`);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch user details');
+      }
+
+      const data: ApiResponse = await response.json();
+
+      // Handle different response structures
+      let userData: ApiUser;
+
+      if (data.user) {
+        userData = data.user;
+      } else if (data.data) {
+        userData = data.data;
+      } else {
+        userData = data as ApiUser;
+      }
+
+      const mappedUser = mapApiUserToComponentUser(userData);
+      setUser(mappedUser);
+
+    } catch (err) {
+      console.error('Error fetching user details:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mock data for bookings and reviews (replace with actual API calls)
+  const userBookings: import("../../dashboard/_components/BookingTable").Booking[] = []; // You'll need to fetch this from your bookings API and ensure it matches the expected Booking type
+  const userReviews: any[] = []; // You'll need to fetch this from your reviews API
+
+  
   const totalBookings = userBookings.length;
-  const totalSpent = userBookings.reduce((sum, booking) => {
-    const amount = parseFloat(booking.totalAmount.replace("$", ""));
+  const totalSpent = userBookings.reduce((sum, booking: Booking) => {
+    const amount = parseFloat(booking.totalAmount?.replace("$", "") || "0");
     return sum + (isNaN(amount) ? 0 : amount);
   }, 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
   const totalReviews = userReviews.length;
 
-  // State for tab toggling
- 
+  const handleDelete = async () => {
+    try {
+      if (!user) return;
 
-  const handleDelete = () => {
-    console.log("Deleting users:", selectedUsers);
-    setSelectedUsers([]);
-    setIsDeleteModalOpen(false);
+      const response = await fetch(`/api/users/${user.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete user');
+      }
+
+      console.log("Deleted user:", user.id);
+      setIsDeleteModalOpen(false);
+      onClose(); // Close the details view after deletion
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      setError('Failed to delete user');
+    }
   };
 
   const openDeleteModal = () => {
@@ -72,10 +180,28 @@ export default function UserDetailsView({ user, onClose }: UserDetailsViewProps)
     setIsDeleteModalOpen(false);
   };
 
-  const handleSuspend = () => {
-    console.log("Suspending users:", selectedUsers);
-    setSelectedUsers([]);
-    setIsSuspendModalOpen(false);
+  const handleSuspend = async () => {
+    try {
+      if (!user) return;
+
+      const response = await fetch(`/api/users/${user.id}/blacklist`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to suspend user');
+      }
+
+      console.log("Suspended user:", user.id);
+      setIsSuspendModalOpen(false);
+      // Refresh user data to show updated status
+      if (user.id) {
+        fetchUserDetails(user.id);
+      }
+    } catch (err) {
+      console.error('Error suspending user:', err);
+      setError('Failed to suspend user');
+    }
   };
 
   const openSuspendModal = () => {
@@ -86,10 +212,28 @@ export default function UserDetailsView({ user, onClose }: UserDetailsViewProps)
     setIsSuspendModalOpen(false);
   };
 
-  const handleActivate = () => {
-    console.log("Activating users:", selectedUsers);
-    setSelectedUsers([]);
-    setIsActivateModalOpen(false);
+  const handleActivate = async () => {
+    try {
+      if (!user) return;
+
+      const response = await fetch(`/api/users/${user.id}/unblacklist`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to activate user');
+      }
+
+      console.log("Activated user:", user.id);
+      setIsActivateModalOpen(false);
+      // Refresh user data to show updated status
+      if (user.id) {
+        fetchUserDetails(user.id);
+      }
+    } catch (err) {
+      console.error('Error activating user:', err);
+      setError('Failed to activate user');
+    }
   };
 
   const openActivateModal = () => {
@@ -99,6 +243,61 @@ export default function UserDetailsView({ user, onClose }: UserDetailsViewProps)
   const closeActivateModal = () => {
     setIsActivateModalOpen(false);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen p-6">
+        <div className="flex justify-between items-center mb-6">
+          <Skeleton className="h-6 w-48" />
+          <div className="flex space-x-2">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-24" />
+          </div>
+        </div>
+        <div className="p-6 rounded-lg shadow mb-6 bg-card">
+          <div className="flex items-start gap-6 mb-6">
+            <Skeleton className="h-35 w-35 rounded-full" />
+            <div className="flex-1 space-y-4">
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-6 w-1/2" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen p-6">
+        <div className="flex justify-between items-center mb-6">
+          <button onClick={onClose} className="flex items-center gap-1 text-sm text-gray-600">
+            <IoIosArrowBack className="mr-1" /> All Users
+          </button>
+        </div>
+        <div className="text-center py-8 text-red-500">
+          Error: {error}
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen p-6">
+        <div className="flex justify-between items-center mb-6">
+          <button onClick={onClose} className="flex items-center gap-1 text-sm text-gray-600">
+            <IoIosArrowBack className="mr-1" /> All Users
+          </button>
+        </div>
+        <div className="text-center py-8 text-gray-500">
+          User not found
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -116,13 +315,13 @@ export default function UserDetailsView({ user, onClose }: UserDetailsViewProps)
             Suspend
           </Button>
           <Button variant="outline" size="sm" onClick={openActivateModal}>
-                <CheckCircle className="h-4 w-4 " />
-                Activate
-              </Button>
+            <CheckCircle className="h-4 w-4" />
+            Activate
+          </Button>
           <Button variant="outline" size="sm" onClick={openDeleteModal} className="text-red-600">
-                <UserRoundX className="h-4 w-4  text-red-600" />
-                Delete
-              </Button>
+            <UserRoundX className="h-4 w-4 text-red-600" />
+            Delete
+          </Button>
         </div>
       </div>
 
@@ -135,7 +334,7 @@ export default function UserDetailsView({ user, onClose }: UserDetailsViewProps)
               {user.name.charAt(0)}
             </AvatarFallback>
           </Avatar>
-          <div className="">
+          <div className="flex-1">
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <p className="text-xs mb-1">Username</p>
@@ -158,7 +357,7 @@ export default function UserDetailsView({ user, onClose }: UserDetailsViewProps)
                 </div>
                 <div>
                   <p className="text-xs">Date Joined</p>
-                  <p className="font-medium">Jan 15, 2024</p>
+                  <p className="font-medium">{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
                 </div>
                 <div>
                   <p className="text-xs">Last Activity</p>
@@ -169,7 +368,11 @@ export default function UserDetailsView({ user, onClose }: UserDetailsViewProps)
                 <div>
                   <p className="text-xs">User Status</p>
                   <p className="flex items-center gap-1 font-medium text-xs">
-                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                    <span className={`h-2 w-2 rounded-full ${
+                      user.status === "Active" ? "bg-green-500" :
+                      user.status === "Suspended" ? "bg-yellow-500" :
+                      "bg-gray-500"
+                    }`} />
                     {user.status}
                   </p>
                 </div>
@@ -180,19 +383,19 @@ export default function UserDetailsView({ user, onClose }: UserDetailsViewProps)
             </div>
             <div className="grid grid-cols-3 gap-6 mt-6 text-sm text-gray-600">
               <div>
-                <p className="flex">
+                <p className="flex items-center gap-2">
                   <Calendar /> Total Bookings
                 </p>
                 <p className="font-medium">{totalBookings}</p>
               </div>
               <div>
-                <p className="flex">
+                <p className="flex items-center gap-2">
                   <Calendar /> Total Spent
                 </p>
                 <p className="font-medium">{totalSpent}</p>
               </div>
               <div>
-                <p className="flex">
+                <p className="flex items-center gap-2">
                   <Calendar /> Total Reviews
                 </p>
                 <p className="font-medium">{totalReviews}</p>
@@ -220,7 +423,7 @@ export default function UserDetailsView({ user, onClose }: UserDetailsViewProps)
         </Button>
       </div>
       <div className="rounded-none mt-0">
-        <div className="p-6  shadow bg-card ">
+        <div className="p-6 shadow bg-card">
           {activeTab === "Bookings" ? (
             <BookingTable
               bookings={userBookings}
@@ -238,47 +441,46 @@ export default function UserDetailsView({ user, onClose }: UserDetailsViewProps)
           )}
         </div>
       </div>
-       <Modal
-              isOpen={isSuspendModalOpen}
-              onClose={closeSuspendModal}
-              title="Suspension"
-              icon={<PiWarningOctagonFill className="h-8 w-8 text-[#5243FE]" />}
-              iconBgColor="#E3E0FF"
-              message1="Suspending Account?"
-              message="Are you sure you want to suspend this account?"
-              cancelText="No, I don't"
-              confirmText="Yes, suspend"
-              confirmButtonColor="#5243FE"
-              onConfirm={handleSuspend}
-            />
-             <Modal
-                    isOpen={isDeleteModalOpen}
-                    onClose={closeDeleteModal}
-                    title="Deletion"
-                    icon={<FaTrash className="h-8 w-8 text-red-500" />}
-                    iconBgColor="#FEE2E2"
-                    message1="Deleting Account?"
-                    message="Are you sure you want to delete this account?"
-                    cancelText="No, I don't"
-                    confirmText="Yes, delete"
-                    confirmButtonColor="#EF4444"
-                    onConfirm={handleDelete}
-                  />
-                   <Modal
-                          isOpen={isActivateModalOpen}
-                          onClose={closeActivateModal}
-                          title="Activation"
-                          icon={<FaUser className="h-8 w-8 text-[#00A424]" />}
-                          iconBgColor="#D6FCE0"
-                          message1="Activating Account?"
-                          message="Are you sure you want to activate this account?"
-                          cancelText="No, I don't"
-                          confirmText="Yes, activate"
-                          confirmButtonColor="#00A424"
-                          onConfirm={handleActivate}
-                        />
-    </div>
 
-    
+      <Modal
+        isOpen={isSuspendModalOpen}
+        onClose={closeSuspendModal}
+        title="Suspension"
+        icon={<PiWarningOctagonFill className="h-8 w-8 text-[#5243FE]" />}
+        iconBgColor="#E3E0FF"
+        message1="Suspending Account?"
+        message="Are you sure you want to suspend this account?"
+        cancelText="No, I don't"
+        confirmText="Yes, suspend"
+        confirmButtonColor="#5243FE"
+        onConfirm={handleSuspend}
+      />
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        title="Deletion"
+        icon={<FaTrash className="h-8 w-8 text-red-500" />}
+        iconBgColor="#FEE2E2"
+        message1="Deleting Account?"
+        message="Are you sure you want to delete this account?"
+        cancelText="No, I don't"
+        confirmText="Yes, delete"
+        confirmButtonColor="#EF4444"
+        onConfirm={handleDelete}
+      />
+      <Modal
+        isOpen={isActivateModalOpen}
+        onClose={closeActivateModal}
+        title="Activation"
+        icon={<FaUser className="h-8 w-8 text-[#00A424]" />}
+        iconBgColor="#D6FCE0"
+        message1="Activating Account?"
+        message="Are you sure you want to activate this account?"
+        cancelText="No, I don't"
+        confirmText="Yes, activate"
+        confirmButtonColor="#00A424"
+        onConfirm={handleActivate}
+      />
+    </div>
   );
 }

@@ -26,28 +26,60 @@ import { CiExport } from "react-icons/ci";
 import Modal from "@/components/Modal";
 import { FaCheck, FaBan } from "react-icons/fa6";
 import ExportModal from "@/components/ExportModal";
-import { bookingsData } from "@/lib/mockData";
 import { usePathname, useRouter } from "next/navigation";
 import BookingDetailsModal from "../../content-management/_components/BookingDetailsModal";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// Define the Booking interface
+// Define the Booking interface based on API response
 export interface Booking {
+  id: string;
   scheduledDate: ReactNode;
   scheduledTime: ReactNode;
   location: ReactNode;
   paymentAmount: ReactNode;
   platformFee: ReactNode;
   transactionId: ReactNode;
-  id: string;
   clientName: string;
   clientEmail: string;
   providerName: string;
   providerEmail: string;
   serviceOffered: string;
   totalAmount: string;
-  status: string;
+  status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
+  createdAt: string;
+  updatedAt: string;
   lastLogin: string;
 }
+
+// Helper function to convert API booking to component booking
+const mapApiBookingToComponentBooking = (apiBooking: any): Booking => {
+  return {
+    id: apiBooking.id,
+    clientName: apiBooking.client?.name || `${apiBooking.client?.firstName} ${apiBooking.client?.lastName}` || "Unknown Client",
+    clientEmail: apiBooking.client?.email || "No email",
+    providerName: apiBooking.provider?.name || `${apiBooking.provider?.firstName} ${apiBooking.provider?.lastName}` || "Unknown Provider",
+    providerEmail: apiBooking.provider?.email || "No email",
+    serviceOffered: apiBooking.service?.name || "Unknown Service",
+    totalAmount: apiBooking.totalAmount ? `$${parseFloat(apiBooking.totalAmount).toFixed(2)}` : "$0.00",
+    status: apiBooking.status || "PENDING",
+    scheduledDate: apiBooking.scheduledDate ? new Date(apiBooking.scheduledDate).toLocaleDateString() : "Not scheduled",
+    scheduledTime: apiBooking.scheduledTime || "Not scheduled",
+    location: apiBooking.location || "Not specified",
+    paymentAmount: apiBooking.paymentAmount ? `$${parseFloat(apiBooking.paymentAmount).toFixed(2)}` : "$0.00",
+    platformFee: apiBooking.platformFee ? `$${parseFloat(apiBooking.platformFee).toFixed(2)}` : "$0.00",
+    transactionId: apiBooking.transactionId || "N/A",
+    lastLogin: apiBooking.updatedAt ? new Date(apiBooking.updatedAt).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }) : "Unknown",
+    createdAt: apiBooking.createdAt,
+    updatedAt: apiBooking.updatedAt
+  };
+};
 
 // Helper function to parse date string "MMM DD, YYYY • HH:MM AM/PM" to Date object
 const parseDate = (dateString: string): Date => {
@@ -66,7 +98,7 @@ const parseDate = (dateString: string): Date => {
 };
 
 interface BookingTableProps {
-  bookings: Booking[]; // Add bookings prop to the interface
+  bookings?: Booking[];
   showCheckboxes?: boolean;
   showPagination?: boolean;
   showExportButton?: boolean;
@@ -88,9 +120,10 @@ export default function BookingTable({
   headerText = "BOOKINGS MANAGEMENT",
 }: BookingTableProps) {
   const [statusFilter, setStatusFilter] = useState({
-    Confirmed: false,
-    Pending: false,
-    Cancelled: false,
+    CONFIRMED: false,
+    PENDING: false,
+    CANCELLED: false,
+    COMPLETED: false,
   });
   const [dateRangeFrom, setDateRangeFrom] = useState("");
   const [dateRangeTo, setDateRangeTo] = useState("");
@@ -102,12 +135,78 @@ export default function BookingTable({
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const bookingsPerPage = 10;
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totalBookings, setTotalBookings] = useState(0);
 
+  const bookingsPerPage = 10;
   const pathname = usePathname();
   const router = useRouter();
 
-  const filteredBookings = bookingsData.filter((booking: Booking) => {
+  // Fetch bookings from API
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: bookingsPerPage.toString(),
+      });
+
+      // Add status filter if any is selected
+      const activeStatusFilters = Object.entries(statusFilter)
+        .filter(([_, isActive]) => isActive)
+        .map(([status]) => status);
+      
+      if (activeStatusFilters.length > 0) {
+        params.append('status', activeStatusFilters.join(','));
+      }
+
+      const response = await fetch(`/api/bookings?${params}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch bookings');
+      }
+      
+      const data = await response.json();
+      
+      // Handle different response structures
+      let bookingsData: any[] = [];
+      let totalCount = 0;
+      
+      if (Array.isArray(data)) {
+        bookingsData = data;
+        totalCount = data.length;
+      } else if (data && Array.isArray(data.bookings)) {
+        bookingsData = data.bookings;
+        totalCount = data.pagination?.total || data.bookings.length;
+      } else if (data && Array.isArray(data.data)) {
+        bookingsData = data.data;
+        totalCount = data.pagination?.total || data.data.length;
+      }
+      
+      // Map API bookings to component bookings
+      const mappedBookings = bookingsData.map(mapApiBookingToComponentBooking);
+      setBookings(mappedBookings);
+      setTotalBookings(totalCount);
+      
+    } catch (err) {
+      console.error('Error fetching bookings:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings();
+  }, [currentPage, statusFilter]);
+
+  const filteredBookings = bookings.filter((booking: Booking) => {
     const query = searchQuery.toLowerCase();
     const searchMatch =
       searchQuery === "" ||
@@ -122,7 +221,7 @@ export default function BookingTable({
 
     let dateMatch = true;
     if (dateRangeFrom || dateRangeTo) {
-      const bookingDate = parseDate(booking.lastLogin);
+      const bookingDate = new Date(booking.updatedAt);
       const fromDate = dateRangeFrom ? new Date(dateRangeFrom) : null;
       const toDate = dateRangeTo ? new Date(dateRangeTo) : null;
       if (fromDate) {
@@ -138,7 +237,6 @@ export default function BookingTable({
     return searchMatch && statusMatch && dateMatch;
   });
 
-  const totalBookings = filteredBookings.length;
   const totalPages = Math.ceil(totalBookings / bookingsPerPage);
   const startIndex = (currentPage - 1) * bookingsPerPage;
   const paginatedBookings = filteredBookings.slice(startIndex, startIndex + bookingsPerPage);
@@ -180,10 +278,26 @@ export default function BookingTable({
     setIsDetailsModalOpen(true);
   };
 
-  const handleApprove = () => {
-    console.log("Approving bookings:", selectedBookings);
-    setSelectedBookings([]);
-    setIsApproveModalOpen(false);
+  const handleApprove = async () => {
+    try {
+      for (const bookingId of selectedBookings) {
+        const response = await fetch(`/api/bookings/${bookingId}/confirm`, {
+          method: 'POST',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to approve booking');
+        }
+      }
+      
+      console.log("Approved bookings:", selectedBookings);
+      setSelectedBookings([]);
+      setIsApproveModalOpen(false);
+      fetchBookings(); // Refresh the bookings list
+    } catch (err) {
+      console.error('Error approving bookings:', err);
+      setError('Failed to approve bookings');
+    }
   };
 
   const openApproveModal = () => {
@@ -194,10 +308,26 @@ export default function BookingTable({
     setIsApproveModalOpen(false);
   };
 
-  const handleCancel = () => {
-    console.log("Cancelling bookings:", selectedBookings);
-    setSelectedBookings([]);
-    setIsCancelModalOpen(false);
+  const handleCancel = async () => {
+    try {
+      for (const bookingId of selectedBookings) {
+        const response = await fetch(`/api/bookings/${bookingId}/cancel`, {
+          method: 'POST',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to cancel booking');
+        }
+      }
+      
+      console.log("Cancelled bookings:", selectedBookings);
+      setSelectedBookings([]);
+      setIsCancelModalOpen(false);
+      fetchBookings(); // Refresh the bookings list
+    } catch (err) {
+      console.error('Error cancelling bookings:', err);
+      setError('Failed to cancel bookings');
+    }
   };
 
   const openCancelModal = () => {
@@ -218,6 +348,56 @@ export default function BookingTable({
     onExport?.(data);
     console.log("Exporting booking data:", data);
   };
+
+  if (loading) {
+    return (
+      <div className="w-full">
+        <div className="flex justify-between items-center mb-4">
+          <p className="font-light text-sm">{headerText}</p>
+          <div className="flex space-x-2">
+            {pathname !== "/content-management" && pathname !== "/user-management" && (
+              <Button variant="link" className="text-blue-600 hover:text-blue-800" onClick={handleViewAll}>
+                View all Bookings
+              </Button>
+            )}
+            {showExportButton && (
+              <Button className="text-white flex items-center space-x-2" onClick={() => setIsExportModalOpen(true)}>
+                <CiExport className="mr-2" />
+                <span className="hidden md:inline">Export Data</span>
+              </Button>
+            )}
+          </div>
+        </div>
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-12 w-full" />
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full">
+        <div className="flex justify-between items-center mb-4">
+          <p className="font-light text-sm">{headerText}</p>
+        </div>
+        <div className="text-center py-8 text-red-500">
+          Error: {error}
+          <Button 
+            onClick={fetchBookings} 
+            className="ml-4"
+            variant="outline"
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -243,7 +423,7 @@ export default function BookingTable({
       <div className="relative mt-4 flex items-center pb-2">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <input
-          placeholder="Search for user by Name, Email or ID"
+          placeholder="Search for booking by ID, client, provider, or service"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-8 p-2 border rounded-lg w-full bg-background"
@@ -268,12 +448,12 @@ export default function BookingTable({
                 <Button
                   variant="ghost"
                   className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Confirmed ? "border border-gray-400 font-medium" : ""
+                    statusFilter.CONFIRMED ? "border border-gray-400 font-medium" : ""
                   }`}
                   onClick={() =>
                     setStatusFilter((prev) => ({
                       ...prev,
-                      Confirmed: !prev.Confirmed,
+                      CONFIRMED: !prev.CONFIRMED,
                     }))
                   }
                 >
@@ -283,12 +463,12 @@ export default function BookingTable({
                 <Button
                   variant="ghost"
                   className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Pending ? "border border-gray-400 font-medium" : ""
+                    statusFilter.PENDING ? "border border-gray-400 font-medium" : ""
                   }`}
                   onClick={() =>
                     setStatusFilter((prev) => ({
                       ...prev,
-                      Pending: !prev.Pending,
+                      PENDING: !prev.PENDING,
                     }))
                   }
                 >
@@ -298,17 +478,32 @@ export default function BookingTable({
                 <Button
                   variant="ghost"
                   className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Cancelled ? "border border-gray-400 font-medium" : ""
+                    statusFilter.CANCELLED ? "border border-gray-400 font-medium" : ""
                   }`}
                   onClick={() =>
                     setStatusFilter((prev) => ({
                       ...prev,
-                      Cancelled: !prev.Cancelled,
+                      CANCELLED: !prev.CANCELLED,
                     }))
                   }
                 >
                   <span className="h-2 w-2 rounded-full bg-red-500" />
                   Cancelled
+                </Button>
+                <Button
+                  variant="ghost"
+                  className={`flex items-center gap-1 rounded-full text-sm ${
+                    statusFilter.COMPLETED ? "border border-gray-400 font-medium" : ""
+                  }`}
+                  onClick={() =>
+                    setStatusFilter((prev) => ({
+                      ...prev,
+                      COMPLETED: !prev.COMPLETED,
+                    }))
+                  }
+                >
+                  <span className="h-2 w-2 rounded-full bg-blue-500" />
+                  Completed
                 </Button>
               </div>
             </div>
@@ -339,156 +534,212 @@ export default function BookingTable({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {selectedBookings.length > 0 && (
-        <div className="flex justify-end space-x-2 mt-2 p-4">
-          <Button variant="outline" size="sm" onClick={openApproveModal} className="text-green-600">
-            <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-            Approve
-          </Button>
-          <Button variant="outline" size="sm" onClick={openCancelModal} className="text-red-600">
-            <Ban className="h-4 w-4 mr-2 text-red-600" />
-            Cancel
-          </Button>
-        </div>
-      )}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {showCheckboxes && (
-              <TableHead>
-                <Checkbox
-                  checked={selectedBookings.length === paginatedBookings.length && paginatedBookings.length > 0}
-                  onCheckedChange={handleSelectAll}
-                />
-              </TableHead>
-            )}
-            <TableHead>Booking ID</TableHead>
-            <TableHead>Client Name</TableHead>
-            <TableHead>Provider Name</TableHead>
-            <TableHead>Service Offered</TableHead>
-            <TableHead>Total Amount</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Last Login</TableHead>
-            <TableHead>Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {paginatedBookings.map((booking: Booking) => (
-            <TableRow key={booking.id}>
-              {showCheckboxes && (
-                <TableCell>
-                  <Checkbox
-                    checked={selectedBookings.includes(booking.id)}
-                    onCheckedChange={(checked) => handleSelectBooking(booking.id, checked as boolean)}
-                  />
-                </TableCell>
-              )}
-              <TableCell>{booking.id}</TableCell>
-              <TableCell>{booking.clientName}</TableCell>
-              <TableCell>{booking.providerName}</TableCell>
-              <TableCell>{booking.serviceOffered}</TableCell>
-              <TableCell>{booking.totalAmount}</TableCell>
-              <TableCell>
-                <span
-                  className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 text-xs ${
-                    booking.status === "Confirmed"
-                      ? "bg-green-100 text-green-600"
-                      : booking.status === "Pending"
-                      ? "bg-yellow-100 text-yellow-600"
-                      : "bg-red-100 text-red-600"
-                  }`}
-                >
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      booking.status === "Confirmed"
-                        ? "bg-green-500"
-                        : booking.status === "Pending"
-                        ? "bg-yellow-500"
-                        : "bg-red-500"
-                    }`}
-                  />
-                  {booking.status}
-                </span>
-              </TableCell>
-              <TableCell>{booking.lastLogin}</TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost"><EllipsisVertical /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleViewDetails(booking)}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={openApproveModal}>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Approve Booking
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={openCancelModal} className="text-red-600">
-                      <Ban className="h-4 w-4 mr-2 text-red-600" />
-                      Cancel Booking
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      {showPagination && (
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <IoIosArrowBack />
-            </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
-                size="sm"
-                onClick={() => goToPage(page)}
-              >
-                {page}
-              </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <IoIosArrowForward />
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <p className="text-sm">
-              Showing {startIndex + 1} - {Math.min(startIndex + bookingsPerPage, totalBookings)} of {totalBookings}
+      
+      {filteredBookings.length === 0 ? (
+        <div className="text-center py-12 mt-4">
+          <div className="flex flex-col items-center justify-center">
+            <p className="text-gray-500 mb-4">
+              {searchQuery || Object.values(statusFilter).some(val => val) || dateRangeFrom || dateRangeTo
+                ? "Try adjusting your search or filters to find what you're looking for."
+                : "No booking data available yet."}
             </p>
-            <div className="flex items-center space-x-2">
-              <p className="text-sm">Go to page</p>
-              <Input
-                type="number"
-                min={1}
-                max={totalPages}
-                value={currentPage}
-                onChange={(e) => goToPage(Number(e.target.value))}
-                className="w-16"
-              />
-              <Button className="text-white" size="sm" onClick={() => goToPage(currentPage)}>
-                Go
+            {(searchQuery || Object.values(statusFilter).some(val => val) || dateRangeFrom || dateRangeTo) && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter({ CONFIRMED: false, PENDING: false, CANCELLED: false, COMPLETED: false });
+                  setDateRangeFrom("");
+                  setDateRangeTo("");
+                }}
+              >
+                Clear all filters
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          {selectedBookings.length > 0 && (
+            <div className="flex justify-end space-x-2 mt-2 p-4">
+              <Button variant="outline" size="sm" onClick={openApproveModal} className="text-green-600">
+                <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                Approve
+              </Button>
+              <Button variant="outline" size="sm" onClick={openCancelModal} className="text-red-600">
+                <Ban className="h-4 w-4 mr-2 text-red-600" />
+                Cancel
               </Button>
             </div>
-          </div>
-        </div>
+          )}
+          
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {showCheckboxes && (
+                  <TableHead>
+                    <Checkbox
+                      checked={selectedBookings.length === paginatedBookings.length && paginatedBookings.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                )}
+                <TableHead>Booking ID</TableHead>
+                <TableHead>Client Name</TableHead>
+                <TableHead>Provider Name</TableHead>
+                <TableHead>Service Offered</TableHead>
+                <TableHead>Total Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Last Updated</TableHead>
+                <TableHead>Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedBookings.map((booking: Booking) => (
+                <TableRow key={booking.id}>
+                  {showCheckboxes && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedBookings.includes(booking.id)}
+                        onCheckedChange={(checked) => handleSelectBooking(booking.id, checked as boolean)}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell>{booking.id}</TableCell>
+                  <TableCell>{booking.clientName}</TableCell>
+                  <TableCell>{booking.providerName}</TableCell>
+                  <TableCell>{booking.serviceOffered}</TableCell>
+                  <TableCell>{booking.totalAmount}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 text-xs ${
+                        booking.status === "CONFIRMED"
+                          ? "bg-green-100 text-green-600"
+                          : booking.status === "PENDING"
+                          ? "bg-yellow-100 text-yellow-600"
+                          : booking.status === "CANCELLED"
+                          ? "bg-red-100 text-red-600"
+                          : "bg-blue-100 text-blue-600"
+                      }`}
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          booking.status === "CONFIRMED"
+                            ? "bg-green-500"
+                            : booking.status === "PENDING"
+                            ? "bg-yellow-500"
+                            : booking.status === "CANCELLED"
+                            ? "bg-red-500"
+                            : "bg-blue-500"
+                        }`}
+                      />
+                      {booking.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>{booking.lastLogin}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost"><EllipsisVertical /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleViewDetails(booking)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={openApproveModal}>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Approve Booking
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={openCancelModal} className="text-red-600">
+                          <Ban className="h-4 w-4 mr-2 text-red-600" />
+                          Cancel Booking
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          
+          {showPagination && (
+            <div className="flex justify-between items-center mt-4">
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <IoIosArrowBack />
+                </Button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let page;
+                  if (totalPages <= 5) {
+                    page = i + 1;
+                  } else if (currentPage <= 3) {
+                    page = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    page = totalPages - 4 + i;
+                  } else {
+                    page = currentPage - 2 + i;
+                  }
+                  return (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => goToPage(page)}
+                    >
+                      {page}
+                    </Button>
+                  );
+                })}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <IoIosArrowForward />
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm">
+                  Showing {startIndex + 1} - {Math.min(startIndex + bookingsPerPage, totalBookings)} of {totalBookings}
+                </p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm">Go to page</p>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={currentPage}
+                    onChange={(e) => {
+                      const page = Number(e.target.value);
+                      if (page >= 1 && page <= totalPages) {
+                        setCurrentPage(page);
+                      }
+                    }}
+                    className="w-16"
+                  />
+                  <Button
+                    className="text-white"
+                    size="sm"
+                    onClick={() => goToPage(currentPage)}
+                  >
+                    Go
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
+      
       <Modal
         isOpen={isApproveModalOpen}
         onClose={closeApproveModal}
@@ -497,11 +748,12 @@ export default function BookingTable({
         iconBgColor="#D6FCE0"
         message1="Approving Booking?"
         message="Are you sure you want to approve this booking?"
-        cancelText="No, I don’t"
+        cancelText="No, I don't"
         confirmText="Yes, approve"
         confirmButtonColor="#00A424"
         onConfirm={handleApprove}
       />
+      
       <Modal
         isOpen={isCancelModalOpen}
         onClose={closeCancelModal}
@@ -510,11 +762,12 @@ export default function BookingTable({
         iconBgColor="#FEE2E2"
         message1="Cancelling Booking?"
         message="Are you sure you want to cancel this booking?"
-        cancelText="No, I don’t"
+        cancelText="No, I don't"
         confirmText="Yes, cancel"
         confirmButtonColor="#EF4444"
         onConfirm={handleCancel}
       />
+      
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
@@ -523,6 +776,7 @@ export default function BookingTable({
           { label: "Confirmed", value: "Confirmed" },
           { label: "Pending", value: "Pending" },
           { label: "Cancelled", value: "Cancelled" },
+          { label: "Completed", value: "Completed" },
         ]}
         roleFilters={[]}
         fieldOptions={[
@@ -532,10 +786,11 @@ export default function BookingTable({
           { label: "Service Offered", value: "Service Offered" },
           { label: "Total Amount", value: "Total Amount" },
           { label: "Status", value: "Status" },
-          { label: "Last Login", value: "Last Login" },
+          { label: "Last Updated", value: "Last Updated" },
         ]}
         onExport={handleExport}
       />
+      
       {isDetailsModalOpen && (
         <div
           className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50"

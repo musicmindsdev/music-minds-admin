@@ -34,23 +34,34 @@ export const NavbarRoutes = ({
   const router = useRouter();
   const [isInviteAdminModalOpen, setIsInviteAdminModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [user, ] = useState(() => {
-    const storedUser = localStorage.getItem("userData");
-    return storedUser
-      ? JSON.parse(storedUser)
-      : {
-          name: "Admin User",
-          email: "admin@musicminds.com",
-          role: "Administrator",
-          lastLogin: "Apr 19, 2025 • 09:00 AM",
-          image: "https://github.com/shadcn.png",
-        };
+  const [user, setUser] = useState({
+    name: "Admin User",
+    email: "admin@musicminds.com",
+    role: "Administrator",
+    lastLogin: "Apr 19, 2025 • 09:00 AM",
+    image: "https://github.com/shadcn.png",
   });
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Load user data from localStorage after component mounts (client-side only)
+  useEffect(() => {
+    setIsMounted(true);
+    const storedUser = localStorage.getItem("userData");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error("Error parsing user data from localStorage:", error);
+      }
+    }
+  }, []);
 
   // Sync user state with local storage whenever it changes
   useEffect(() => {
-    localStorage.setItem("userData", JSON.stringify(user));
-  }, [user]);
+    if (isMounted) {
+      localStorage.setItem("userData", JSON.stringify(user));
+    }
+  }, [user, isMounted]);
 
   const handleSettings = () => {
     router.push("/settings");
@@ -66,7 +77,9 @@ export const NavbarRoutes = ({
         method: "POST",
       });
   
-      localStorage.removeItem("userData");
+      if (isMounted) {
+        localStorage.removeItem("userData");
+      }
   
       router.push("/login");
     } catch (error) {
@@ -82,6 +95,26 @@ export const NavbarRoutes = ({
   const closeLogoutModal = () => {
     setIsLogoutModalOpen(false);
   };
+
+  // Don't render anything until component is mounted (client-side)
+  if (!isMounted) {
+    return (
+      <div className="flex items-center justify-end gap-6 w-full p-4">
+        <div className="hidden md:block max-w-md">
+          {/* Placeholder for search input */}
+          <div className="h-10 w-full bg-gray-200 rounded-md animate-pulse"></div>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Placeholder for mode toggle */}
+          <div className="h-9 w-9 bg-gray-200 rounded-md animate-pulse"></div>
+          {/* Placeholder for notifications */}
+          <div className="h-9 w-9 bg-gray-200 rounded-md animate-pulse"></div>
+          {/* Placeholder for user avatar */}
+          <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-end gap-6 w-full p-4">

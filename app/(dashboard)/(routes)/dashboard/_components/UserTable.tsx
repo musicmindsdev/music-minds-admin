@@ -25,7 +25,6 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { usePathname, useRouter } from "next/navigation";
-import { usersData } from "@/lib/mockData";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { CiExport } from "react-icons/ci";
 import Modal from "@/components/Modal";
@@ -33,17 +32,22 @@ import { FaTrash } from "react-icons/fa";
 import { PiWarningOctagonFill } from "react-icons/pi";
 import { FaUser } from "react-icons/fa6";
 import ExportModal from "@/components/ExportModal";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const parseUserDate = (dateString: string): Date => {
-  const [datePart, timePart] = dateString.split(" • ");
-  const [day, month, year] = datePart.split("/").map(Number);
-  const [hoursStr, minutesStr, period] = timePart.split(/[: ]/);
-  let hours = parseInt(hoursStr);
-  const minutes = parseInt(minutesStr);
-  if (period === "PM" && hours !== 12) hours += 12;
-  if (period === "AM" && hours === 12) hours = 0;
-  return new Date(2000 + year, month - 1, day, hours, minutes);
-};
+interface ApiUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  roles: Array<{
+    id: string;
+    name: string;
+    permissions: string[];
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface User {
   id: string;
@@ -62,8 +66,50 @@ interface UserTableProps {
   showExportButton?: boolean;
   onExport?: () => void;
   headerText?: string;
-  onViewDetails?: (user: User) => void; // Add new prop for handling view details
+  onViewDetails?: (user: User) => void;
 }
+
+const mapApiUserToComponentUser = (apiUser: ApiUser): User => {
+  const isSuspended = apiUser.roles.some(role => 
+    role.name.toLowerCase().includes('blacklist') || 
+    role.name.toLowerCase().includes('suspended')
+  );
+  
+  const status: "Active" | "Suspended" | "Deactivated" = isSuspended ? "Suspended" : "Active";
+  
+  const profileType = apiUser.roles.length > 0 
+    ? apiUser.roles[0].name 
+    : "User";
+  
+  return {
+    id: apiUser.id,
+    name: `${apiUser.firstName} ${apiUser.lastName}`,
+    email: apiUser.email,
+    profileType,
+    status,
+    verified: true,
+    lastLogin: new Date(apiUser.updatedAt).toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).replace(',', ' • '),
+    image: `https://api.dicebear.com/6.x/initials/svg?seed=${apiUser.firstName} ${apiUser.lastName}`
+  };
+};
+
+const parseUserDate = (dateString: string): Date => {
+  const [datePart, timePart] = dateString.split(" • ");
+  const [day, month, year] = datePart.split("/").map(Number);
+  const [hoursStr, minutesStr, period] = timePart.split(/[: ]/);
+  let hours = parseInt(hoursStr);
+  const minutes = parseInt(minutesStr);
+  if (period === "PM" && hours !== 12) hours += 12;
+  if (period === "AM" && hours === 12) hours = 0;
+  return new Date(2000 + year, month - 1, day, hours, minutes);
+};
 
 export default function UserTable({
   showCheckboxes = false,
@@ -88,12 +134,60 @@ export default function UserTable({
   const [verificationFilter, setVerificationFilter] = useState("all");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const usersPerPage = 10;
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totalUsers, setTotalUsers] = useState(0);
 
+  const usersPerPage = 10;
   const pathname = usePathname();
   const router = useRouter();
 
-  const filteredUsers = usersData.filter((user) => {
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`/api/users?page=${currentPage}&limit=${usersPerPage}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch users');
+      }
+      
+      const data = await response.json();
+      
+      let usersData: ApiUser[] = [];
+      let totalCount = 0;
+      
+      if (Array.isArray(data)) {
+        usersData = data;
+        totalCount = data.length;
+      } else if (data && Array.isArray(data.users)) {
+        usersData = data.users;
+        totalCount = data.pagination?.total || data.users.length;
+      } else if (data && Array.isArray(data.data)) {
+        usersData = data.data;
+        totalCount = data.pagination?.total || data.data.length;
+      }
+      
+      const mappedUsers = usersData.map(mapApiUserToComponentUser);
+      setUsers(mappedUsers);
+      setTotalUsers(totalCount);
+      
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, [currentPage]);
+
+  const filteredUsers = users.filter((user) => {
     const query = searchQuery.toLowerCase();
     const searchMatch =
       searchQuery === "" ||
@@ -129,7 +223,6 @@ export default function UserTable({
     return searchMatch && statusMatch && profileTypeMatch && dateMatch && verificationMatch;
   });
 
-  const totalUsers = filteredUsers.length;
   const totalPages = Math.ceil(totalUsers / usersPerPage);
   const startIndex = (currentPage - 1) * usersPerPage;
   const paginatedUsers = filteredUsers.slice(startIndex, startIndex + usersPerPage);
@@ -166,10 +259,25 @@ export default function UserTable({
     }
   };
 
-  const handleDelete = () => {
-    console.log("Deleting users:", selectedUsers);
-    setSelectedUsers([]);
-    setIsDeleteModalOpen(false);
+  const handleDelete = async () => {
+    try {
+      for (const userId of selectedUsers) {
+        const response = await fetch(`/api/users/${userId}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to delete user');
+        }
+      }
+      
+      setSelectedUsers([]);
+      setIsDeleteModalOpen(false);
+      fetchUsers();
+    } catch (err) {
+      console.error('Error deleting users:', err);
+      setError('Failed to delete users');
+    }
   };
 
   const openDeleteModal = () => {
@@ -180,10 +288,25 @@ export default function UserTable({
     setIsDeleteModalOpen(false);
   };
 
-  const handleActivate = () => {
-    console.log("Activating users:", selectedUsers);
-    setSelectedUsers([]);
-    setIsActivateModalOpen(false);
+  const handleActivate = async () => {
+    try {
+      for (const userId of selectedUsers) {
+        const response = await fetch(`/api/users/${userId}/unblacklist`, {
+          method: 'POST',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to activate user');
+        }
+      }
+      
+      setSelectedUsers([]);
+      setIsActivateModalOpen(false);
+      fetchUsers();
+    } catch (err) {
+      console.error('Error activating users:', err);
+      setError('Failed to activate users');
+    }
   };
 
   const openActivateModal = () => {
@@ -194,10 +317,25 @@ export default function UserTable({
     setIsActivateModalOpen(false);
   };
 
-  const handleSuspend = () => {
-    console.log("Suspending users:", selectedUsers);
-    setSelectedUsers([]);
-    setIsSuspendModalOpen(false);
+  const handleSuspend = async () => {
+    try {
+      for (const userId of selectedUsers) {
+        const response = await fetch(`/api/users/${userId}/blacklist`, {
+          method: 'POST',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to suspend user');
+        }
+      }
+      
+      setSelectedUsers([]);
+      setIsSuspendModalOpen(false);
+      fetchUsers();
+    } catch (err) {
+      console.error('Error suspending users:', err);
+      setError('Failed to suspend users');
+    }
   };
 
   const openSuspendModal = () => {
@@ -219,18 +357,57 @@ export default function UserTable({
     console.log("Exporting user data:", data);
   };
 
-  const handleViewDetails = (user: (typeof usersData)[number]) => {
+  const handleViewDetails = (user: User) => {
     if (onViewDetails) {
-      onViewDetails({
-        ...user,
-        status: user.status as "Active" | "Suspended" | "Deactivated"
-      });
-       // Call the passed callback to update the parent state
+      onViewDetails(user);
     }
   };
 
+  if (loading) {
+    return (
+      <div className="w-full">
+        <div className="flex justify-between items-center mb-4">
+          <p className="font-light text-sm">{headerText}</p>
+          <div className="flex space-x-2">
+            {pathname !== "/user-management" && (
+              <Button variant="link" className="text-blue-600 hover:text-blue-800" onClick={handleViewAll}>
+                View all Users
+              </Button>
+            )}
+            {showExportButton && (
+              <Button className="text-white flex items-center space-x-2" onClick={() => setIsExportModalOpen(true)}>
+                <CiExport className="mr-2" />
+                <span className="hidden md:inline">Export Data</span>
+              </Button>
+            )}
+          </div>
+        </div>
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-12 w-full" />
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full">
+        <div className="flex justify-between items-center mb-4">
+          <p className="font-light text-sm">{headerText}</p>
+        </div>
+        <div className="text-center py-8 text-red-500">
+          Error: {error}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <>
+    <div className="w-full">
       <div className="flex justify-between items-center">
         <p className="font-light text-sm">{headerText}</p>
         <div className="flex space-x-2">
@@ -247,6 +424,7 @@ export default function UserTable({
           )}
         </div>
       </div>
+      
       <div className="relative mt-4 flex items-center pb-2">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <input
@@ -377,6 +555,7 @@ export default function UserTable({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      
       {selectedUsers.length > 0 && (
         <div className="flex justify-end space-x-2 mt-2 p-4">
           <Button variant="outline" size="sm" onClick={openDeleteModal} className="text-red-600">
@@ -393,169 +572,218 @@ export default function UserTable({
           </Button>
         </div>
       )}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {showCheckboxes && (
-              <TableHead>
-                <Checkbox
-                  checked={selectedUsers.length === paginatedUsers.length && paginatedUsers.length > 0}
-                  onCheckedChange={handleSelectAll}
-                />
-              </TableHead>
-            )}
-            <TableHead>User ID</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>User Role</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Verified</TableHead>
-            <TableHead>Last Activity</TableHead>
-            <TableHead>Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {paginatedUsers.map((user) => (
-            <TableRow key={user.id}>
-              {showCheckboxes && (
-                <TableCell>
-                  <Checkbox
-                    checked={selectedUsers.includes(user.id)}
-                    onCheckedChange={(checked) => handleSelectUser(user.id, checked as boolean)}
-                  />
-                </TableCell>
-              )}
-              <TableCell>{user.id}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  <Avatar>
-                    <AvatarImage src={user.image} alt={user.name} />
-                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  {user.name}
-                </div>
-              </TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>{user.profileType}</TableCell>
-              <TableCell>
-                <span
-                  className={`flex items-center justify-center gap-1 rounded-full ${
-                    user.status === "Active"
-                      ? "bg-green-100 text-green-600"
-                      : user.status === "Suspended"
-                      ? "bg-yellow-100 text-yellow-600"
-                      : "bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      user.status === "Active"
-                        ? "bg-green-500"
-                        : user.status === "Suspended"
-                        ? "bg-yellow-500"
-                        : "bg-gray-500"
-                    }`}
-                  />
-                  {user.status}
-                </span>
-              </TableCell>
-              <TableCell>
-                {user.verified ? (
-                  <span className="text-blue-600 flex gap-2">
-                    Verified <MdVerified />
-                  </span>
-                ) : (
-                  "Unverified"
-                )}
-              </TableCell>
-              <TableCell>{user.lastLogin}</TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost"><EllipsisVertical /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleViewDetails(user)}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={openSuspendModal}>
-                      <CircleSlash className="h-4 w-4 mr-2" />
-                      Suspend User
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={openActivateModal}>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Activate User
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-red-600" onClick={openDeleteModal}>
-                      <UserRoundX className="h-4 w-4 mr-2 text-red-600" />
-                      Delete User
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      {showPagination && (
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <IoIosArrowBack />
-            </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
-                size="sm"
-                onClick={() => goToPage(page)}
-              >
-                {page}
-              </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <IoIosArrowForward />
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <p className="text-sm">
-              Showing {startIndex + 1} - {Math.min(startIndex + usersPerPage, totalUsers)} of {totalUsers}
+      
+      {filteredUsers.length === 0 ? (
+        <div className="text-center py-12 mt-4">
+          <div className="flex flex-col items-center justify-center">
+            <p className="text-gray-500 mb-4">
+              {searchQuery || Object.values(statusFilter).some(val => val) || profileTypeFilter !== "all" || dateRangeFrom || dateRangeTo || verificationFilter !== "all"
+                ? "Try adjusting your search or filters to find what you're looking for."
+                : "No user data available yet."}
             </p>
-            <div className="flex items-center space-x-2">
-              <p className="text-sm">Go to page</p>
-              <Input
-                type="number"
-                min={1}
-                max={totalPages}
-                value={currentPage}
-                onChange={(e) => goToPage(Number(e.target.value))}
-                className="w-16"
-              />
+            {(searchQuery || Object.values(statusFilter).some(val => val) || profileTypeFilter !== "all" || dateRangeFrom || dateRangeTo || verificationFilter !== "all") && (
               <Button
-                className="text-white"
-                size="sm"
-                onClick={() => goToPage(currentPage)}
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter({ Active: false, Suspended: false, Deactivated: false });
+                  setProfileTypeFilter("all");
+                  setDateRangeFrom("");
+                  setDateRangeTo("");
+                  setVerificationFilter("all");
+                }}
               >
-                Go
+                Clear all filters
               </Button>
-            </div>
+            )}
           </div>
         </div>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {showCheckboxes && (
+                  <TableHead>
+                    <Checkbox
+                      checked={selectedUsers.length === paginatedUsers.length && paginatedUsers.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                )}
+                <TableHead>User ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>User Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Verified</TableHead>
+                <TableHead>Last Activity</TableHead>
+                <TableHead>Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedUsers.map((user) => (
+                <TableRow key={user.id}>
+                  {showCheckboxes && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedUsers.includes(user.id)}
+                        onCheckedChange={(checked) => handleSelectUser(user.id, checked as boolean)}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell>{user.id}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Avatar>
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      {user.name}
+                    </div>
+                  </TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.profileType}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`flex items-center justify-center gap-1 rounded-full ${
+                        user.status === "Active"
+                          ? "bg-green-100 text-green-600"
+                          : user.status === "Suspended"
+                          ? "bg-yellow-100 text-yellow-600"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          user.status === "Active"
+                            ? "bg-green-500"
+                            : user.status === "Suspended"
+                            ? "bg-yellow-500"
+                            : "bg-gray-500"
+                        }`}
+                      />
+                      {user.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    {user.verified ? (
+                      <span className="text-blue-600 flex gap-2">
+                        Verified <MdVerified />
+                      </span>
+                    ) : (
+                      "Unverified"
+                    )}
+                  </TableCell>
+                  <TableCell>{user.lastLogin}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost"><EllipsisVertical /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleViewDetails(user)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={openSuspendModal}>
+                          <CircleSlash className="h-4 w-4 mr-2" />
+                          Suspend User
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={openActivateModal}>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Activate User
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-red-600" onClick={openDeleteModal}>
+                          <UserRoundX className="h-4 w-4 mr-2 text-red-600" />
+                          Delete User
+                        </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          
+          {showPagination && (
+            <div className="flex justify-between items-center mt-4">
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <IoIosArrowBack />
+                </Button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let page;
+                  if (totalPages <= 5) {
+                    page = i + 1;
+                  } else if (currentPage <= 3) {
+                    page = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    page = totalPages - 4 + i;
+                  } else {
+                    page = currentPage - 2 + i;
+                  }
+                  return (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => goToPage(page)}
+                    >
+                      {page}
+                    </Button>
+                  );
+                })}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <IoIosArrowForward />
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm">
+                  Showing {startIndex + 1} - {Math.min(startIndex + usersPerPage, totalUsers)} of {totalUsers}
+                </p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm">Go to page</p>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={currentPage}
+                    onChange={(e) => {
+                      const page = Number(e.target.value);
+                      if (page >= 1 && page <= totalPages) {
+                        setCurrentPage(page);
+                      }
+                    }}
+                    className="w-16"
+                  />
+                  <Button
+                    className="text-white"
+                    size="sm"
+                    onClick={() => goToPage(currentPage)}
+                  >
+                    Go
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
+      
       <Modal
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
@@ -569,6 +797,7 @@ export default function UserTable({
         confirmButtonColor="#EF4444"
         onConfirm={handleDelete}
       />
+      
       <Modal
         isOpen={isActivateModalOpen}
         onClose={closeActivateModal}
@@ -582,6 +811,7 @@ export default function UserTable({
         confirmButtonColor="#00A424"
         onConfirm={handleActivate}
       />
+      
       <Modal
         isOpen={isSuspendModalOpen}
         onClose={closeSuspendModal}
@@ -595,6 +825,7 @@ export default function UserTable({
         confirmButtonColor="#5243FE"
         onConfirm={handleSuspend}
       />
+      
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
@@ -618,6 +849,6 @@ export default function UserTable({
         ]}
         onExport={handleExport}
       />
-    </>
+    </div>
   );
 }

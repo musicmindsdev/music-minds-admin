@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { IoIosArrowBack } from "react-icons/io";
 import { IoBanOutline } from "react-icons/io5";
 import Calendar from "@/components/svg icons/Calendar";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Modal from "@/components/Modal";
 import { PiWarningOctagonFill } from "react-icons/pi";
 import { CheckCircle, UserRoundX } from "lucide-react";
@@ -13,6 +13,14 @@ import { FaTrash, FaUser } from "react-icons/fa";
 import { Skeleton } from "@/components/ui/skeleton";
 import BookingTable from "../../dashboard/_components/BookingTable";
 import ReviewTable from "../../content-management/_components/ReviewTable";
+import { Booking } from "../../dashboard/_components/BookingTable"; // Import Booking interface
+
+// Define interfaces for API response data
+interface ApiRole {
+  id: string;
+  name: string;
+  permissions: string[];
+}
 
 interface ApiUser {
   id: string;
@@ -20,11 +28,7 @@ interface ApiUser {
   firstName: string;
   lastName: string;
   phone: string;
-  roles: Array<{
-    id: string;
-    name: string;
-    permissions: string[];
-  }>;
+  roles: ApiRole[];
   createdAt: string;
   updatedAt: string;
 }
@@ -43,6 +47,26 @@ interface User {
 interface UserDetailsViewProps {
   user: User | null;
   onClose: () => void;
+}
+
+// Define interfaces for API response structure
+interface ApiResponse {
+  user?: ApiUser;
+  data?: ApiUser;
+}
+
+// Define interface for Review
+interface Review {
+  id: string;
+  rating: number;
+  reviewText: string;
+  reviewer: {
+    name: string;
+    email: string;
+  };
+  userName: string;
+  serviceOffered: string;
+  createdAt: string;
 }
 
 const mapApiUserToComponentUser = (apiUser: ApiUser): User => {
@@ -85,25 +109,8 @@ export default function UserDetailsView({ user: initialUser, onClose }: UserDeta
   const [loading, setLoading] = useState<boolean>(!initialUser);
   const [error, setError] = useState<string | null>(null);
 
-  interface ApiResponse {
-    user?: ApiUser;
-    data?: ApiUser;
-    [key: string]: any;
-  }
-
-  interface Booking {
-    totalAmount: string;
-    [key: string]: any;
-  }
-
   // Fetch user details if not provided
-  useEffect(() => {
-    if (!initialUser && user?.id) {
-      fetchUserDetails(user.id);
-    }
-  }, [initialUser, user?.id]);
-
-  const fetchUserDetails = async (userId: string) => {
+  const fetchUserDetails = useCallback(async (userId: string) => {
     try {
       setLoading(true);
       setError(null);
@@ -137,13 +144,18 @@ export default function UserDetailsView({ user: initialUser, onClose }: UserDeta
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!initialUser && user?.id) {
+      fetchUserDetails(user.id);
+    }
+  }, [initialUser, user?.id, fetchUserDetails]);
 
   // Mock data for bookings and reviews (replace with actual API calls)
-  const userBookings: import("../../dashboard/_components/BookingTable").Booking[] = []; // You'll need to fetch this from your bookings API and ensure it matches the expected Booking type
-  const userReviews: any[] = []; // You'll need to fetch this from your reviews API
+  const userBookings: Booking[] = []; 
+  const userReviews: Review[] = []; 
 
-  
   const totalBookings = userBookings.length;
   const totalSpent = userBookings.reduce((sum, booking: Booking) => {
     const amount = parseFloat(booking.totalAmount?.replace("$", "") || "0");

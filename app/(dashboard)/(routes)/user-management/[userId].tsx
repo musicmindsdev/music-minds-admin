@@ -5,6 +5,24 @@ import { useState, useEffect } from "react";
 import UserDetailsView from "./_components/UserDetailsView";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Define interfaces for API response data
+interface ApiRole {
+  id: string;
+  name: string;
+  permissions: string[];
+}
+
+interface ApiUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  roles: ApiRole[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface User {
   id: string;
   name: string;
@@ -45,7 +63,7 @@ export default function UserDetailsPage() {
       const data = await response.json();
       
       // Handle different response structures
-      let userData;
+      let userData: ApiUser;
       
       if (data.user) {
         userData = data.user;
@@ -61,7 +79,7 @@ export default function UserDetailsPage() {
         name: `${userData.firstName} ${userData.lastName}`,
         email: userData.email,
         profileType: userData.roles?.[0]?.name || "User",
-        status: userData.roles?.some((role: any) => 
+        status: userData.roles?.some((role: ApiRole) => 
           role.name.toLowerCase().includes('blacklist') || 
           role.name.toLowerCase().includes('suspended')
         ) ? "Suspended" : "Active" as "Active" | "Suspended" | "Deactivated",

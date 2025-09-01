@@ -2,19 +2,26 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { PiNotificationBold } from "react-icons/pi";
-import ExportModal from "@/components/ExportModal";
 import { CiExport } from "react-icons/ci";
+import ExportModal from "@/components/ExportModal";
 import AnnouncementTable from "../../_components/AnnouncementTable";
 import CreateContentModal from "@/components/CreateContentModal";
+
+interface Announcement {
+  id?: string;
+  type: string;
+  status: string;
+  title: string;
+  content: string;
+  mediaUrl?: string;
+}
 
 export default function AnnouncementsPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
 
   const handleExport = (data: {
     statusFilter: Record<string, boolean>;
@@ -27,14 +34,49 @@ export default function AnnouncementsPage() {
     // Add export logic here (e.g., generate CSV/JSON)
   };
 
-  const handleCreate = (data: {
+  const handleCreate = async (data: {
+    id?: string;
     type: string;
     status: string;
     title: string;
     content: string;
+    mediaFile?: File | null;
   }) => {
-    console.log("Creating announcement:", data);
-    // Add create logic here (e.g., API call to save announcement)
+    try {
+      const formData = new FormData();
+      formData.append("title", data.title);
+      formData.append("content", data.content);
+      formData.append("type", data.type);
+      formData.append("status", data.status);
+      if (data.mediaFile) {
+        formData.append("media", data.mediaFile);
+      }
+
+      const url = data.id ? `/api/announcements/${data.id}` : "/api/announcements";
+      const method = data.id ? "PATCH" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to ${data.id ? "update" : "create"} announcement`);
+      }
+
+      const result = await response.json();
+      console.log(`Announcement ${data.id ? "updated" : "created"}:`, result);
+      // Trigger table refresh if needed
+    } catch (error) {
+      console.error(`Error ${data.id ? "updating" : "creating"} announcement:`, error);
+      alert(error instanceof Error ? error.message : "An error occurred");
+    }
+  };
+
+  const handleEdit = (announcement: Announcement) => {
+    setEditingAnnouncement(announcement);
+    setIsCreateModalOpen(true);
   };
 
   return (
@@ -45,7 +87,10 @@ export default function AnnouncementsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => {
+              setEditingAnnouncement(null);
+              setIsCreateModalOpen(true);
+            }}
           >
             <PiNotificationBold className="h-4 w-4 mr-2" /> Create Announcement
           </Button>
@@ -64,6 +109,7 @@ export default function AnnouncementsPage() {
             showCheckboxes={true}
             showPagination={true}
             headerText="All Announcements"
+            onEdit={handleEdit}
           />
         </CardContent>
       </Card>
@@ -74,7 +120,7 @@ export default function AnnouncementsPage() {
         statusFilters={[
           { label: "All", value: "All" },
           { label: "Published", value: "Published" },
-          { label: "Drafts", value: "Drafts" },
+          { label: "Drafts", value: "Draft" },
           { label: "Archived", value: "Archived" },
         ]}
         roleFilters={[]}
@@ -89,9 +135,14 @@ export default function AnnouncementsPage() {
       />
       <CreateContentModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setEditingAnnouncement(null);
+        }}
         onSave={handleCreate}
         contentType="Announcement"
+        announcement={editingAnnouncement || undefined}
+        isEditing={!!editingAnnouncement}
       />
     </div>
   );

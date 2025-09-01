@@ -7,8 +7,6 @@ import { Booking } from "../../dashboard/_components/BookingTable";
 import { reviewData } from "@/lib/mockData"; 
 
 
-
-
 interface BookingDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;

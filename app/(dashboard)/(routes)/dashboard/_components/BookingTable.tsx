@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, ReactNode } from "react";
+import { useState, useEffect, ReactNode, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -30,6 +30,45 @@ import { usePathname, useRouter } from "next/navigation";
 import BookingDetailsModal from "../../content-management/_components/BookingDetailsModal";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Define interfaces for API response data
+interface ApiClient {
+  id?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+}
+
+interface ApiProvider {
+  id?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+}
+
+interface ApiService {
+  id?: string;
+  name?: string;
+}
+
+interface ApiBooking {
+  id: string;
+  client?: ApiClient;
+  provider?: ApiProvider;
+  service?: ApiService;
+  totalAmount?: string | number;
+  status?: string;
+  scheduledDate?: string;
+  scheduledTime?: string;
+  location?: string;
+  paymentAmount?: string | number;
+  platformFee?: string | number;
+  transactionId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // Define the Booking interface based on API response
 export interface Booking {
   id: string;
@@ -52,21 +91,21 @@ export interface Booking {
 }
 
 // Helper function to convert API booking to component booking
-const mapApiBookingToComponentBooking = (apiBooking: any): Booking => {
+const mapApiBookingToComponentBooking = (apiBooking: ApiBooking): Booking => {
   return {
     id: apiBooking.id,
-    clientName: apiBooking.client?.name || `${apiBooking.client?.firstName} ${apiBooking.client?.lastName}` || "Unknown Client",
+    clientName: apiBooking.client?.name || `${apiBooking.client?.firstName || ''} ${apiBooking.client?.lastName || ''}`.trim() || "Unknown Client",
     clientEmail: apiBooking.client?.email || "No email",
-    providerName: apiBooking.provider?.name || `${apiBooking.provider?.firstName} ${apiBooking.provider?.lastName}` || "Unknown Provider",
+    providerName: apiBooking.provider?.name || `${apiBooking.provider?.firstName || ''} ${apiBooking.provider?.lastName || ''}`.trim() || "Unknown Provider",
     providerEmail: apiBooking.provider?.email || "No email",
     serviceOffered: apiBooking.service?.name || "Unknown Service",
-    totalAmount: apiBooking.totalAmount ? `$${parseFloat(apiBooking.totalAmount).toFixed(2)}` : "$0.00",
-    status: apiBooking.status || "PENDING",
+    totalAmount: apiBooking.totalAmount ? `$${parseFloat(apiBooking.totalAmount.toString()).toFixed(2)}` : "$0.00",
+    status: (apiBooking.status as "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED") || "PENDING",
     scheduledDate: apiBooking.scheduledDate ? new Date(apiBooking.scheduledDate).toLocaleDateString() : "Not scheduled",
     scheduledTime: apiBooking.scheduledTime || "Not scheduled",
     location: apiBooking.location || "Not specified",
-    paymentAmount: apiBooking.paymentAmount ? `$${parseFloat(apiBooking.paymentAmount).toFixed(2)}` : "$0.00",
-    platformFee: apiBooking.platformFee ? `$${parseFloat(apiBooking.platformFee).toFixed(2)}` : "$0.00",
+    paymentAmount: apiBooking.paymentAmount ? `$${parseFloat(apiBooking.paymentAmount.toString()).toFixed(2)}` : "$0.00",
+    platformFee: apiBooking.platformFee ? `$${parseFloat(apiBooking.platformFee.toString()).toFixed(2)}` : "$0.00",
     transactionId: apiBooking.transactionId || "N/A",
     lastLogin: apiBooking.updatedAt ? new Date(apiBooking.updatedAt).toLocaleDateString('en-US', {
       month: 'short',
@@ -76,25 +115,9 @@ const mapApiBookingToComponentBooking = (apiBooking: any): Booking => {
       minute: '2-digit',
       hour12: true
     }) : "Unknown",
-    createdAt: apiBooking.createdAt,
-    updatedAt: apiBooking.updatedAt
+    createdAt: apiBooking.createdAt || new Date().toISOString(),
+    updatedAt: apiBooking.updatedAt || new Date().toISOString()
   };
-};
-
-// Helper function to parse date string "MMM DD, YYYY • HH:MM AM/PM" to Date object
-const parseDate = (dateString: string): Date => {
-  const [datePart, timePart] = dateString.split(" • ");
-  const [month, day, year] = datePart.split(" ");
-  const [time, period] = timePart.split(" ");
-  const [hours, minutes] = time.split(":").map(Number);
-  let adjustedHours = hours;
-  if (period === "PM" && hours !== 12) adjustedHours += 12;
-  if (period === "AM" && hours === 12) adjustedHours = 0;
-  const monthIndex = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-  ].indexOf(month);
-  return new Date(parseInt(year), monthIndex, parseInt(day), adjustedHours, minutes);
 };
 
 interface BookingTableProps {
@@ -145,7 +168,7 @@ export default function BookingTable({
   const router = useRouter();
 
   // Fetch bookings from API
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -158,7 +181,7 @@ export default function BookingTable({
 
       // Add status filter if any is selected
       const activeStatusFilters = Object.entries(statusFilter)
-        .filter(([_, isActive]) => isActive)
+        .filter(([ isActive]) => isActive)
         .map(([status]) => status);
       
       if (activeStatusFilters.length > 0) {
@@ -175,7 +198,7 @@ export default function BookingTable({
       const data = await response.json();
       
       // Handle different response structures
-      let bookingsData: any[] = [];
+      let bookingsData: ApiBooking[] = [];
       let totalCount = 0;
       
       if (Array.isArray(data)) {
@@ -200,12 +223,11 @@ export default function BookingTable({
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, statusFilter, bookingsPerPage]);
 
   useEffect(() => {
     fetchBookings();
-  }, [currentPage, statusFilter]);
-
+  }, [fetchBookings]);
   const filteredBookings = bookings.filter((booking: Booking) => {
     const query = searchQuery.toLowerCase();
     const searchMatch =

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Filter, Search, Calendar, EllipsisVertical, Eye, CheckCircle, XCircle, Star } from "lucide-react";
+import { Filter, Search, Calendar, EllipsisVertical, Eye, CheckCircle, XCircle, Star, Trash } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,11 +23,29 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { reviewData } from "@/lib/mockData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import ReviewDetailsModal from "./ReviewDetailsModal"; // We'll update this separately
+import ReviewDetailsModal from "./ReviewDetailsModal";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
-// Define interfaces directly in this file
+// Raw API response type
+interface ApiReview {
+  id: string;
+  userName?: string;
+  email?: string;
+  serviceOffered?: string;
+  rating?: number;
+  reviewText?: string;
+  date?: string;
+  status?: string;
+  flagged?: string;
+  reviewer?: {
+    name?: string;
+    email?: string;
+    role?: string;
+  };
+}
+
 export interface Reviewer {
   name: string;
   email: string;
@@ -47,15 +65,6 @@ export interface Review {
   reviewer: Reviewer;
 }
 
-// Helper function to parse date string "Wed, MMM DD, YYYY HH:MM AM/PM" to Date object
-const parseDate = (dateString: string): Date => {
-  const [, month, day, year, time] = dateString.split(/,\s| /);
-  const [hour, minute, period] = time.split(/:| /);
-  let hours = parseInt(hour) % 12 + (period.toLowerCase().includes("pm") ? 12 : 0);
-  if (parseInt(hour) === 12 && period.toLowerCase().includes("am")) hours = 0;
-  return new Date(`${month} ${day}, ${year} ${hours}:${minute}:00`);
-};
-
 interface ReviewTableProps {
   showCheckboxes?: boolean;
   showPagination?: boolean;
@@ -64,7 +73,7 @@ interface ReviewTableProps {
 
 export default function ReviewTable({
   showCheckboxes = false,
-  showPagination = false,
+  showPagination = true,
 }: ReviewTableProps) {
   const [flaggedFilter, setFlaggedFilter] = useState({ Yes: false, No: false });
   const [serviceTypeFilter, setServiceTypeFilter] = useState("all");
@@ -77,58 +86,104 @@ export default function ReviewTable({
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [totalReviews, setTotalReviews] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const reviewsPerPage = 10;
 
-  // Get unique service types from reviewData
-  const serviceTypes = [...new Set(reviewData.map((review) => review.serviceOffered))];
+  // ✅ Strongly typed + wrapped in useCallback
+  const fetchReviews = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const filteredReviews = reviewData.filter((review: Review) => {
-    const query = searchQuery.toLowerCase();
-    const searchMatch =
-      searchQuery === "" ||
-      review.id.toLowerCase().includes(query) ||
-      review.userName.toLowerCase().includes(query) ||
-      review.serviceOffered.toLowerCase().includes(query) ||
-      (review.reviewText ?? "").toLowerCase().includes(query);
+      const query = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: reviewsPerPage.toString(),
+        ...(searchQuery && { searchQuery }),
+        ...(ratingMin && { minRating: ratingMin }),
+        ...(ratingMax && { maxRating: ratingMax }),
+        ...(dateRangeFrom && { fromDate: dateRangeFrom }),
+        ...(dateRangeTo && { toDate: dateRangeTo }),
+        ...(flaggedFilter.Yes && !flaggedFilter.No && { flagged: "Yes" }),
+        ...(flaggedFilter.No && !flaggedFilter.Yes && { flagged: "No" }),
+        ...(serviceTypeFilter !== "all" && { serviceOffered: serviceTypeFilter }),
+      }).toString();
 
-    const flaggedMatch =
-      (Object.values(flaggedFilter).every((val) => !val) ||
-       (flaggedFilter.Yes && review.flagged === "Yes") ||
-       (flaggedFilter.No && review.flagged === "No"));
+      const response = await fetch(`/api/reviews?${query}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
 
-    const serviceTypeMatch =
-      serviceTypeFilter === "all" || review.serviceOffered === serviceTypeFilter;
-
-    const ratingMatch =
-      (!ratingMin || review.rating >= parseFloat(ratingMin)) &&
-      (!ratingMax || review.rating <= parseFloat(ratingMax));
-
-    let dateMatch = true;
-    if (dateRangeFrom || dateRangeTo) {
-      const reviewDate = parseDate(review.date);
-      const fromDate = dateRangeFrom ? new Date(dateRangeFrom) : null;
-      const toDate = dateRangeTo ? new Date(dateRangeTo) : null;
-      if (fromDate) {
-        fromDate.setHours(0, 0, 0, 0);
-        if (reviewDate < fromDate) dateMatch = false;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || errorData.message || `Failed to fetch reviews (Status: ${response.status})`
+        );
       }
-      if (toDate) {
-        toDate.setHours(23, 59, 59, 999);
-        if (reviewDate > toDate) dateMatch = false;
-      }
+
+      const { reviews: apiReviews, total, pages } = await response.json();
+
+      const mappedReviews: Review[] = Array.isArray(apiReviews)
+        ? apiReviews.map((review: ApiReview) => ({
+            id: review.id,
+            userName: review.userName || "Unknown",
+            email: review.email || "",
+            serviceOffered: review.serviceOffered || "Unknown",
+            rating: review.rating ?? 0,
+            reviewText: review.reviewText || "",
+            date: review.date || new Date().toISOString(),
+            status: review.status || "Pending",
+            flagged: review.flagged || "No",
+            reviewer: {
+              name: review.reviewer?.name || "Unknown",
+              email: review.reviewer?.email || "",
+              role: review.reviewer?.role || "User",
+            },
+          }))
+        : [];
+
+      setReviews(mappedReviews);
+      setTotalReviews(total || mappedReviews.length);
+      setTotalPages(pages || Math.ceil((total || mappedReviews.length) / reviewsPerPage));
+    } catch (err) {
+      console.error("Error fetching reviews:", err);
+      setError(
+        err instanceof Error
+          ? `${err.message}${
+              err.message.includes("Status: 500")
+                ? " - This may be due to a server issue. Please try again later or contact support."
+                : ""
+            }`
+          : "An error occurred while fetching reviews"
+      );
+    } finally {
+      setLoading(false);
     }
+  }, [
+    currentPage,
+    flaggedFilter,
+    serviceTypeFilter,
+    ratingMin,
+    ratingMax,
+    dateRangeFrom,
+    dateRangeTo,
+    searchQuery,
+  ]);
 
-    return searchMatch && flaggedMatch && serviceTypeMatch && ratingMatch && dateMatch;
-  });
+  
+  useEffect(() => {
+    fetchReviews();
+  }, [fetchReviews]);
 
-  const totalReviews = filteredReviews.length;
-  const totalPages = Math.ceil(totalReviews / reviewsPerPage);
-  const startIndex = (currentPage - 1) * reviewsPerPage;
-  const paginatedReviews = filteredReviews.slice(startIndex, startIndex + reviewsPerPage);
+  // Get unique service types from reviews
+  const serviceTypes = [...new Set(reviews.map((review) => review.serviceOffered))];
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedReviews(paginatedReviews.map((review) => review.id));
+      setSelectedReviews(reviews.map((review) => review.id));
     } else {
       setSelectedReviews([]);
     }
@@ -142,9 +197,27 @@ export default function ReviewTable({
     }
   };
 
-  useEffect(() => {
-    setSelectedReviews([]);
-  }, [currentPage]);
+  const handleDelete = async (reviewId: string) => {
+    try {
+      const response = await fetch(`/api/reviews/${reviewId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete review");
+      }
+
+      toast.success("Review deleted successfully");
+      fetchReviews();
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      toast.error(error instanceof Error ? error.message : "An error occurred while deleting the review");
+    }
+  };
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -161,6 +234,28 @@ export default function ReviewTable({
     setSelectedReview(review);
     setIsModalOpen(true);
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-12 w-full" />
+        {[...Array(5)].map((_, i) => (
+          <Skeleton key={i} className="h-16 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8 text-red-500">
+        <p>{error}</p>
+        <Button variant="outline" className="mt-4" onClick={fetchReviews}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -188,7 +283,7 @@ export default function ReviewTable({
             <DropdownMenuSeparator />
             <div className="space-y-4">
               <div>
-                <p className="text-sm font-medium mb-2">Status</p>
+                <p className="text-sm font-medium mb-2">Flagged</p>
                 <div className="flex space-x-2">
                   <Button
                     variant="ghost"
@@ -251,7 +346,7 @@ export default function ReviewTable({
                     min="0"
                     max="5"
                     step="0.1"
-                    placeholder="4.5"
+                    placeholder="Min"
                     value={ratingMin}
                     onChange={(e) => setRatingMin(e.target.value)}
                     className="w-1/2"
@@ -261,7 +356,7 @@ export default function ReviewTable({
                     min="0"
                     max="5"
                     step="0.1"
-                    placeholder="5.0"
+                    placeholder="Max"
                     value={ratingMax}
                     onChange={(e) => setRatingMax(e.target.value)}
                     className="w-1/2"
@@ -313,7 +408,7 @@ export default function ReviewTable({
             {showCheckboxes && (
               <TableHead>
                 <Checkbox
-                  checked={selectedReviews.length === paginatedReviews.length && paginatedReviews.length > 0}
+                  checked={selectedReviews.length === reviews.length && reviews.length > 0}
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
@@ -329,66 +424,81 @@ export default function ReviewTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedReviews.map((review: Review) => (
-            <TableRow key={review.id}>
-              {showCheckboxes && (
-                <TableCell>
-                  <Checkbox
-                    checked={selectedReviews.includes(review.id)}
-                    onCheckedChange={(checked) => handleSelectReview(review.id, checked as boolean)}
-                  />
-                </TableCell>
-              )}
-              <TableCell>{review.id}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Avatar>
-                    <AvatarImage src="/placeholder-avatar.jpg" alt={review.userName} />
-                    <AvatarFallback>{review.userName.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  {review.userName}
-                </div>
-              </TableCell>
-              <TableCell>{review.serviceOffered}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  <span>{review.rating}/5.0</span>
-                  <Star className={`h-4 w-4 text-[#0065FF] fill-[#0065FF]`} />
-                </div>
-              </TableCell>
-              <TableCell>{truncateText(review.reviewText, 20)}</TableCell>
-              <TableCell>
-                <span
-                  className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${
-                    review.flagged === "Yes"
-                      ? "bg-red-100 text-red-600"
-                      : "bg-green-100 text-green-600"
-                  }`}
-                >
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      review.flagged === "Yes" ? "bg-red-500" : "bg-green-500"
-                    }`}
-                  />
-                  {review.flagged}
-                </span>
-              </TableCell>
-              <TableCell>{review.date}</TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost"><EllipsisVertical /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleViewDetails(review)}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+          {reviews.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={showCheckboxes ? 9 : 8} className="text-center">
+                No reviews available
               </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            reviews.map((review) => (
+              <TableRow key={review.id}>
+                {showCheckboxes && (
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedReviews.includes(review.id)}
+                      onCheckedChange={(checked) => handleSelectReview(review.id, checked as boolean)}
+                    />
+                  </TableCell>
+                )}
+                <TableCell>{review.id}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Avatar>
+                      <AvatarImage src="/placeholder-avatar.jpg" alt={review.userName} />
+                      <AvatarFallback>{review.userName.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    {review.userName}
+                  </div>
+                </TableCell>
+                <TableCell>{review.serviceOffered}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <span>{review.rating.toFixed(1)}/5.0</span>
+                    <Star className="h-4 w-4 text-[#0065FF] fill-[#0065FF]" />
+                  </div>
+                </TableCell>
+                <TableCell>{truncateText(review.reviewText, 20)}</TableCell>
+                <TableCell>
+                  <span
+                    className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${
+                      review.flagged === "Yes"
+                        ? "bg-red-100 text-red-600"
+                        : "bg-green-100 text-green-600"
+                    }`}
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        review.flagged === "Yes" ? "bg-red-500" : "bg-green-500"
+                      }`}
+                    />
+                    {review.flagged}
+                  </span>
+                </TableCell>
+                <TableCell>{new Date(review.date).toLocaleString()}</TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost"><EllipsisVertical /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleViewDetails(review)}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-red-600"
+                        onClick={() => handleDelete(review.id)}
+                      >
+                        <Trash className="h-4 w-4 mr-2 text-red-600" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
       {showPagination && (
@@ -423,7 +533,8 @@ export default function ReviewTable({
           </div>
           <div className="flex items-center space-x-2">
             <p className="text-sm">
-              Showing {startIndex + 1} - {Math.min(startIndex + reviewsPerPage, totalReviews)} of {totalReviews}
+              Showing {Math.min((currentPage - 1) * reviewsPerPage + 1, totalReviews)} -{" "}
+              {Math.min(currentPage * reviewsPerPage, totalReviews)} of {totalReviews}
             </p>
             <div className="flex items-center space-x-2">
               <p className="text-sm">Go to page</p>
@@ -444,7 +555,7 @@ export default function ReviewTable({
       )}
       {isModalOpen && (
         <div
-          className="fixed inset-0 bg-black/75  backdrop-blur-xs z-50"
+          className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50"
           onClick={() => setIsModalOpen(false)}
         >
           <div

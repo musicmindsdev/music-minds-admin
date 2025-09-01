@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Filter, Search, EllipsisVertical,  Trash2 } from "lucide-react";
+import { Filter, Search, EllipsisVertical, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,57 +23,126 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { announcementData } from "@/lib/mockData";
 import { HiOutlineGlobeAlt } from "react-icons/hi2";
 import { CiBookmarkMinus } from "react-icons/ci";
 import { TbEdit } from "react-icons/tb";
 import Modal from "@/components/Modal";
 import { FaTrash } from "react-icons/fa";
+import { Skeleton } from "@/components/ui/skeleton";
 
+// What the API returns
+interface ApiAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  type: string;
+  status: string;
+  createdBy?: string;
+  role?: string;
+  publishedDate?: string;
+  mediaUrl?: string;
+}
 
+// What our component uses (strict typing, required props)
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  type: string;
+  status: string;
+  createdBy: string;
+  role: string;
+  publishedDate: string;
+  mediaUrl?: string;
+}
 
 interface AnnouncementTableProps {
   showCheckboxes?: boolean;
   showPagination?: boolean;
   headerText?: string;
+  onEdit?: (announcement: Announcement) => void;
 }
 
 export default function AnnouncementTable({
   showCheckboxes = false,
   showPagination = false,
+  onEdit,
 }: AnnouncementTableProps) {
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState({ Published: false, Draft: false, Archived: false });
+  const [statusFilter, setStatusFilter] = useState({
+    Published: false,
+    Draft: false,
+    Archived: false,
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAnnouncements, setSelectedAnnouncements] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const announcementsPerPage = 10; // Aligned with ReviewTable
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalAnnouncements, setTotalAnnouncements] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const announcementsPerPage = 10;
 
-  const filteredAnnouncements = (announcementData || []).filter((announcement) => {
-    const query = searchQuery.toLowerCase();
-    const searchMatch =
-      searchQuery === "" ||
-      announcement.id.toLowerCase().includes(query) ||
-      announcement.title.toLowerCase().includes(query) ||
-      announcement.createdBy.toLowerCase().includes(query);
+  const fetchAnnouncements = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    const statusMatch =
-      (Object.values(statusFilter).every((val) => !val) ||
-       (statusFilter.Published && announcement.status === "Published") ||
-       (statusFilter.Draft && announcement.status === "Draft") ||
-       (statusFilter.Archived && announcement.status === "Archived"));
+      // Build query parameters
+      const query = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: announcementsPerPage.toString(),
+        ...(statusFilter.Published && { status: "Published" }),
+        ...(statusFilter.Draft && { status: "Draft" }),
+        ...(statusFilter.Archived && { status: "Archived" }),
+        ...(searchQuery && { searchQuery }),
+      }).toString();
 
-    return searchMatch && statusMatch;
-  });
+      const response = await fetch(`/api/announcements?${query}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
 
-  const totalAnnouncements = filteredAnnouncements.length;
-  const totalPages = Math.ceil(totalAnnouncements / announcementsPerPage);
-  const startIndex = (currentPage - 1) * announcementsPerPage;
-  const paginatedAnnouncements = filteredAnnouncements.slice(startIndex, startIndex + announcementsPerPage);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch announcements");
+      }
+
+      const { announcements: apiAnnouncements, total, pages } = await response.json();
+
+      const mappedAnnouncements: Announcement[] = Array.isArray(apiAnnouncements)
+        ? apiAnnouncements.map((ann: ApiAnnouncement) => ({
+            id: ann.id,
+            title: ann.title,
+            content: ann.content,
+            type: ann.type,
+            status: ann.status,
+            createdBy: ann.createdBy || "Unknown",
+            role: ann.role || "Admin",
+            publishedDate: ann.publishedDate || new Date().toISOString(),
+            mediaUrl: ann.mediaUrl,
+          }))
+        : [];
+
+      setAnnouncements(mappedAnnouncements);
+      setTotalAnnouncements(total || mappedAnnouncements.length);
+      setTotalPages(pages || Math.ceil(total / announcementsPerPage));
+    } catch (err) {
+      console.error("Error fetching announcements:", err);
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, statusFilter, searchQuery]);
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [fetchAnnouncements]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedAnnouncements(paginatedAnnouncements.map((ann) => ann.id));
+      setSelectedAnnouncements(announcements.map((ann) => ann.id));
     } else {
       setSelectedAnnouncements([]);
     }
@@ -87,26 +156,74 @@ export default function AnnouncementTable({
     }
   };
 
-  useEffect(() => {
-    setCurrentPage(1);
-    setSelectedAnnouncements([]);
-  }, [statusFilter, searchQuery, currentPage]);
+  const handleDelete = async () => {
+    try {
+      const response = await fetch(`/api/announcements/${selectedAnnouncements[0]}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
-  const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete announcements");
+      }
+
+      setSelectedAnnouncements([]);
+      setIsDeleteModalOpen(false);
+      fetchAnnouncements(); // Refresh table
+    } catch (error) {
+      console.error("Error deleting announcements:", error);
+      alert(error instanceof Error ? error.message : "An error occurred");
+    }
+  };
+
+  const handlePublish = async (id: string, isPublishing: boolean) => {
+    try {
+      const response = await fetch(`/api/announcements/${id}/publish`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to ${isPublishing ? "publish" : "unpublish"} announcement`);
+      }
+
+      fetchAnnouncements(); // Refresh table
+    } catch (error) {
+      console.error(`Error ${isPublishing ? "publishing" : "unpublishing"} announcement:`, error);
+      alert(error instanceof Error ? error.message : "An error occurred");
+    }
+  };
+
+  const handleArchive = async (id: string) => {
+    try {
+      const response = await fetch(`/api/announcements/${id}/archive`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to archive announcement");
+      }
+
+      fetchAnnouncements(); // Refresh table
+    } catch (error) {
+      console.error("Error archiving announcement:", error);
+      alert(error instanceof Error ? error.message : "An error occurred");
     }
   };
 
   const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + "...";
-  };
-
-  const handleDelete = () => {
-    console.log("Deleting users:", selectedAnnouncements);
-    setSelectedAnnouncements([]);
-    setIsDeleteModalOpen(false);
   };
 
   const openDeleteModal = () => {
@@ -117,12 +234,33 @@ export default function AnnouncementTable({
     setIsDeleteModalOpen(false);
   };
 
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-12 w-full" />
+        {[...Array(5)].map((_, i) => (
+          <Skeleton key={i} className="h-16 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div className="text-center py-8 text-red-500">Error: {error}</div>;
+  }
+
   return (
     <>
       <div className="relative mt-4 flex items-center pb-2">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <input
-          placeholder="Search for user by Name, Email or ID"
+          placeholder="Search for announcement by ID, Title, or Created By"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-8 p-2 border rounded-lg w-full bg-background"
@@ -208,7 +346,7 @@ export default function AnnouncementTable({
             {showCheckboxes && (
               <TableHead>
                 <Checkbox
-                  checked={selectedAnnouncements.length === paginatedAnnouncements.length && paginatedAnnouncements.length > 0}
+                  checked={selectedAnnouncements.length === announcements.length && announcements.length > 0}
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
@@ -223,84 +361,92 @@ export default function AnnouncementTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedAnnouncements.map((announcement) => (
-            <TableRow key={announcement.id}>
-              {showCheckboxes && (
-                <TableCell>
-                  <Checkbox
-                    checked={selectedAnnouncements.includes(announcement.id)}
-                    onCheckedChange={(checked) => handleSelectAnnouncement(announcement.id, checked as boolean)}
-                  />
-                </TableCell>
-              )}
-              <TableCell>{announcement.id}</TableCell>
-              <TableCell>{announcement.title}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Avatar>
-                    <AvatarFallback>{announcement.createdBy.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  {truncateText(announcement.createdBy, 15)}
-                </div>
-              </TableCell>
-              <TableCell>{announcement.role}</TableCell>
-              <TableCell>
-                <span
-                  className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${
-                    announcement.status === "Published"
-                      ? "bg-green-100 text-green-600"
-                      : announcement.status === "Draft"
-                      ? "bg-gray-100 text-gray-600"
-                      : "bg-blue-100 text-blue-600"
-                  }`}
-                >
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      announcement.status === "Published"
-                        ? "bg-green-500"
-                        : announcement.status === "Draft"
-                        ? "bg-gray-500"
-                        : "bg-blue-300"
-                    }`}
-                  />
-                  {announcement.status}
-                </span>
-              </TableCell>
-              <TableCell>{announcement.publishedDate}</TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost"><EllipsisVertical /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => console.log("Edit:", announcement.id)}>
-                      <TbEdit className="h-4 w-4 mr-2" />
-                      Edit
-                    </DropdownMenuItem>
-                    {announcement.status === "Published" ? (
-                      <DropdownMenuItem onClick={() => console.log("Unpublish:", announcement.id)}>
-                         <HiOutlineGlobeAlt className="h-4 w-4 mr-2"/>
-                        Unpublish
-                      </DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem onClick={() => console.log("Publish:", announcement.id)}>
-                        <HiOutlineGlobeAlt className="h-4 w-4 mr-2"/>
-                        Publish
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem onClick={() => console.log("Archive:", announcement.id)}>
-                        <CiBookmarkMinus className="h-4 w-4 mr-2"/>
-                      Archive
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={openDeleteModal} className="text-[#FF3B30]">
-                      <Trash2 className="h-4 w-4 mr-2 text-[#FF3B30]" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+          {announcements.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={showCheckboxes ? 7 : 6} className="text-center">
+                No announcements available
               </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            announcements.map((announcement) => (
+              <TableRow key={announcement.id}>
+                {showCheckboxes && (
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedAnnouncements.includes(announcement.id)}
+                      onCheckedChange={(checked) => handleSelectAnnouncement(announcement.id, checked as boolean)}
+                    />
+                  </TableCell>
+                )}
+                <TableCell>{announcement.id}</TableCell>
+                <TableCell>{announcement.title}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Avatar>
+                      <AvatarFallback>{announcement.createdBy.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    {truncateText(announcement.createdBy, 15)}
+                  </div>
+                </TableCell>
+                <TableCell>{announcement.role}</TableCell>
+                <TableCell>
+                  <span
+                    className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${
+                      announcement.status === "Published"
+                        ? "bg-green-100 text-green-600"
+                        : announcement.status === "Draft"
+                        ? "bg-gray-100 text-gray-600"
+                        : "bg-blue-100 text-blue-600"
+                    }`}
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        announcement.status === "Published"
+                          ? "bg-green-500"
+                          : announcement.status === "Draft"
+                          ? "bg-gray-500"
+                          : "bg-blue-300"
+                      }`}
+                    />
+                    {announcement.status}
+                  </span>
+                </TableCell>
+                <TableCell>{new Date(announcement.publishedDate).toLocaleDateString()}</TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost"><EllipsisVertical /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onEdit?.(announcement)}>
+                        <TbEdit className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      {announcement.status === "Published" ? (
+                        <DropdownMenuItem onClick={() => handlePublish(announcement.id, false)}>
+                          <HiOutlineGlobeAlt className="h-4 w-4 mr-2" />
+                          Unpublish
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem onClick={() => handlePublish(announcement.id, true)}>
+                          <HiOutlineGlobeAlt className="h-4 w-4 mr-2" />
+                          Publish
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => handleArchive(announcement.id)}>
+                        <CiBookmarkMinus className="h-4 w-4 mr-2" />
+                        Archive
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={openDeleteModal} className="text-[#FF3B30]">
+                        <Trash2 className="h-4 w-4 mr-2 text-[#FF3B30]" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
       {showPagination && (
@@ -335,7 +481,8 @@ export default function AnnouncementTable({
           </div>
           <div className="flex items-center space-x-2">
             <p className="text-sm">
-              Showing {startIndex + 1} - {Math.min(startIndex + announcementsPerPage, totalAnnouncements)} of {totalAnnouncements}
+              Showing {Math.min((currentPage - 1) * announcementsPerPage + 1, totalAnnouncements)} -{" "}
+              {Math.min(currentPage * announcementsPerPage, totalAnnouncements)} of {totalAnnouncements}
             </p>
             <div className="flex items-center space-x-2">
               <p className="text-sm">Go to page</p>
@@ -355,19 +502,19 @@ export default function AnnouncementTable({
         </div>
       )}
 
-        <Modal
-              isOpen={isDeleteModalOpen}
-              onClose={closeDeleteModal}
-              title="Deletion"
-              icon={<FaTrash className="h-8 w-8 text-red-500" />}
-              iconBgColor="#FEE2E2"
-              message1="Deleting Announcements?"
-              message="Are you sure you want to delete this announcement?"
-              cancelText="No, I don't"
-              confirmText="Yes, delete"
-              confirmButtonColor="#EF4444"
-              onConfirm={handleDelete}
-            />
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        title="Deletion"
+        icon={<FaTrash className="h-8 w-8 text-red-500" />}
+        iconBgColor="#FEE2E2"
+        message1="Deleting Announcements?"
+        message="Are you sure you want to delete the selected announcement(s)?"
+        cancelText="No, I don't"
+        confirmText="Yes, delete"
+        confirmButtonColor="#EF4444"
+        onConfirm={handleDelete}
+      />
     </>
   );
 }

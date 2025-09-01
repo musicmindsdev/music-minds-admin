@@ -1,12 +1,28 @@
-// components/KYCDetailsModal.tsx
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react"; // Using User for Identity Verification, FileText for Upload Certification
+import { X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Image from "next/image";
 import Rectangle from "@/public/Rectangle 22482.png";
 import Maximise from "@/components/svg icons/Maximise";
 import KycStepper from "@/components/kycStepper";
+
+interface KYC {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  studioName?: string;
+  website?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  kycStatus: "PENDING" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+  submittedDate: string;
+  type: "PERSONAL" | "BUSINESS";
+  certificateUrl?: string; // Added for certificate image
+}
 
 interface KYCDetailsModalProps {
   isOpen: boolean;
@@ -15,7 +31,8 @@ interface KYCDetailsModalProps {
   onApprove: (kycId: string) => void;
   onDecline: (kycId: string) => void;
   onPreview: () => void;
-  kycData: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  kycData: KYC[];
+  onActionComplete?: () => void; // New prop to refresh data
 }
 
 const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({
@@ -26,23 +43,23 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({
   onDecline,
   onPreview,
   kycData,
+  onActionComplete,
 }) => {
   const kyc = kycData.find((k) => k.id === kycId);
 
   if (!isOpen || !kycId || !kyc) return null;
 
-  // const getStepperProgress = (): string => {
-  //   switch (kyc.kycStatus) {
-  //     case "Approved":
-  //       return "100%";
-  //     case "Submitted":
-  //       return "50%";
-  //     case "Declined":
-  //       return "0%";
-  //     default:
-  //       return "0%";
-  //   }
-  // };
+  const handleApprove = () => {
+    onApprove(kycId);
+    onActionComplete?.();
+    onClose();
+  };
+
+  const handleDecline = () => {
+    onDecline(kycId);
+    onActionComplete?.();
+    onClose();
+  };
 
   return (
     <div
@@ -57,25 +74,47 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({
         <div className="p-6 h-full overflow-y-auto">
           <div className="flex justify-between items-center border-b pb-4">
             <h2 className="text-lg font-medium">User ID: {kycId}</h2>
-            <Button variant="ghost" onClick={onClose}>
-              <X className="h-5 w-5 text-black" />
-            </Button>
+            <div className="flex space-x-2">
+              {(kyc.kycStatus === "PENDING" || kyc.kycStatus === "UNDER_REVIEW") && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-green-600"
+                    onClick={handleApprove}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600"
+                    onClick={handleDecline}
+                  >
+                    Decline
+                  </Button>
+                </>
+              )}
+              <Button variant="ghost" onClick={onClose}>
+                <X className="h-5 w-5 text-black" />
+              </Button>
+            </div>
           </div>
           <div className="mt-4">
             {/* Stepper with Progress */}
-            <KycStepper/>
+            <KycStepper status={kyc.kycStatus} />
             {/* User Details */}
             <div className="space-y-4 mt-4">
               <div>
                 <p className="text-sm font-light">User Information</p>
                 <div className="flex items-center gap-3 mt-2">
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src="/placeholder-avatar.jpg" alt={kyc.name} />
-                    <AvatarFallback>{kyc.name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src="/placeholder-avatar.jpg" alt={kyc.name || "Unknown"} />
+                    <AvatarFallback>{kyc.name?.charAt(0) || "?"}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm font-medium">{kyc.name}</p>
-                    <p className="text-xs ">{kyc.role}</p>
+                    <p className="text-sm font-medium">{kyc.name || "Unknown"}</p>
+                    <p className="text-xs">{kyc.role || "N/A"}</p>
                   </div>
                 </div>
               </div>
@@ -89,7 +128,7 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({
               </div>
               <div>
                 <p className="text-xs font-light">Email</p>
-                <p className="text-sm font-medium">{kyc.email}</p>
+                <p className="text-sm font-medium">{kyc.email || "N/A"}</p>
               </div>
               <div>
                 <p className="text-xs font-light">Phone Number</p>
@@ -97,26 +136,32 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({
               </div>
               <div>
                 <p className="text-xs font-light">Address, City, Province</p>
-                <p className="text-sm flex gap-2"> Address: <p className="font-medium">{kyc.address || "N/A"}</p></p>
-                <p className="text-sm flex gap-2"> City: <p className="font-medium">{kyc.city || "N/A"}</p></p>
-                <p className="text-sm flex gap-2"> Province: <p className="font-medium">{kyc.province || "N/A"}</p></p>
+                <p className="text-sm flex gap-2">
+                  Address: <p className="font-medium">{kyc.address || "N/A"}</p>
+                </p>
+                <p className="text-sm flex gap-2">
+                  City: <p className="font-medium">{kyc.city || "N/A"}</p>
+                </p>
+                <p className="text-sm flex gap-2">
+                  Province: <p className="font-medium">{kyc.province || "N/A"}</p>
+                </p>
               </div>
               <div>
                 <p className="text-xs">KYC Status</p>
                 <span
                   className={`flex items-center gap-1 w-[25%] rounded-full px-2 py-1 ${
-                    kyc.kycStatus === "Approved"
+                    kyc.kycStatus === "APPROVED"
                       ? "bg-green-100 text-green-600"
-                      : kyc.kycStatus === "Submitted"
+                      : kyc.kycStatus === "PENDING" || kyc.kycStatus === "UNDER_REVIEW"
                       ? "bg-yellow-100 text-yellow-600"
                       : "bg-red-100 text-red-600"
                   }`}
                 >
                   <span
                     className={`h-2 w-2 rounded-full ${
-                      kyc.kycStatus === "Approved"
+                      kyc.kycStatus === "APPROVED"
                         ? "bg-green-500"
-                        : kyc.kycStatus === "Submitted"
+                        : kyc.kycStatus === "PENDING" || kyc.kycStatus === "UNDER_REVIEW"
                         ? "bg-yellow-500"
                         : "bg-red-500"
                     }`}
@@ -124,12 +169,22 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({
                   {kyc.kycStatus}
                 </span>
               </div>
+              <div>
+                <p className="text-xs">KYC Type</p>
+                <p className="text-sm font-medium">{kyc.type || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-xs">Submitted Date</p>
+                <p className="text-sm font-medium">
+                  {new Date(kyc.submittedDate).toLocaleString()}
+                </p>
+              </div>
               {/* Certificate Section */}
               <div>
                 <p className="text-xs">Certificate</p>
                 <div className="mt-2 flex justify-between">
                   <Image
-                    src={Rectangle}
+                    src={kyc.certificateUrl || Rectangle}
                     alt="Certificate"
                     width={200}
                     height={100}
@@ -139,20 +194,6 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({
                     <Maximise className="h-4 w-4 dark:text-white" />
                   </Button>
                 </div>
-              </div>
-              <div className="flex space-x-2 mt-4">
-                <Button
-                  className="w-[50%]"
-                  onClick={() => onApprove(kycId)}
-                >
-                  Approve
-                </Button>
-                <Button
-                  className="bg-red-200 text-red-600 w-[50%]"
-                  onClick={() => onDecline(kycId)}
-                >
-                  Decline
-                </Button>
               </div>
             </div>
           </div>

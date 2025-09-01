@@ -1,11 +1,14 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from "react"
-import { cn } from "@/lib/utils"
-import Stepper1 from "./svg icons/stepper1"
-import Stepper2 from "./svg icons/stepper1filled"
-import Stepper3 from "./svg icons/stepper3"
-import Stepper4 from "./svg icons/stepper4"
+import { cn } from "@/lib/utils";
+import Stepper1 from "./svg icons/stepper1";
+import Stepper2 from "./svg icons/stepper1filled";
+import Stepper3 from "./svg icons/stepper3";
+import Stepper4 from "./svg icons/stepper4";
+
+interface KycStepperProps {
+  status: "PENDING" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+}
 
 const steps = [
   {
@@ -14,28 +17,35 @@ const steps = [
   {
     label: "Upload Certification",
   },
-]
+];
 
-export default function KycStepper() {
-  const [currentStep, setCurrentStep] = useState(0)
+export default function KycStepper({ status }: KycStepperProps) {
+  // Map KYC status to step index
+  const getCurrentStep = (status: KycStepperProps["status"]) => {
+    switch (status) {
+      case "PENDING":
+        return 0; // Identity Verification
+      case "UNDER_REVIEW":
+        return 1; // Upload Certification
+      case "APPROVED":
+        return 2; // Completed
+      case "REJECTED":
+        return 0; // Reset to start or show declined state
+      default:
+        return 0;
+    }
+  };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentStep((prev) => {
-        if (prev < steps.length) return prev + 1
-        clearInterval(interval)
-        return prev
-      })
-    }, 2000)
-
-    return () => clearInterval(interval)
-  }, [])
+  const currentStep = getCurrentStep(status);
 
   const getStepStyle = (index: number) => {
-    if (index < currentStep) return "bg-[#5243FE] text-white"
-    if (index === currentStep) return "border-2 border-[#D3CFFF] text-primary"
-    return "border border-muted text-muted-foreground"
-  }
+    if (status === "REJECTED") {
+      return "border-2 border-red-500 text-red-500";
+    }
+    if (index < currentStep) return "bg-[#5243FE] text-white";
+    if (index === currentStep) return "border-2 border-[#D3CFFF] text-primary";
+    return "border border-muted text-muted-foreground";
+  };
 
   return (
     <div className="flex flex-col items-center space-y-4">
@@ -49,7 +59,11 @@ export default function KycStepper() {
               getStepStyle(0)
             )}
           >
-            {currentStep > 0 ? <Stepper2 className="w-5 h-5" /> : <Stepper1 className="w-5 h-5" />}
+            {currentStep > 0 && status !== "REJECTED" ? (
+              <Stepper2 className="w-5 h-5" />
+            ) : (
+              <Stepper1 className="w-5 h-5" />
+            )}
           </div>
         </div>
 
@@ -59,7 +73,9 @@ export default function KycStepper() {
             className="h-full bg-[#5243FE] transition-all duration-700"
             style={{
               width:
-                currentStep === 0
+                status === "REJECTED"
+                  ? "0%"
+                  : currentStep === 0
                   ? "0%"
                   : currentStep === 1
                   ? "50%"
@@ -76,7 +92,11 @@ export default function KycStepper() {
               getStepStyle(1)
             )}
           >
-            {currentStep > 1 ? <Stepper4 className="w-5 h-5" /> : <Stepper3 className="w-5 h-5" />}
+            {currentStep > 1 && status !== "REJECTED" ? (
+              <Stepper4 className="w-5 h-5" />
+            ) : (
+              <Stepper3 className="w-5 h-5" />
+            )}
           </div>
         </div>
       </div>
@@ -88,14 +108,18 @@ export default function KycStepper() {
             key={index}
             className={cn(
               "text-sm text-center transition-colors duration-300",
-              index < currentStep ? "text-primary font-medium" : "text-muted-foreground"
+              status === "REJECTED"
+                ? "text-red-500"
+                : index < currentStep
+                ? "text-primary font-medium"
+                : "text-muted-foreground"
             )}
-            style={{ width: "" }}
+            style={{ width: "50%" }}
           >
-            {step.label}
+            {status === "REJECTED" && index === 0 ? "Declined" : step.label}
           </div>
         ))}
       </div>
     </div>
-  )
+  );
 }

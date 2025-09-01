@@ -23,7 +23,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { kycData } from "@/lib/mockData";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -41,73 +42,128 @@ import Modal from "@/components/Modal";
 import Slash from "@/components/svg icons/slash";
 import Tick from "@/components/svg icons/tick";
 
-// Helper function to parse date string "MMM DD, YYYY" to Date object
-const parseDate = (dateString: string): Date => {
-  const [month, day, year] = dateString.split(/[\s,]+/);
-  const monthIndex = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-  ].indexOf(month);
-  return new Date(parseInt(year), monthIndex, parseInt(day));
-};
+interface KYC {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  studioName?: string;
+  website?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  kycStatus: "PENDING" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+  submittedDate: string;
+  type: "PERSONAL" | "BUSINESS";
+}
 
 interface KYCTableProps {
   showCheckboxes?: boolean;
   showPagination?: boolean;
+  onActionComplete?: () => void; // New prop to refresh data
 }
 
 export default function KYCTable({
   showCheckboxes = false,
-  showPagination = false,
+  showPagination = true,
+  onActionComplete,
 }: KYCTableProps) {
   const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState({
-    Approved: false,
-    Submitted: false,
-    Declined: false,
+    PENDING: false,
+    UNDER_REVIEW: false,
+    APPROVED: false,
+    REJECTED: false,
   });
   const [dateRangeFrom, setDateRangeFrom] = useState("");
   const [dateRangeTo, setDateRangeTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedKYC, setSelectedKYC] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const kycPerPage = 10;
+  const [kycData, setKycData] = useState<KYC[]>([]);
+  const [totalKYC, setTotalKYC] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedKYCId, setSelectedKYCId] = useState<string | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const kycPerPage = 10;
 
-  const filteredKYC = kycData.filter((kyc) => {
-    const query = searchQuery.toLowerCase();
-    const searchMatch =
-      searchQuery === "" ||
-      kyc.id.toLowerCase().includes(query) ||
-      kyc.name.toLowerCase().includes(query) ||
-      kyc.email.toLowerCase().includes(query);
+  // Fetch KYC submissions from API
+  const fetchKYC = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    const statusMatch =
-      Object.values(statusFilter).every((val) => !val) ||
-      statusFilter[kyc.kycStatus as keyof typeof statusFilter];
+      const status = Object.keys(statusFilter)
+        .filter((key) => statusFilter[key as keyof typeof statusFilter])
+        .join(",");
+      const query = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: kycPerPage.toString(),
+        ...(status && { status }),
+        ...(searchQuery && { searchQuery }), // Note: Not supported by API; confirm with backend
+        ...(dateRangeFrom && { fromDate: dateRangeFrom }), // Note: Not supported by API
+        ...(dateRangeTo && { toDate: dateRangeTo }), // Note: Not supported by API
+      }).toString();
 
-    let dateMatch = true;
-    if (dateRangeFrom || dateRangeTo) {
-      const kycDate = parseDate(kyc.submittedDate);
-      const fromDate = dateRangeFrom ? new Date(dateRangeFrom) : null;
-      const toDate = dateRangeTo ? new Date(dateRangeTo) : null;
-      if (fromDate && kycDate < fromDate) dateMatch = false;
-      if (toDate && kycDate > toDate) dateMatch = false;
+      const response = await fetch(`/api/kyc?${query}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Failed to fetch KYC submissions (Status: ${response.status})`
+        );
+      }
+
+      const { data, meta } = await response.json();
+      setKycData(
+        Array.isArray(data)
+          ? data.map((kyc: any) => ({
+              id: kyc.id,
+              name: kyc.user.username || "Unknown",
+              email: kyc.user.email || "N/A",
+              role: kyc.user.role || "User",
+              studioName: kyc.studioName || undefined,
+              website: kyc.website || undefined,
+              phone: kyc.phone || undefined,
+              address: kyc.address || undefined,
+              city: kyc.city || undefined,
+              province: kyc.province || undefined,
+              kycStatus: kyc.status || "PENDING",
+              submittedDate: kyc.createdAt || new Date().toISOString(),
+              type: kyc.type || "PERSONAL",
+            }))
+          : []
+      );
+      setTotalKYC(meta?.total || data?.length || 0);
+      setTotalPages(meta?.last_page || Math.ceil((meta?.total || data?.length || 0) / kycPerPage));
+    } catch (err) {
+      console.error("Error fetching KYC:", err);
+      setError(
+        err instanceof Error
+          ? `${err.message}${err.message.includes("Status: 500") ? " - This may be due to a server issue. Please try again later or contact support." : ""}`
+          : "An error occurred while fetching KYC submissions"
+      );
+    } finally {
+      setLoading(false);
     }
+  };
 
-    return searchMatch && statusMatch && dateMatch;
-  });
-
-  const totalKYC = filteredKYC.length;
-  const totalPages = Math.ceil(totalKYC / kycPerPage);
-  const startIndex = (currentPage - 1) * kycPerPage;
-  const paginatedKYC = filteredKYC.slice(startIndex, startIndex + kycPerPage);
+  useEffect(() => {
+    fetchKYC();
+  }, [currentPage, statusFilter, dateRangeFrom, dateRangeTo, searchQuery]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedKYC(paginatedKYC.map((kyc) => kyc.id));
+      setSelectedKYC(kycData.map((kyc) => kyc.id));
     } else {
       setSelectedKYC([]);
     }
@@ -121,13 +177,49 @@ export default function KYCTable({
     }
   };
 
-  useEffect(() => {
-    setSelectedKYC([]);
-  }, [currentPage]);
+  const handleApprove = async (kycId: string) => {
+    try {
+      const response = await fetch(`/api/kyc/${kycId}/approve`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
-  const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to approve KYC");
+      }
+
+      toast.success("KYC approved successfully");
+      fetchKYC();
+      onActionComplete?.();
+    } catch (err) {
+      console.error("Failed to approve KYC:", err);
+      toast.error(err instanceof Error ? err.message : "An error occurred while approving KYC");
+    }
+  };
+
+  const handleDecline = async (kycId: string) => {
+    try {
+      const response = await fetch(`/api/kyc/${kycId}/decline`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to decline KYC");
+      }
+
+      toast.success("KYC declined successfully");
+      fetchKYC();
+      onActionComplete?.();
+    } catch (err) {
+      console.error("Failed to decline KYC:", err);
+      toast.error(err instanceof Error ? err.message : "An error occurred while declining KYC");
     }
   };
 
@@ -136,9 +228,11 @@ export default function KYCTable({
   };
 
   const handleDeclineModal = () => {
-    console.log("Declining user kyc:", selectedKYCId);
-    setSelectedKYCId(null);
-    setIsDeclineModalOpen(false);
+    if (selectedKYCId) {
+      handleDecline(selectedKYCId);
+      setIsDeclineModalOpen(false);
+      setSelectedKYCId(null);
+    }
   };
 
   const openDeclineModal = () => {
@@ -150,9 +244,11 @@ export default function KYCTable({
   };
 
   const handleApproveModal = () => {
-    console.log("Approving user kyc:", selectedKYCId);
-    setSelectedKYCId(null);
-    setIsDeclineModalOpen(false);
+    if (selectedKYCId) {
+      handleApprove(selectedKYCId);
+      setIsApproveModalOpen(false);
+      setSelectedKYCId(null);
+    }
   };
 
   const openApproveModal = () => {
@@ -163,60 +259,38 @@ export default function KYCTable({
     setIsApproveModalOpen(false);
   };
 
-  const handleApprove = async (kycId: string) => {
-    try {
-      // Simulate API call to approve KYC (uncomment when backend is ready)
-      /*
-      await fetch(`/api/kyc/${kycId}/approve`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      */
-      // setKYCData((prev) =>
-      //   prev.map((kyc) =>
-      //     kyc.id === kycId ? { ...kyc, kycStatus: "Approved" } : kyc
-      //   )
-      // );
-      console.log(kycId);
-    } catch (err) {
-      console.error("Failed to approve KYC:", err);
-    }
-  };
-
-  const handleDecline = async (kycId: string) => {
-    try {
-      // Simulate API call to decline KYC (uncomment when backend is ready)
-      /*
-      await fetch(`/api/kyc/${kycId}/decline`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      */
-      // setKYCData((prev) =>
-      //   prev.map((kyc) =>
-      //     kyc.id === kycId ? { ...kyc, kycStatus: "Declined" } : kyc
-      //   )
-      // );
-      console.log(kycId);
-    } catch (err) {
-      console.error("Failed to decline KYC:", err);
-    }
-  };
-
   const handlePreview = () => {
     setIsPreviewModalOpen(true);
-    setSelectedKYCId(null); 
+    setSelectedKYCId(null);
   };
 
-  // Mock function to update kycData (replace with actual state management or context)
-  // const setKYCData = (newData: typeof kycData) => {
-  //   This would typically update a global state or context
-  //   console.log("KYC Data updated:", newData);
-  // };
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-12 w-full" />
+        {[...Array(5)].map((_, i) => (
+          <Skeleton key={i} className="h-16 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8 text-red-500">
+        <p>{error}</p>
+        <Button variant="outline" className="mt-4" onClick={fetchKYC}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -244,52 +318,33 @@ export default function KYCTable({
             <DropdownMenuSeparator />
             <div className="space-y-2">
               <p className="text-sm font-medium">KYC Status</p>
-              <div className="flex space-x-2">
-                <Button
-                  variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Approved ? "border border-gray-400 font-medium" : ""
-                  }`}
-                  onClick={() =>
-                    setStatusFilter((prev) => ({
-                      ...prev,
-                      Approved: !prev.Approved,
-                    }))
-                  }
-                >
-                  <span className="h-2 w-2 rounded-full bg-green-500" />
-                  Approved
-                </Button>
-                <Button
-                  variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Submitted ? "border border-gray-400 font-medium" : ""
-                  }`}
-                  onClick={() =>
-                    setStatusFilter((prev) => ({
-                      ...prev,
-                      Submitted: !prev.Submitted,
-                    }))
-                  }
-                >
-                  <span className="h-2 w-2 rounded-full bg-yellow-500" />
-                  Submitted
-                </Button>
-                <Button
-                  variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Declined ? "border border-gray-400 font-medium" : ""
-                  }`}
-                  onClick={() =>
-                    setStatusFilter((prev) => ({
-                      ...prev,
-                      Declined: !prev.Declined,
-                    }))
-                  }
-                >
-                  <span className="h-2 w-2 rounded-full bg-red-500" />
-                  Declined
-                </Button>
+              <div className="flex space-x-2 flex-wrap">
+                {["PENDING", "UNDER_REVIEW", "APPROVED", "REJECTED"].map((status) => (
+                  <Button
+                    key={status}
+                    variant="ghost"
+                    className={`flex items-center gap-1 rounded-full text-sm ${
+                      statusFilter[status as keyof typeof statusFilter] ? "border border-gray-400 font-medium" : ""
+                    }`}
+                    onClick={() =>
+                      setStatusFilter((prev) => ({
+                        ...prev,
+                        [status]: !prev[status as keyof typeof statusFilter],
+                      }))
+                    }
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        status === "APPROVED"
+                          ? "bg-green-500"
+                          : status === "PENDING" || status === "UNDER_REVIEW"
+                          ? "bg-yellow-500"
+                          : "bg-red-500"
+                      }`}
+                    />
+                    {status}
+                  </Button>
+                ))}
               </div>
             </div>
             <DropdownMenuSeparator />
@@ -321,11 +376,21 @@ export default function KYCTable({
       </div>
       {selectedKYC.length > 0 && (
         <div className="flex justify-end space-x-2 mt-2 p-4">
-          <Button variant="outline" size="sm" className="text-green-600" disabled>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-green-600"
+            onClick={() => selectedKYC.forEach((id) => handleApprove(id))}
+          >
             <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
             Approve
           </Button>
-          <Button variant="outline" size="sm" className="text-red-600" disabled>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-red-600"
+            onClick={() => selectedKYC.forEach((id) => handleDecline(id))}
+          >
             <XCircle className="h-4 w-4 mr-2 text-red-600" />
             Reject
           </Button>
@@ -337,7 +402,7 @@ export default function KYCTable({
             {showCheckboxes && (
               <TableHead>
                 <Checkbox
-                  checked={selectedKYC.length === paginatedKYC.length && paginatedKYC.length > 0}
+                  checked={selectedKYC.length === kycData.length && kycData.length > 0}
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
@@ -351,82 +416,85 @@ export default function KYCTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedKYC.map((kyc) => (
-            <TableRow key={kyc.id}>
-              {showCheckboxes && (
+          {kycData.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={showCheckboxes ? 6 : 5} className="text-center">
+                No KYC submissions available
+              </TableCell>
+            </TableRow>
+          ) : (
+            kycData.map((kyc) => (
+              <TableRow key={kyc.id}>
+                {showCheckboxes && (
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedKYC.includes(kyc.id)}
+                      onCheckedChange={(checked) => handleSelectKYC(kyc.id, checked as boolean)}
+                    />
+                  </TableCell>
+                )}
+                <TableCell>{kyc.id}</TableCell>
                 <TableCell>
-                  <Checkbox
-                    checked={selectedKYC.includes(kyc.id)}
-                    onCheckedChange={(checked) => handleSelectKYC(kyc.id, checked as boolean)}
-                  />
+                  <div className="flex items-center gap-2">
+                    <Avatar>
+                      <AvatarImage src="/placeholder-avatar.jpg" alt={kyc.name} />
+                      <AvatarFallback>{kyc.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    {kyc.name}
+                  </div>
                 </TableCell>
-              )}
-              <TableCell>{kyc.id}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Avatar>
-                    <AvatarImage src="/placeholder-avatar.jpg" alt={kyc.name} />
-                    <AvatarFallback>{kyc.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  {kyc.name}
-                </div>
-              </TableCell>
-              <TableCell>{kyc.email}</TableCell>
-              <TableCell>
-                <span
-                  className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${
-                    kyc.kycStatus === "Approved"
-                      ? "bg-green-100 text-green-600"
-                      : kyc.kycStatus === "Submitted"
-                      ? "bg-yellow-100 text-yellow-600"
-                      : "bg-red-100 text-red-600"
-                  }`}
-                >
+                <TableCell>{kyc.email}</TableCell>
+                <TableCell>
                   <span
-                    className={`h-2 w-2 rounded-full ${
-                      kyc.kycStatus === "Approved"
-                        ? "bg-green-500"
-                        : kyc.kycStatus === "Submitted"
-                        ? "bg-yellow-500"
-                        : "bg-red-500"
+                    className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${
+                      kyc.kycStatus === "APPROVED"
+                        ? "bg-green-100 text-green-600"
+                        : kyc.kycStatus === "PENDING" || kyc.kycStatus === "UNDER_REVIEW"
+                        ? "bg-yellow-100 text-yellow-600"
+                        : "bg-red-100 text-red-600"
                     }`}
-                  />
-                  {kyc.kycStatus}
-                </span>
-              </TableCell>
-              <TableCell>{kyc.submittedDate}</TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost"><EllipsisVertical /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {kyc.kycStatus === "Submitted" ? (
-                      <>
-                        <DropdownMenuItem onClick={() => handleViewDetails(kyc.id)}>
-                          <PiEye className="h-4 w-4 mr-2" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={openApproveModal}>
-                          <FaRegCircleCheck className="h-4 w-4 mr-2 " />
-                          Approve KYC
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={openDeclineModal} className="text-red-600">
-                          <GoCircleSlash  className="h-4 w-4 mr-2 text-red-600" />
-                          Decline KYC
-                        </DropdownMenuItem>
-                      </>
-                    ) : (
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        kyc.kycStatus === "APPROVED"
+                          ? "bg-green-500"
+                          : kyc.kycStatus === "PENDING" || kyc.kycStatus === "UNDER_REVIEW"
+                          ? "bg-yellow-500"
+                          : "bg-red-500"
+                      }`}
+                    />
+                    {kyc.kycStatus}
+                  </span>
+                </TableCell>
+                <TableCell>{new Date(kyc.submittedDate).toLocaleDateString()}</TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost"><EllipsisVertical /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => handleViewDetails(kyc.id)}>
                         <PiEye className="h-4 w-4 mr-2" />
                         View Details
                       </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
+                      {kyc.kycStatus === "PENDING" || kyc.kycStatus === "UNDER_REVIEW" ? (
+                        <>
+                          <DropdownMenuItem onClick={openApproveModal}>
+                            <FaRegCircleCheck className="h-4 w-4 mr-2" />
+                            Approve KYC
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={openDeclineModal} className="text-red-600">
+                            <GoCircleSlash className="h-4 w-4 mr-2 text-red-600" />
+                            Decline KYC
+                          </DropdownMenuItem>
+                        </>
+                      ) : null}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
       {showPagination && (
@@ -461,7 +529,8 @@ export default function KYCTable({
           </div>
           <div className="flex items-center space-x-2">
             <p className="text-sm">
-              Showing {startIndex + 1} - {Math.min(startIndex + kycPerPage, totalKYC)} of {totalKYC}
+              Showing {Math.min((currentPage - 1) * kycPerPage + 1, totalKYC)} -{" "}
+              {Math.min(currentPage * kycPerPage, totalKYC)} of {totalKYC}
             </p>
             <div className="flex items-center space-x-2">
               <p className="text-sm">Go to page</p>
@@ -480,32 +549,32 @@ export default function KYCTable({
           </div>
         </div>
       )}
-        <Modal
-              isOpen={isDeclineModalOpen}
-              onClose={closeDeclineModal}
-              title="Deletion"
-              icon={<Slash className="" />}
-              iconBgColor="#FEE2E2"
-              message1="Declining KYC?"
-              message="Are you sure you want to decline this user&apos;s KYC?"
-              cancelText="No, I don't"
-              confirmText="Yes, decline"
-              confirmButtonColor="#EF4444"
-              onConfirm={handleDeclineModal}
-            />
-            <Modal
-                    isOpen={isApproveModalOpen}
-                    onClose={closeApproveModal}
-                    title="Activation"
-                    icon={<Tick className="" />}
-                    iconBgColor="#D6FCE0"
-                    message1="Approving KYC?"
-                    message="Are you sure you want to approve this user&apos;s KYC?"
-                    cancelText="No, I don't"
-                    confirmText="Yes, approve"
-                    confirmButtonColor="#00A424"
-                    onConfirm={handleApproveModal}
-                  />
+      <Modal
+        isOpen={isDeclineModalOpen}
+        onClose={closeDeclineModal}
+        title="Decline KYC"
+        icon={<Slash className="" />}
+        iconBgColor="#FEE2E2"
+        message1="Declining KYC?"
+        message="Are you sure you want to decline this user's KYC?"
+        cancelText="No, I don't"
+        confirmText="Yes, decline"
+        confirmButtonColor="#EF4444"
+        onConfirm={handleDeclineModal}
+      />
+      <Modal
+        isOpen={isApproveModalOpen}
+        onClose={closeApproveModal}
+        title="Approve KYC"
+        icon={<Tick className="" />}
+        iconBgColor="#D6FCE0"
+        message1="Approving KYC?"
+        message="Are you sure you want to approve this user's KYC?"
+        cancelText="No, I don't"
+        confirmText="Yes, approve"
+        confirmButtonColor="#00A424"
+        onConfirm={handleApproveModal}
+      />
       <KYCDetailsModal
         isOpen={!!selectedKYCId}
         onClose={() => setSelectedKYCId(null)}

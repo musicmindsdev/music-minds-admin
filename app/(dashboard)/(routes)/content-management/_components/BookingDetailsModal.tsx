@@ -99,18 +99,18 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             <p className="text-xs font-medium text-gray-500">Status:</p>
             <span
               className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${
-                booking.status === "Confirmed"
+                booking.status === "CONFIRMED"
                   ? "bg-green-100 text-green-600"
-                  : booking.status === "Pending"
+                  : booking.status === "PENDING"
                   ? "bg-yellow-100 text-yellow-600"
                   : "bg-red-100 text-red-600"
               }`}
             >
               <span
                 className={`h-2 w-2 rounded-full ${
-                  booking.status === "Confirmed"
+                  booking.status === "CONFIRMED"
                     ? "bg-green-500"
-                    : booking.status === "Pending"
+                    : booking.status === "PENDING"
                     ? "bg-yellow-500"
                     : "bg-red-500"
                 }`}
@@ -142,15 +142,15 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             <p className="text-xs  ">Status</p>
             <span
               className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${
-                booking.status === "Processed" ? "bg-green-100 text-green-600" : ""
+                booking.status === "COMPLETED" ? "bg-green-100 text-green-600" : ""
               }`}
             >
               <span
                 className={`h-2 w-2 rounded-full ${
-                  booking.status === "Processed" ? "bg-green-500" : ""
+                  booking.status === "COMPLETED" ? "bg-green-500" : ""
                 }`}
               />
-              {booking.status === "Processed" ? "Processed" : ""}
+              {booking.status === "COMPLETED" ? "Processed" : ""}
             </span>
           </div>
         </div>

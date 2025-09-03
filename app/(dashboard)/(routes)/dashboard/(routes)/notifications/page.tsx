@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,7 +10,6 @@ import {
   TableCell,
   TableRow,
 } from "@/components/ui/table";
-import { notificationsData } from "@/lib/mockData";
 import { AlertTriangle, Filter, Search, Calendar } from "lucide-react";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { TbTicket } from "react-icons/tb";
@@ -25,6 +24,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface Notification {
   id: string;
@@ -32,68 +33,117 @@ interface Notification {
   message: string;
   timestamp: string;
   read: boolean;
-  actions: { label: string; variant: "default" | "outline" }[];
+  actions: { label: string; variant: "default" | "outline"; href?: string }[];
 }
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>(notificationsData);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState({
     status: { All: true, Unread: false, Read: false },
-    type: "All" as const, // Single select for type
-    dateRangeFrom: "2025-04-09", // Default from date based on design
-    dateRangeTo: "", // Empty to date
+    type: "All" as string,
+    dateRangeFrom: "2025-04-09",
+    dateRangeTo: "",
   });
   const [selectedNotifications, setSelectedNotifications] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalNotifications, setTotalNotifications] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const notificationsPerPage = 5;
+  const router = useRouter();
 
-  // Helper function to parse date string "DD/MM/YYYY" to Date object
-  const parseDate = (dateString: string): Date => {
-    if (!dateString) return new Date(0);
-    const [day, month, year] = dateString.split("/");
-    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  const getUserId = () => {
+    const cookieHeader = document.cookie;
+    if (!cookieHeader) return null;
+    const cookies = cookieHeader.split(";").reduce((acc, cookie) => {
+      const [name, value] = cookie.trim().split("=");
+      acc[name] = value;
+      return acc;
+    }, {} as Record<string, string>);
+    const token = cookies.accessToken;
+    if (!token) return null;
+    try {
+      const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
+      return payload.id || null;
+    } catch {
+      return null;
+    }
   };
 
-  const filteredNotifications = notifications.filter((n) => {
-    const queryMatch =
-      searchQuery === "" || n.message.toLowerCase().includes(searchQuery.toLowerCase());
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    const statusMatch =
-      filter.status.All ||
-      (filter.status.Unread && !n.read) ||
-      (filter.status.Read && n.read);
+      const read = filter.status.Unread ? "false" : filter.status.Read ? "true" : "";
+      const query = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: notificationsPerPage.toString(),
+        ...(read && { read }),
+        ...(filter.type !== "All" && { type: filter.type }),
+        ...(filter.dateRangeFrom && { fromDate: filter.dateRangeFrom }),
+        ...(filter.dateRangeTo && { toDate: filter.dateRangeTo }),
+        ...(searchQuery && { searchQuery }),
+      }).toString();
 
-    const typeMatch = filter.type === "All" || n.type === filter.type;
+      const response = await fetch(`/api/notifications?${query}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
 
-    let dateMatch = true;
-    if (filter.dateRangeFrom || filter.dateRangeTo) {
-      const notificationDate = parseDate(n.timestamp.split(" - ")[0]); // Assuming timestamp is "DD/MM/YYYY - HH:MM"
-      const fromDate = filter.dateRangeFrom ? new Date(filter.dateRangeFrom) : null;
-      const toDate = filter.dateRangeTo ? new Date(filter.dateRangeTo) : null;
-      if (fromDate) {
-        fromDate.setHours(0, 0, 0, 0);
-        if (notificationDate < fromDate) dateMatch = false;
+      console.log("Notifications API response status:", response.status);
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError("Please log in to view notifications");
+          toast.error("Please log in to view notifications", {
+            position: "top-right",
+            duration: 5000,
+          });
+          return;
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch notifications");
       }
-      if (toDate) {
-        toDate.setHours(23, 59, 59, 999);
-        if (notificationDate > toDate) dateMatch = false;
-      }
+
+      const { notifications: apiNotifications, total, pages } = await response.json();
+      const mappedNotifications: Notification[] = Array.isArray(apiNotifications)
+        ?   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        apiNotifications.map((n: any) => ({
+            id: n.id,
+            type: n.type,
+            message: n.message,
+            timestamp: n.timestamp || new Date().toISOString(),
+            read: n.read || false,
+            actions: n.actions || [{ label: "View", variant: "default" }],
+          }))
+        : [];
+
+      setNotifications(mappedNotifications);
+      setTotalNotifications(total || mappedNotifications.length);
+      setTotalPages(pages || Math.ceil(total / notificationsPerPage));
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+      setError(err instanceof Error ? err.message : "An error occurred while fetching notifications");
+      toast.error(err instanceof Error ? err.message : "An error occurred while fetching notifications", {
+        position: "top-right",
+        duration: 5000,
+      });
+    } finally {
+      setLoading(false);
     }
+  }, [currentPage, filter.status, filter.type, filter.dateRangeFrom, filter.dateRangeTo, searchQuery]);
 
-    return queryMatch && statusMatch && typeMatch && dateMatch;
-  });
-
-  const totalPages = Math.ceil(filteredNotifications.length / notificationsPerPage);
-  const startIndex = (currentPage - 1) * notificationsPerPage;
-  const paginatedNotifications = filteredNotifications.slice(
-    startIndex,
-    startIndex + notificationsPerPage
-  );
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedNotifications(paginatedNotifications.map((n) => n.id));
+      setSelectedNotifications(notifications.map((n) => n.id));
     } else {
       setSelectedNotifications([]);
     }
@@ -107,23 +157,181 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
-    setSelectedNotifications([]);
+  const handleMarkAllAsRead = async () => {
+    try {
+      const userId = getUserId();
+      if (!userId) {
+        throw new Error("Authentication required: No user ID found in token");
+      }
+
+      const response = await fetch(`/api/notifications/mark-all-read?userId=${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      console.log("Mark all as read API response status:", response.status);
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast.error("Please log in to mark notifications as read", {
+            position: "top-right",
+            duration: 5000,
+          });
+          return;
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to mark all notifications as read");
+      }
+
+      setNotifications(notifications.map((n) => ({ ...n, read: true })));
+      setSelectedNotifications([]);
+      toast.success("All notifications marked as read", {
+        position: "top-right",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      toast.error(error instanceof Error ? error.message : "An error occurred while marking notifications as read", {
+        position: "top-right",
+        duration: 5000,
+      });
+    }
   };
 
-  const handleMarkAsUnread = () => {
-    setNotifications(
-      notifications.map((n) =>
-        selectedNotifications.includes(n.id) ? { ...n, read: false } : n
-      )
-    );
-    setSelectedNotifications([]);
+  const handleMarkAsUnread = async () => {
+    try {
+      const promises = selectedNotifications.map((id) =>
+        fetch(`/api/notifications/${id}/read`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ read: false }), // Assuming API supports setting read status
+        })
+      );
+
+      const responses = await Promise.all(promises);
+      console.log("Mark as unread API responses:", responses.map((r) => r.status));
+
+      const failed = responses.some((r) => !r.ok);
+      if (failed) {
+        const errorData = await Promise.all(responses.map((r) => r.json().catch(() => ({}))));
+        console.error("Backend error responses:", errorData);
+        if (responses.some((r) => r.status === 401)) {
+          toast.error("Please log in to mark notifications as unread", {
+            position: "top-right",
+            duration: 5000,
+          });
+          return;
+        }
+        throw new Error(errorData[0]?.error || "Failed to mark notifications as unread");
+      }
+
+      setNotifications(
+        notifications.map((n) =>
+          selectedNotifications.includes(n.id) ? { ...n, read: false } : n
+        )
+      );
+      setSelectedNotifications([]);
+      toast.success("Selected notifications marked as unread", {
+        position: "top-right",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Error marking notifications as unread:", error);
+      toast.error(error instanceof Error ? error.message : "An error occurred while marking notifications as unread", {
+        position: "top-right",
+        duration: 5000,
+      });
+    }
   };
 
-  const handleDelete = () => {
-    setNotifications(notifications.filter((n) => !selectedNotifications.includes(n.id)));
-    setSelectedNotifications([]);
+  const handleDelete = async () => {
+    try {
+      const promises = selectedNotifications.map((id) =>
+        fetch(`/api/notifications/${id}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        })
+      );
+
+      const responses = await Promise.all(promises);
+      console.log("Delete notifications API responses:", responses.map((r) => r.status));
+
+      const failed = responses.some((r) => !r.ok);
+      if (failed) {
+        const errorData = await Promise.all(responses.map((r) => r.json().catch(() => ({}))));
+        console.error("Backend error responses:", errorData);
+        if (responses.some((r) => r.status === 401)) {
+          toast.error("Please log in to delete notifications", {
+            position: "top-right",
+            duration: 5000,
+          });
+          return;
+        }
+        throw new Error(errorData[0]?.error || "Failed to delete notifications");
+      }
+
+      setNotifications(notifications.filter((n) => !selectedNotifications.includes(n.id)));
+      setSelectedNotifications([]);
+      toast.success("Selected notifications deleted", {
+        position: "top-right",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Error deleting notifications:", error);
+      toast.error(error instanceof Error ? error.message : "An error occurred while deleting notifications", {
+        position: "top-right",
+        duration: 5000,
+      });
+    }
+  };
+
+  const handleAction = async (notificationId: string, action: { label: string; variant: "default" | "outline"; href?: string }) => {
+    try {
+      console.log(`Action "${action.label}" clicked for notification ${notificationId}`);
+      const response = await fetch(`/api/notifications/${notificationId}/read`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      console.log(`Mark as read API response status for ${notificationId}:`, response.status);
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast.error("Please log in to mark notification as read", {
+            position: "top-right",
+            duration: 5000,
+          });
+          return;
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to mark notification as read");
+      }
+
+      setNotifications(
+        notifications.map((n) =>
+          n.id === notificationId ? { ...n, read: true } : n
+        )
+      );
+
+      if (action.href) {
+        router.push(action.href);
+      }
+
+      toast.success("Notification marked as read", {
+        position: "top-right",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error(`Error marking notification ${notificationId} as read:`, error);
+      toast.error(error instanceof Error ? error.message : "An error occurred while marking notification as read", {
+        position: "top-right",
+        duration: 5000,
+      });
+    }
   };
 
   const goToPage = (page: number) => {
@@ -131,11 +339,6 @@ export default function NotificationsPage() {
       setCurrentPage(page);
     }
   };
-
-  useEffect(() => {
-    setSelectedNotifications([]);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [filter.status, filter.type, filter.dateRangeFrom, filter.dateRangeTo, searchQuery]);
 
   const getIconForType = (type: string) => {
     switch (type) {
@@ -174,6 +377,19 @@ export default function NotificationsPage() {
     }
   };
 
+  if (error) {
+    return (
+      <div className="text-center py-8 text-red-500">
+        <p>{error}</p>
+        {error.includes("Please log in") && (
+          <Button asChild variant="outline" className="mt-4">
+            <a href="/login">Log In</a>
+          </Button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
@@ -181,7 +397,7 @@ export default function NotificationsPage() {
         <div className="space-x-2">
           <Button variant="outline" onClick={handleMarkAllAsRead}>
             Mark All As Read
-            <GoCheckCircle />
+            <GoCheckCircle className="ml-2" />
           </Button>
           <Button variant="outline" onClick={() => handleSelectAll(true)}>
             Select All
@@ -197,7 +413,7 @@ export default function NotificationsPage() {
                 placeholder="Search for notifications by keyword (e.g., 'support ticket', 'booking')"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 p-2 border rounded-lg w-full  text-gray-700"
+                className="pl-8 p-2 border rounded-lg w-full text-gray-700"
               />
             </div>
             <DropdownMenu>
@@ -213,9 +429,7 @@ export default function NotificationsPage() {
                 className="w-94 p-4 shadow-lg border border-gray-200 rounded-lg bg-white"
               >
                 <div className="space-y-4">
-                  {/* Filter Title */}
                   <p className="text-sm font-medium">Filter by</p>
-                  {/* Status Section */}
                   <div>
                     <p className="text-sm font-medium mb-2">Status</p>
                     <div className="flex flex-wrap gap-2">
@@ -223,7 +437,7 @@ export default function NotificationsPage() {
                         <Button
                           key={status}
                           variant={filter.status[status as keyof typeof filter.status] ? "default" : "outline"}
-                          className={`flex items-center gap-1 rounded-md text-sm `}
+                          className="flex items-center gap-1 rounded-md text-sm"
                           onClick={() => {
                             setFilter((prev) => ({
                               ...prev,
@@ -240,13 +454,12 @@ export default function NotificationsPage() {
                       ))}
                     </div>
                   </div>
-                  {/* Notification Type Section */}
                   <div>
                     <p className="text-sm font-medium mb-2">Notification Type</p>
                     <Select
                       value={filter.type}
                       onValueChange={(value) =>
-                        setFilter((prev) => ({ ...prev, type: value as typeof filter.type }))
+                        setFilter((prev) => ({ ...prev, type: value }))
                       }
                     >
                       <SelectTrigger className="w-full bg-white border border-gray-200 rounded-md text-sm">
@@ -262,7 +475,6 @@ export default function NotificationsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  {/* Date Range Section */}
                   <div>
                     <p className="text-sm font-medium mb-2">Date Range</p>
                     <div className="flex space-x-2">
@@ -298,7 +510,7 @@ export default function NotificationsPage() {
             <div className="flex justify-between items-center mb-4 space-x-2">
               <div className="flex gap-2">
                 <Checkbox
-                  checked={selectedNotifications.length === paginatedNotifications.length}
+                  checked={selectedNotifications.length === notifications.length}
                   onCheckedChange={handleSelectAll}
                 />
                 <span>Select All</span>
@@ -316,45 +528,56 @@ export default function NotificationsPage() {
           <div className="space-y-4">
             <Table className="border-none">
               <TableBody>
-                {paginatedNotifications.map((notification) => (
-                  <TableRow
-                    key={notification.id}
-                    
-                  >
-                    <TableCell className="py-2">
-                      <Checkbox
-                        checked={selectedNotifications.includes(notification.id)}
-                        onCheckedChange={(checked) =>
-                          handleSelectNotification(notification.id, checked as boolean)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className="py-2">{getIconForType(notification.type)}</TableCell>
-                    <TableCell className="py-2">
-                      <div className="flex-1">
-                        <p className="text-sm">{notification.message}</p>
-                        <p className="text-xs text-gray-500">{notification.timestamp}</p>
-                        <div className="flex space-x-2 mt-2">
-                          {notification.actions.map((action, idx) => (
-                            <Button
-                              key={idx}
-                              variant={action.variant}
-                              size="sm"
-                              onClick={() => console.log(`Action ${action.label} for ${notification.id}`)}
-                            >
-                              {action.label}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-2">
-                      {!notification.read && (
-                        <div className="h-3 w-3 rounded-full mt-1 bg-blue-500"></div>
-                      )}
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-gray-500">
+                      Loading notifications...
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : notifications.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-gray-500">
+                      No notifications available
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  notifications.map((notification) => (
+                    <TableRow key={notification.id}>
+                      <TableCell className="py-2">
+                        <Checkbox
+                          checked={selectedNotifications.includes(notification.id)}
+                          onCheckedChange={(checked) =>
+                            handleSelectNotification(notification.id, checked as boolean)
+                          }
+                        />
+                      </TableCell>
+                      <TableCell className="py-2">{getIconForType(notification.type)}</TableCell>
+                      <TableCell className="py-2">
+                        <div className="flex-1">
+                          <p className="text-sm">{notification.message}</p>
+                          <p className="text-xs text-gray-500">{new Date(notification.timestamp).toLocaleString()}</p>
+                          <div className="flex space-x-2 mt-2">
+                            {notification.actions.map((action, idx) => (
+                              <Button
+                                key={idx}
+                                variant={action.variant}
+                                size="sm"
+                                onClick={() => handleAction(notification.id, action)}
+                              >
+                                {action.label}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        {!notification.read && (
+                          <div className="h-3 w-3 rounded-full mt-1 bg-blue-500"></div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
@@ -389,7 +612,7 @@ export default function NotificationsPage() {
                 </Button>
               </div>
               <div className="flex items-center space-x-2">
-                <span>{`${startIndex + 1} - ${Math.min(startIndex + notificationsPerPage, filteredNotifications.length)} of ${filteredNotifications.length}`}</span>
+                <span>{`${Math.min((currentPage - 1) * notificationsPerPage + 1, totalNotifications)} - ${Math.min(currentPage * notificationsPerPage, totalNotifications)} of ${totalNotifications}`}</span>
                 <Input
                   type="number"
                   min={1}

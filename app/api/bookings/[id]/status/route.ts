@@ -2,11 +2,19 @@ import { NextResponse } from "next/server";
 
 const BASE_URL = "https://music-minds-backend.onrender.com/api/v1/admin";
 
-export async function GET(request: Request) {
+// Update booking status
+export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
+    const { id } = params;
+    if (!id) {
+      return NextResponse.json(
+        { error: "Booking ID is required" },
+        { status: 400 }
+      );
+    }
+
     const cookieHeader = request.headers.get("cookie");
     let token = null;
-
     if (cookieHeader) {
       const cookies = cookieHeader.split(";").reduce((acc, cookie) => {
         const [name, value] = cookie.trim().split("=");
@@ -14,7 +22,7 @@ export async function GET(request: Request) {
         return acc;
       }, {} as Record<string, string>);
       token = cookies.accessToken || null;
-      console.log("Extracted token:", token);
+      console.log("Extracted token for booking status update:", token);
     }
 
     if (!token) {
@@ -24,31 +32,27 @@ export async function GET(request: Request) {
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const page = searchParams.get("page") || "1";
-    const limit = searchParams.get("limit") || "10";
-    const status = searchParams.get("status") || "";
-    const searchQuery = searchParams.get("searchQuery") || "";
-    const fromDate = searchParams.get("fromDate") || "";
-    const toDate = searchParams.get("toDate") || "";
+    // Parse request body
+    const body = await request.json();
+    const { status } = body;
 
-    console.log("Query parameters:", { page, limit, status, searchQuery, fromDate, toDate });
+    // Validate status
+    const validStatuses = ["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"];
+    if (!status || !validStatuses.includes(status)) {
+      return NextResponse.json(
+        { error: `Valid status is required. Must be one of: ${validStatuses.join(", ")}` },
+        { status: 400 }
+      );
+    }
 
-    const query = new URLSearchParams({
-      page,
-      limit,
-      ...(status && { status }),
-      ...(searchQuery && { searchQuery }),
-      ...(fromDate && { fromDate }),
-      ...(toDate && { toDate }),
-    }).toString();
-
-    const response = await fetch(`${BASE_URL}/kyc?${query}`, {
-      method: "GET",
+    // Call the backend API
+    const response = await fetch(`${BASE_URL}/content/bookings/${id}/status`, {
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
+      body: JSON.stringify({ status }),
     });
 
     console.log("Backend response status:", response.status);
@@ -60,30 +64,25 @@ export async function GET(request: Request) {
       console.error("Backend error response:", errorData);
       return NextResponse.json(
         {
-          error: errorData.message || "Failed to fetch KYC submissions",
+          error: errorData.message || "Failed to update booking status",
           details: errorData,
         },
         { status: response.status }
       );
     }
 
-    const data = await response.json();
-    console.log("Backend response data:", data);
+    const responseData = await response.json();
+    console.log("Backend response data:", responseData);
 
     return NextResponse.json(
       {
-        message: "KYC submissions fetched successfully",
-        data: data.data || [],
-        meta: data.meta || { 
-          total: data.data?.length || 0, 
-          page: parseInt(page), 
-          last_page: data.meta?.last_page || 1 
-        },
+        message: `Booking status updated to ${status} successfully`,
+        data: responseData,
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Fetch KYC error:", error);
+    console.error("Update booking status error:", error);
     return NextResponse.json(
       {
         error: "Internal server error",

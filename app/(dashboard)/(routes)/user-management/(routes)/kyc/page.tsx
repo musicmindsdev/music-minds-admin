@@ -50,7 +50,7 @@ interface KYCOverview {
 export default function KYCPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [timeframe, setTimeframe] = useState<"day" | "week" | "month">("month");
-  const [overviewData, setOverviewData] = useState<KYCOverview | null>(null);
+  const [, setOverviewData] = useState<KYCOverview | null>(null);
   const [stats, setStats] = useState<Stats[]>([
     {
       id: "approved",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -61,7 +61,25 @@ interface KYC {
 interface KYCTableProps {
   showCheckboxes?: boolean;
   showPagination?: boolean;
-  onActionComplete?: () => void; // New prop to refresh data
+  onActionComplete?: () => void;
+}
+
+interface KYCAPIResponse {
+  id: string;
+  user: {
+    username: string;
+    email: string;
+    role: string;
+  };
+  studioName?: string;
+  website?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  status: "PENDING" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+  createdAt: string;
+  type: "PERSONAL" | "BUSINESS";
 }
 
 export default function KYCTable({
@@ -91,8 +109,8 @@ export default function KYCTable({
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const kycPerPage = 10;
 
-  // Fetch KYC submissions from API
-  const fetchKYC = async () => {
+  // Fetch KYC submissions from API - wrapped with useCallback
+  const fetchKYC = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -104,9 +122,9 @@ export default function KYCTable({
         page: currentPage.toString(),
         limit: kycPerPage.toString(),
         ...(status && { status }),
-        ...(searchQuery && { searchQuery }), // Note: Not supported by API; confirm with backend
-        ...(dateRangeFrom && { fromDate: dateRangeFrom }), // Note: Not supported by API
-        ...(dateRangeTo && { toDate: dateRangeTo }), // Note: Not supported by API
+        ...(searchQuery && { searchQuery }),
+        ...(dateRangeFrom && { fromDate: dateRangeFrom }),
+        ...(dateRangeTo && { toDate: dateRangeTo }),
       }).toString();
 
       const response = await fetch(`/api/kyc?${query}`, {
@@ -124,9 +142,10 @@ export default function KYCTable({
       }
 
       const { data, meta } = await response.json();
+      
       setKycData(
         Array.isArray(data)
-          ? data.map((kyc: any) => ({
+          ? data.map((kyc: KYCAPIResponse) => ({
               id: kyc.id,
               name: kyc.user.username || "Unknown",
               email: kyc.user.email || "N/A",
@@ -155,11 +174,11 @@ export default function KYCTable({
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, statusFilter, searchQuery, dateRangeFrom, dateRangeTo, kycPerPage]);
 
   useEffect(() => {
     fetchKYC();
-  }, [currentPage, statusFilter, dateRangeFrom, dateRangeTo, searchQuery]);
+  }, [fetchKYC]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -179,18 +198,21 @@ export default function KYCTable({
 
   const handleApprove = async (kycId: string) => {
     try {
-      const response = await fetch(`/api/kyc/${kycId}/approve`, {
+      const response = await fetch(`/api/kyc/${kycId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          status: "APPROVED",
+        }),
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to approve KYC");
       }
-
+  
       toast.success("KYC approved successfully");
       fetchKYC();
       onActionComplete?.();
@@ -199,21 +221,26 @@ export default function KYCTable({
       toast.error(err instanceof Error ? err.message : "An error occurred while approving KYC");
     }
   };
+  
 
-  const handleDecline = async (kycId: string) => {
+  const handleDecline = async (kycId: string, rejectionReason?: string) => {
     try {
-      const response = await fetch(`/api/kyc/${kycId}/decline`, {
+      const response = await fetch(`/api/kyc/${kycId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          status: "REJECTED",
+          rejectionReason: rejectionReason || "KYC submission declined by admin",
+        }),
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to decline KYC");
       }
-
+  
       toast.success("KYC declined successfully");
       fetchKYC();
       onActionComplete?.();

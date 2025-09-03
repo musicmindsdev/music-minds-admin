@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const BASE_URL = "https://music-minds-backend.onrender.com/api/v1";
+const BASE_URL = "https://music-minds-backend.onrender.com/api/v1/admin";
 
 export async function GET(request: Request) {
   try {
@@ -15,6 +15,7 @@ export async function GET(request: Request) {
       }, {} as Record<string, string>);
       
       token = cookies.accessToken || null;
+      console.log("Extracted token:", token);
     }
     
     if (!token) {
@@ -24,19 +25,42 @@ export async function GET(request: Request) {
       );
     }
 
+    // Extract all possible query parameters from the API docs
     const { searchParams } = new URL(request.url);
     const page = searchParams.get("page") || "1";
     const limit = searchParams.get("limit") || "10";
     const status = searchParams.get("status") || "";
+    const userId = searchParams.get("userId") || "";
+    const serviceId = searchParams.get("serviceId") || "";
+    const fromDate = searchParams.get("fromDate") || "";
+    const toDate = searchParams.get("toDate") || "";
+    const minRange = searchParams.get("minRange") || "";
+    const maxRange = searchParams.get("maxRange") || "";
+    const minRating = searchParams.get("minRating") || "";
+    const maxRating = searchParams.get("maxRating") || "";
 
-    // Build the API URL with query parameters
-    let apiUrl = `${BASE_URL}/bookings?page=${page}&limit=${limit}`;
-    if (status) {
-      apiUrl += `&status=${status}`;
-    }
+    console.log("Query parameters:", { 
+      page, limit, status, userId, serviceId, fromDate, toDate, 
+      minRange, maxRange, minRating, maxRating 
+    });
 
-    // Call the Music Minds API
-    const response = await fetch(apiUrl, {
+    // Build query string with all available parameters
+    const query = new URLSearchParams({
+      page,
+      limit,
+      ...(status && { status }),
+      ...(userId && { userId }),
+      ...(serviceId && { serviceId }),
+      ...(fromDate && { fromDate }),
+      ...(toDate && { toDate }),
+      ...(minRange && { minRange }),
+      ...(maxRange && { maxRange }),
+      ...(minRating && { minRating }),
+      ...(maxRating && { maxRating }),
+    }).toString();
+
+    // Use the correct API endpoint from the documentation
+    const response = await fetch(`${BASE_URL}/content/bookings?${query}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -44,25 +68,34 @@ export async function GET(request: Request) {
       },
     });
 
+    console.log("Backend response status:", response.status);
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch(() => ({
+        message: "Failed to parse backend error response",
+      }));
+      console.error("Backend error response:", errorData);
       return NextResponse.json(
-        { error: errorData.message || "Failed to fetch bookings" },
+        {
+          error: errorData.message || "Failed to fetch bookings",
+          details: errorData,
+        },
         { status: response.status }
       );
     }
 
     const data = await response.json();
+    console.log("Backend response data:", data);
     
     return NextResponse.json(
       { 
         message: "Bookings fetched successfully",
-        bookings: data,
-        pagination: {
+        data: data.data || data,
+        meta: data.meta || {
+          total: Array.isArray(data.data || data) ? (data.data || data).length : 0,
           page: parseInt(page),
           limit: parseInt(limit),
-          // You might need to extract total count from headers or response
-          total: Array.isArray(data) ? data.length : 0
+          last_page: data.meta?.last_page || Math.ceil((Array.isArray(data.data || data) ? (data.data || data).length : 0) / parseInt(limit))
         }
       },
       { status: 200 }
@@ -71,7 +104,10 @@ export async function GET(request: Request) {
     console.error("Bookings fetch error:", error);
     
     return NextResponse.json(
-      { error: "Internal server error" },
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }

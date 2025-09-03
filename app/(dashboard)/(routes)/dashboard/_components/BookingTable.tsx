@@ -67,6 +67,8 @@ interface ApiBooking {
   transactionId?: string;
   createdAt?: string;
   updatedAt?: string;
+  title?: string; 
+  price?: string | number;
 }
 
 // Define the Booking interface based on API response
@@ -98,8 +100,8 @@ const mapApiBookingToComponentBooking = (apiBooking: ApiBooking): Booking => {
     clientEmail: apiBooking.client?.email || "No email",
     providerName: apiBooking.provider?.name || `${apiBooking.provider?.firstName || ''} ${apiBooking.provider?.lastName || ''}`.trim() || "Unknown Provider",
     providerEmail: apiBooking.provider?.email || "No email",
-    serviceOffered: apiBooking.service?.name || "Unknown Service",
-    totalAmount: apiBooking.totalAmount ? `$${parseFloat(apiBooking.totalAmount.toString()).toFixed(2)}` : "$0.00",
+    serviceOffered: apiBooking.title || apiBooking.service?.name || "Unknown Service",
+    totalAmount: apiBooking.price ? `$${parseFloat(apiBooking.price.toString()).toFixed(2)}` : (apiBooking.totalAmount ? `$${parseFloat(apiBooking.totalAmount.toString()).toFixed(2)}` : "$0.00"),
     status: (apiBooking.status as "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED") || "PENDING",
     scheduledDate: apiBooking.scheduledDate ? new Date(apiBooking.scheduledDate).toLocaleDateString() : "Not scheduled",
     scheduledTime: apiBooking.scheduledTime || "Not scheduled",
@@ -178,16 +180,24 @@ export default function BookingTable({
         page: currentPage.toString(),
         limit: bookingsPerPage.toString(),
       });
-
+  
       // Add status filter if any is selected
       const activeStatusFilters = Object.entries(statusFilter)
-        .filter(([ isActive]) => isActive)
+        .filter(([, isActive]) => isActive)
         .map(([status]) => status);
       
       if (activeStatusFilters.length > 0) {
         params.append('status', activeStatusFilters.join(','));
       }
-
+  
+      // Add date filters if provided
+      if (dateRangeFrom) {
+        params.append('fromDate', new Date(dateRangeFrom).toISOString());
+      }
+      if (dateRangeTo) {
+        params.append('toDate', new Date(dateRangeTo).toISOString());
+      }
+  
       const response = await fetch(`/api/bookings?${params}`);
       
       if (!response.ok) {
@@ -195,21 +205,20 @@ export default function BookingTable({
         throw new Error(errorData.error || 'Failed to fetch bookings');
       }
       
-      const data = await response.json();
+      const responseData = await response.json();
       
-      // Handle different response structures
+      // Handle the new response structure
       let bookingsData: ApiBooking[] = [];
       let totalCount = 0;
       
-      if (Array.isArray(data)) {
-        bookingsData = data;
-        totalCount = data.length;
-      } else if (data && Array.isArray(data.bookings)) {
-        bookingsData = data.bookings;
-        totalCount = data.pagination?.total || data.bookings.length;
-      } else if (data && Array.isArray(data.data)) {
-        bookingsData = data.data;
-        totalCount = data.pagination?.total || data.data.length;
+      if (responseData.data) {
+        if (Array.isArray(responseData.data)) {
+          bookingsData = responseData.data;
+          totalCount = responseData.meta?.total || responseData.data.length;
+        }
+      } else if (Array.isArray(responseData)) {
+        bookingsData = responseData;
+        totalCount = responseData.length;
       }
       
       // Map API bookings to component bookings
@@ -223,7 +232,7 @@ export default function BookingTable({
     } finally {
       setLoading(false);
     }
-  }, [currentPage, statusFilter, bookingsPerPage]);
+  }, [currentPage, statusFilter, dateRangeFrom, dateRangeTo, bookingsPerPage]);
 
   useEffect(() => {
     fetchBookings();
@@ -303,12 +312,19 @@ export default function BookingTable({
   const handleApprove = async () => {
     try {
       for (const bookingId of selectedBookings) {
-        const response = await fetch(`/api/bookings/${bookingId}/confirm`, {
-          method: 'POST',
+        const response = await fetch(`/api/bookings/${bookingId}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            status: 'CONFIRMED'
+          }),
         });
         
         if (!response.ok) {
-          throw new Error('Failed to approve booking');
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to approve booking');
         }
       }
       
@@ -318,10 +334,10 @@ export default function BookingTable({
       fetchBookings(); // Refresh the bookings list
     } catch (err) {
       console.error('Error approving bookings:', err);
-      setError('Failed to approve bookings');
+      setError(err instanceof Error ? err.message : 'Failed to approve bookings');
     }
   };
-
+  
   const openApproveModal = () => {
     setIsApproveModalOpen(true);
   };
@@ -333,12 +349,19 @@ export default function BookingTable({
   const handleCancel = async () => {
     try {
       for (const bookingId of selectedBookings) {
-        const response = await fetch(`/api/bookings/${bookingId}/cancel`, {
-          method: 'POST',
+        const response = await fetch(`/api/bookings/${bookingId}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            status: 'CANCELLED'
+          }),
         });
         
         if (!response.ok) {
-          throw new Error('Failed to cancel booking');
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to cancel booking');
         }
       }
       
@@ -348,7 +371,7 @@ export default function BookingTable({
       fetchBookings(); // Refresh the bookings list
     } catch (err) {
       console.error('Error cancelling bookings:', err);
-      setError('Failed to cancel bookings');
+      setError(err instanceof Error ? err.message : 'Failed to cancel bookings');
     }
   };
 

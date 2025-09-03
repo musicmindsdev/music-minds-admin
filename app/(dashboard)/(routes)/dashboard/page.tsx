@@ -1,6 +1,6 @@
 "use client";
 
-import { JSX, useState } from "react";
+import { JSX, useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { FaRegStar } from "react-icons/fa6";
-import { TbTicket } from "react-icons/tb";
+import { TbCalendarSearch, TbTicket } from "react-icons/tb";
 import { CiExport } from "react-icons/ci";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
@@ -25,111 +25,115 @@ import ExportModal from "./_components/ExportModal";
 import TopPerformers from "./_components/TopPerformers";
 import ClientTopPerformers from "./_components/ClientTopPerformance";
 import ServiceProviderTopPerformers from "./_components/ServiceProvidersTopPerformers";
-import { TbUserCheck } from "react-icons/tb";
-import { TbUserX } from "react-icons/tb";
-import { TbUserHexagon } from "react-icons/tb";
-import { FaArrowTrendUp } from "react-icons/fa6";
-import { FaArrowTrendDown } from "react-icons/fa6";
+import { TbUserCheck, TbUserX, TbUserHexagon } from "react-icons/tb";
+import { FaArrowTrendUp, FaArrowTrendDown } from "react-icons/fa6";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PiUsersThreeBold } from "react-icons/pi";
 import { RiCheckboxMultipleLine } from "react-icons/ri";
 import { AiOutlineDollar } from "react-icons/ai";
-import { HiOutlineChartBar } from "react-icons/hi";
-import { TbCalendarSearch } from "react-icons/tb";
+import { HiOutlineChartBar } from "react-icons/hi2";
 
 type Stats = {
   icon: JSX.Element;
-  statNum: string;
+  statNum: string | number;
   statTitle: string;
   statDuration: JSX.Element;
   statTrend: JSX.Element;
+};
+
+interface SwiperStats {
+  id: string;
+  icon: JSX.Element;
+  statNum: string | number;
+  statTitle: string;
+  loading: boolean;
+  error: string | null;
 }
 
 const stats: Stats[] = [
-{
-  icon: <TbUserCheck className="w-11 h-11 text-[#34C759] bg-[#DEFFE7] p-2 rounded-lg"/>,
-  statNum: "400K",
-  statTitle:"Active Users",
-  statDuration: (
-    <Select defaultValue="last30days">
-      <SelectTrigger className=" text-xs rounded-full ">
-        <SelectValue placeholder="Last 30 Days" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="1year">1 Year</SelectItem>
-        <SelectItem value="6months">6 Months</SelectItem>
-        <SelectItem value="3months">3 Months</SelectItem>
-        <SelectItem value="last30days">Last 30 Days</SelectItem>
-        <SelectItem value="last10days">Last 10 Days</SelectItem>
-        <SelectItem value="last24hours">Last 24 Hours</SelectItem>
-      </SelectContent>
-    </Select>
-  ),
-  statTrend: <div className="flex gap-1 p-1 text-xs items-center text-end text-[#34C759] bg-[#DEFFE7] rounded-lg"><span>18%</span><FaArrowTrendUp/></div>
-},
-{
-  icon: <TbUserX className="w-11 h-11 text-[#9F3DF3] bg-[#9747FF1A] p-2 rounded-lg"/>,
-  statNum: "80K",
-  statTitle:"Inactive Users",
-  statDuration: (
-    <Select defaultValue="last30days">
-      <SelectTrigger className=" text-xs rounded-full ">
-        <SelectValue placeholder="Last 30 Days" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="1year">1 Year</SelectItem>
-        <SelectItem value="6months">6 Months</SelectItem>
-        <SelectItem value="3months">3 Months</SelectItem>
-        <SelectItem value="last30days">Last 30 Days</SelectItem>
-        <SelectItem value="last10days">Last 10 Days</SelectItem>
-        <SelectItem value="last24hours">Last 24 Hours</SelectItem>
-      </SelectContent>
-    </Select>
-  ),
-  statTrend: <div className="flex gap-1 p-1 text-xs items-center text-[#FF3B30] bg-[#FEEAE9] rounded-lg"><span>18%</span><FaArrowTrendDown/></div>
-},
-{
-  icon: <TbUserHexagon className="w-11 h-11 text-[#EBBC00] bg-[#FDF3D9] p-2 rounded-lg"/>,
-  statNum: "20K",
-  statTitle:"Suspended Users",
-  statDuration: (
-    <Select defaultValue="last30days">
-      <SelectTrigger className=" text-xs rounded-full ">
-        <SelectValue placeholder="Last 30 Days" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="1year">1 Year</SelectItem>
-        <SelectItem value="6months">6 Months</SelectItem>
-        <SelectItem value="3months">3 Months</SelectItem>
-        <SelectItem value="last30days">Last 30 Days</SelectItem>
-        <SelectItem value="last10days">Last 10 Days</SelectItem>
-        <SelectItem value="last24hours">Last 24 Hours</SelectItem>
-      </SelectContent>
-    </Select>
-  ),
-  statTrend: <div className="flex gap-1 p-1 text-xs items-center text-[#34C759] bg-[#DEFFE7] rounded-lg"><span>18%</span><FaArrowTrendUp/></div>
-},
+  {
+    icon: <TbUserCheck className="w-11 h-11 text-[#34C759] bg-[#DEFFE7] p-2 rounded-lg" />,
+    statNum: "400K",
+    statTitle: "Active Users",
+    statDuration: (
+      <Select defaultValue="last30days">
+        <SelectTrigger className="text-xs rounded-full">
+          <SelectValue placeholder="Last 30 Days" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="1year">1 Year</SelectItem>
+          <SelectItem value="6months">6 Months</SelectItem>
+          <SelectItem value="3months">3 Months</SelectItem>
+          <SelectItem value="last30days">Last 30 Days</SelectItem>
+          <SelectItem value="last10days">Last 10 Days</SelectItem>
+          <SelectItem value="last24hours">Last 24 Hours</SelectItem>
+        </SelectContent>
+      </Select>
+    ),
+    statTrend: (
+      <div className="flex gap-1 p-1 text-xs items-center text-end text-[#34C759] bg-[#DEFFE7] rounded-lg">
+        <span>18%</span>
+        <FaArrowTrendUp />
+      </div>
+    ),
+  },
+  {
+    icon: <TbUserX className="w-11 h-11 text-[#9F3DF3] bg-[#9747FF1A] p-2 rounded-lg" />,
+    statNum: "80K",
+    statTitle: "Inactive Users",
+    statDuration: (
+      <Select defaultValue="last30days">
+        <SelectTrigger className="text-xs rounded-full">
+          <SelectValue placeholder="Last 30 Days" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="1year">1 Year</SelectItem>
+          <SelectItem value="6months">6 Months</SelectItem>
+          <SelectItem value="3months">3 Months</SelectItem>
+          <SelectItem value="last30days">Last 30 Days</SelectItem>
+          <SelectItem value="last10days">Last 10 Days</SelectItem>
+          <SelectItem value="last24hours">Last 24 Hours</SelectItem>
+        </SelectContent>
+      </Select>
+    ),
+    statTrend: (
+      <div className="flex gap-1 p-1 text-xs items-center text-[#FF3B30] bg-[#FEEAE9] rounded-lg">
+        <span>18%</span>
+        <FaArrowTrendDown />
+      </div>
+    ),
+  },
+  {
+    icon: <TbUserHexagon className="w-11 h-11 text-[#EBBC00] bg-[#FDF3D9] p-2 rounded-lg" />,
+    statNum: "20K",
+    statTitle: "Suspended Users",
+    statDuration: (
+      <Select defaultValue="last30days">
+        <SelectTrigger className="text-xs rounded-full">
+          <SelectValue placeholder="Last 30 Days" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="1year">1 Year</SelectItem>
+          <SelectItem value="6months">6 Months</SelectItem>
+          <SelectItem value="3months">3 Months</SelectItem>
+          <SelectItem value="last30days">Last 30 Days</SelectItem>
+          <SelectItem value="last10days">Last 10 Days</SelectItem>
+          <SelectItem value="last24hours">Last 24 Hours</SelectItem>
+        </SelectContent>
+      </Select>
+    ),
+    statTrend: (
+      <div className="flex gap-1 p-1 text-xs items-center text-[#34C759] bg-[#DEFFE7] rounded-lg">
+        <span>18%</span>
+        <FaArrowTrendUp />
+      </div>
+    ),
+  },
+];
 
-]
-
-// Mock data for stats and charts
-const statsData = {
-  totalUsers: "500.6K",
-  successfulBookings: "1.2K",
-  revenueGenerated: "$3.5M",
-  impressions: "20M",
-  pending: 150,
-};
-
-const statsData2 = {
-  totalUsers: "600.2K",
-  successfulBookings: "1.5K",
-  revenueGenerated: "$4.2M",
-  impressions: "25M",
-  pending: 180,
-};
-
-// Updated mock data to approximate the trends in the image
+// Mock data for charts and non-Swiper sections
 const bookingTrendsData = [
   { month: "Jan", bookings: 600 },
   { month: "Feb", bookings: 500 },
@@ -163,11 +167,178 @@ const revenueGrowthData = [
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("users");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [viewType, setViewType] = useState("post"); // Default to "post", options: "post", "client", "serviceProvider"
+  const [viewType, setViewType] = useState("post");
+
+  const [swiperStats, setSwiperStats] = useState<SwiperStats[]>([
+    {
+      id: "totalUsers",
+      icon: <PiUsersThreeBold className="w-11 h-11 p-2 text-[#0065FF] bg-[#E6F0FF] rounded-lg" />,
+      statNum: 0,
+      statTitle: "Total Users",
+      loading: true,
+      error: null,
+    },
+    {
+      id: "totalBookings",
+      icon: <RiCheckboxMultipleLine className="w-11 h-11 p-2 text-[#9B0175] bg-[#FFE6F9] rounded-lg" />,
+      statNum: 0,
+      statTitle: "Successful Bookings",
+      loading: true,
+      error: null,
+    },
+    {
+      id: "revenueGenerated",
+      icon: <AiOutlineDollar className="w-11 h-11 p-2 text-[#003E9C] bg-[#D4E4FD] rounded-lg" />,
+      statNum: "$3.5M",
+      statTitle: "Revenue Generated",
+      loading: false,
+      error: null,
+    },
+    {
+      id: "impressions",
+      icon: <HiOutlineChartBar className="w-11 h-11 p-2 text-[#9B0175] bg-[#FFE6F9] rounded-lg" />,
+      statNum: 0,
+      statTitle: "Impressions",
+      loading: true,
+      error: null,
+    },
+    {
+      id: "pendingBookings",
+      icon: <TbCalendarSearch className="w-11 h-11 bg-[#FFFCDC] text-[#EBBC00] p-2 rounded-lg" />,
+      statNum: 0,
+      statTitle: "Pending",
+      loading: true,
+      error: null,
+    },
+    {
+      id: "totalPosts",
+      icon: <AiOutlineDollar className="w-11 h-11 p-2 text-[#003E9C] bg-[#D4E4FD] rounded-lg" />,
+      statNum: 0,
+      statTitle: "Total Posts",
+      loading: true,
+      error: null,
+    },
+  ]);
+
+  const formatNumber = (num: number): string => {
+    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+    if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
+    return num.toString();
+  };
+
+  const fetchSwiperStats = useCallback(async () => {
+    try {
+      setSwiperStats((prev) =>
+        prev.map((stat) => ({
+          ...stat,
+          loading: stat.id !== "revenueGenerated", // Skip loading for mocked revenue
+          error: null,
+        }))
+      );
+
+      const apiCalls = [
+        fetch("/api/overview/users", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }),
+        fetch("/api/overview/bookings", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }),
+        fetch("/api/overview/posts", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }),
+        fetch("/api/overview/posts/impressions?range=all", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }),
+      ];
+
+      const responses = await Promise.all(apiCalls);
+      console.log("Swiper API response statuses:", responses.map((r) => r.status));
+
+      const results = await Promise.all(
+        responses.map(async (response, index) => {
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({
+              message: "Failed to parse backend error response",
+            }));
+            const errorMessage = errorData.error || `Failed to fetch data (Status: ${response.status})`;
+            console.error(`Error for API ${index}:`, errorData);
+            return { error: errorMessage };
+          }
+          const data = await response.json();
+          console.log(`Response data for API ${index}:`, data);
+          return { data: data.data || data };
+        })
+      );
+
+      setSwiperStats((prev) =>
+        prev.map((stat) => {
+          if (stat.id === "revenueGenerated") return stat; // Skip mocked revenue
+          const indexMap: { [key: string]: number } = {
+            totalUsers: 0,
+            totalBookings: 1,
+            pendingBookings: 1,
+            totalPosts: 2,
+            impressions: 3,
+          };
+          const result = results[indexMap[stat.id]];
+          if (result.error) {
+            return { ...stat, loading: false, error: result.error };
+          }
+          return {
+            ...stat,
+            loading: false,
+            error: null,
+            statNum:
+              stat.id === "totalUsers"
+                ? formatNumber(result.data.total || 0)
+                : stat.id === "totalBookings"
+                ? formatNumber(result.data.total || 0)
+                : stat.id === "pendingBookings"
+                ? formatNumber(result.data.pending || 0)
+                : stat.id === "totalPosts"
+                ? formatNumber(result.data.total || 0)
+                : stat.id === "impressions"
+                ? formatNumber(result.data.impressions || 0)
+                : stat.statNum,
+          };
+        })
+      );
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to fetch dashboard stats";
+      console.error("Fetch Swiper stats error:", err);
+      setSwiperStats((prev) =>
+        prev.map((stat) =>
+          stat.id === "revenueGenerated"
+            ? stat
+            : { ...stat, loading: false, error: errorMessage }
+        )
+      );
+      toast.error(errorMessage, {
+        position: "top-right",
+        duration: 5000,
+      });
+    }
+  }, []);
+
+  const retryStat = (statId: string) => {
+    setSwiperStats((prev) =>
+      prev.map((stat) =>
+        stat.id === statId ? { ...stat, loading: true, error: null } : stat
+      )
+    );
+    fetchSwiperStats();
+  };
+
+  useEffect(() => {
+    fetchSwiperStats();
+  }, [fetchSwiperStats]);
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-light">Welcome, Admin</h1>
         <div className="flex space-x-2">
@@ -186,13 +357,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Export Modal */}
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
       />
 
-      {/* Stats Slider */}
       <Swiper
         slidesPerView={1.2}
         spaceBetween={16}
@@ -202,124 +371,97 @@ export default function DashboardPage() {
       >
         <SwiperSlide>
           <Card className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 border-0">
-            <div>
-              <CardContent className="flex gap-2">
-                <PiUsersThreeBold
-                  className="w-11 h-11 p-2 text-[#0065FF] bg-[#E6F0FF] rounded-lg"
-                />
-                <CardTitle>
-                  <div className="text-2xl font-bold">{statsData.totalUsers}</div>
-                  <p className="text-xs font-light">Total Users</p>
-                </CardTitle>
-              </CardContent>
-            </div>
-            <div>
-              <CardContent className="flex gap-2">
-                <RiCheckboxMultipleLine
-                  className="w-11 h-11 p-2 text-[#9B0175] bg-[#FFE6F9] rounded-lg"
-                />
-                <CardTitle>
-                  <div className="text-2xl font-bold">{statsData.successfulBookings}</div>
-                  <p className="text-xs font-light w-full">Successful Bookings</p>
-                </CardTitle>
-              </CardContent>
-            </div>
-            <div>
-              <CardContent className="flex gap-2">
-                <AiOutlineDollar
-                  className="w-11 h-11 p-2 text-[#003E9C] bg-[#D4E4FD] rounded-lg"
-                />
-                <CardTitle>
-                  <div className="text-2xl font-bold">{statsData.revenueGenerated}</div>
-                  <p className="text-xs font-light">Revenue Generated</p>
-                </CardTitle>
-              </CardContent>
-            </div>
-            <div>
-              <CardContent className="flex gap-2">
-              <HiOutlineChartBar 
-                  className="w-11 h-11 p-2 text-[#9B0175] bg-[#FFE6F9] rounded-lg"
-                />
-                <CardTitle>
-                  <div className="text-2xl font-bold">{statsData.impressions}</div>
-                  <p className="text-xs font-light">Impressions</p>
-                </CardTitle>
-              </CardContent>
-            </div>
+            {swiperStats.slice(0, 4).map((stat) => (
+              <div key={stat.id}>
+                <CardContent className="flex gap-2">
+                  {stat.error ? (
+                    <div className="flex flex-col items-center w-full py-4">
+                      <p className="text-red-500 text-sm">{stat.error}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => retryStat(stat.id)}
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      {stat.icon}
+                      <CardTitle>
+                        <div className="text-2xl font-bold">
+                          {stat.loading ? <Skeleton className="h-8 w-16" /> : stat.statNum}
+                        </div>
+                        <p className="text-xs font-light">{stat.statTitle}</p>
+                      </CardTitle>
+                    </>
+                  )}
+                </CardContent>
+              </div>
+            ))}
           </Card>
         </SwiperSlide>
         <SwiperSlide>
           <Card className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <div>
-              <CardContent className="flex gap-2">
-                <TbCalendarSearch
-                  className="w-11 h-11 bg-[#FFFCDC] text-[#EBBC00] p-2 rounded-lg"
-                />
-                <CardTitle>
-                  <div className="text-2xl font-bold">{statsData.pending}</div>
-                  <p className="text-xs font-light">Pending</p>
-                </CardTitle>
-              </CardContent>
-            </div>
-            <div>
-              <CardContent className="flex gap-2">
-              <RiCheckboxMultipleLine
-                  className="w-11 h-11 p-2 text-[#9B0175] bg-[#FFE6F9] rounded-lg"
-                />
-                <CardTitle>
-                  <div className="text-2xl font-bold">{statsData2.successfulBookings}</div>
-                  <p className="text-xs font-light w-full">Successful Bookings</p>
-                </CardTitle>
-              </CardContent>
-            </div>
-            <div>
-              <CardContent className="flex gap-2">
-              <AiOutlineDollar
-                  className="w-11 h-11 p-2 text-[#003E9C] bg-[#D4E4FD] rounded-lg"
-                />
-                <CardTitle>
-                  <div className="text-2xl font-bold">{statsData2.revenueGenerated}</div>
-                  <p className="text-xs font-light">Revenue Generated</p>
-                </CardTitle>
-              </CardContent>
-            </div>
-            <div>
-              <CardContent className="flex gap-2">
-                <HiOutlineChartBar 
-                  className="w-11 h-11 p-2 text-[#9B0175] bg-[#FFE6F9] rounded-lg"
-                />
-                <CardTitle>
-                  <div className="text-2xl font-bold">{statsData2.impressions}</div>
-                  <p className="text-xs font-light">Impressions</p>
-                </CardTitle>
-              </CardContent>
-            </div>
+            {[
+              swiperStats[4], // pendingBookings
+              swiperStats[1], // totalBookings
+              swiperStats[5], // totalPosts
+              swiperStats[3], // impressions
+            ].map((stat) => (
+              <div key={stat.id}>
+                <CardContent className="flex gap-2">
+                  {stat.error ? (
+                    <div className="flex flex-col items-center w-full py-4">
+                      <p className="text-red-500 text-sm">{stat.error}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => retryStat(stat.id)}
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      {stat.icon}
+                      <CardTitle>
+                        <div className="text-2xl font-bold">
+                          {stat.loading ? <Skeleton className="h-8 w-16" /> : stat.statNum}
+                        </div>
+                        <p className="text-xs font-light">{stat.statTitle}</p>
+                      </CardTitle>
+                    </>
+                  )}
+                </CardContent>
+              </div>
+            ))}
           </Card>
         </SwiperSlide>
       </Swiper>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {stats.map((stat, index) => (
-        <Card key={index} className="shadow-sm border-0">
-          <CardContent className="flex items-center justify-between px-3">
-            <div className="flex items-center gap-4">
-              {stat.icon}
-              <div>
-                <CardTitle className="text-2xl font-bold">{stat.statNum}</CardTitle>
-                <p className="text-xs font-light">{stat.statTitle}</p>
-                
+        {stats.map((stat, index) => (
+          <Card key={index} className="shadow-sm border-0">
+            <CardContent className="flex items-center justify-between px-3">
+              <div className="flex items-center gap-4">
+                {stat.icon}
+                <div>
+                  <CardTitle className="text-2xl font-bold">{stat.statNum}</CardTitle>
+                  <p className="text-xs font-light">{stat.statTitle}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col gap-2 ">
-              <div >{stat.statDuration}</div>
-              <div className="self-end">{stat.statTrend}</div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+              <div className="flex flex-col gap-2">
+                <div>{stat.statDuration}</div>
+                <div className="self-end">{stat.statTrend}</div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -431,7 +573,6 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Top Performers Tabs */}
       <div>
         <div className="flex space-x-2 border w-[320px] p-2 rounded-t-lg bg-card border-b-0">
           <Button
@@ -463,7 +604,6 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Existing Tabs */}
       <div>
         <div className="flex space-x-2 border w-[320px] p-2 rounded-t-lg bg-card border-b-0">
           <Button

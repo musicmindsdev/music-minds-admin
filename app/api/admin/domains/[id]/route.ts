@@ -1,10 +1,10 @@
-import {  NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 const BASE_URL = process.env.BACKEND_URL || "https://music-minds-backend.onrender.com/api/v1/admin";
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieHeader = request.headers.get("cookie");
@@ -26,7 +26,8 @@ export async function DELETE(
       );
     }
 
-    const { id } = params;
+    // Await the params since they're now a Promise
+    const { id } = await params;
 
     const response = await fetch(`${BASE_URL}/domains/${id}`, {
       method: "DELETE",

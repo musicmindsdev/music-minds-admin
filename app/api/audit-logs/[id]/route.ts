@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 
 const BASE_URL = "https://music-minds-backend.onrender.com/api/v1/admin";
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  request: Request, 
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const cookieHeader = request.headers.get("cookie");
     let token = null;
@@ -25,7 +28,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
       );
     }
 
-    const { id } = params;
+    // Await the params since they're now a Promise
+    const { id } = await params;
     console.log("Request URL:", `${BASE_URL}/audit-logs/${id}`);
     console.log("Token being sent:", `Bearer ${token.substring(0, 10)}...`);
 

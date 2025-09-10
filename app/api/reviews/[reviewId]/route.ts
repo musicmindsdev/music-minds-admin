@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 
-const BASE_URL = process.env.BACKEND_URL || "https://music-minds-backend.onrender.com/api/v1/admin";
+const BASE_URL = "https://music-minds-backend.onrender.com/api/v1/admin/content";
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: Request, 
+  { params }: { params: Promise<{ reviewId: string }> }
 ) {
   try {
+    // Await the params since they're now a Promise
+    const { reviewId } = await params;
+
     const cookieHeader = request.headers.get("cookie");
     let token = null;
 
@@ -17,6 +20,7 @@ export async function DELETE(
         return acc;
       }, {} as Record<string, string>);
       token = cookies.accessToken || null;
+      console.log("Extracted token for DELETE:", token);
     }
 
     if (!token) {
@@ -26,17 +30,14 @@ export async function DELETE(
       );
     }
 
-    // Await the params since they're now a Promise
-    const { id } = await params;
-
-    if (!id) {
+    if (!reviewId) {
       return NextResponse.json(
-        { error: "Invitation ID is required" },
+        { error: "Review ID is required" },
         { status: 400 }
       );
     }
 
-    const response = await fetch(`${BASE_URL}/invitations/${id}`, {
+    const response = await fetch(`${BASE_URL}/reviews/${reviewId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -48,34 +49,22 @@ export async function DELETE(
       const errorData = await response.json().catch(() => ({
         message: "Failed to parse backend error response",
       }));
+      console.error("Backend error response:", errorData);
       return NextResponse.json(
         {
-          error: errorData.message || "Failed to delete invitation",
+          error: errorData.message || "Failed to delete review",
           details: errorData,
         },
         { status: response.status }
       );
     }
 
-    let data = {};
-    try {
-      const responseText = await response.text();
-      if (responseText) {
-        data = JSON.parse(responseText);
-      }
-    } catch (parseError) {
-     console.log(parseError);
-    }
-
     return NextResponse.json(
-      {
-        message: "Invitation deleted successfully",
-        data,
-      },
+      { message: "Review deleted successfully" },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Delete invitation error:", error);
+    console.error("Delete review error:", error);
     return NextResponse.json(
       {
         error: "Internal server error",

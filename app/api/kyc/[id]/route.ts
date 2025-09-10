@@ -3,9 +3,13 @@ import { NextResponse } from "next/server";
 const BASE_URL = "https://music-minds-backend.onrender.com/api/v1/admin";
 
 // Get specific KYC submission details (optional - if you need this functionality)
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  request: Request, 
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = params;
+    // Await the params since they're now a Promise
+    const { id } = await params;
     if (!id) {
       return NextResponse.json(
         { error: "KYC ID is required" },
@@ -73,9 +77,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // Review KYC submission (approve or reject)
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(
+  request: Request, 
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = params;
+    // Await the params since they're now a Promise
+    const { id } = await params;
     if (!id) {
       return NextResponse.json(
         { error: "KYC ID is required" },

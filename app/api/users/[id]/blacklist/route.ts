@@ -1,11 +1,11 @@
-// app/api/admin/users/[id]/blacklist/route.ts
+
 import { NextResponse } from "next/server";
 
 const BASE_URL = "https://music-minds-backend.onrender.com/api/v1";
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // Extract token from cookies
@@ -29,7 +29,8 @@ export async function POST(
       );
     }
 
-    const { id } = params;
+    // Await params in Next.js 15+
+    const { id } = await context.params;
 
     // Call the Music Minds API
     const response = await fetch(

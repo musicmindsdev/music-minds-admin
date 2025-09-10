@@ -2,9 +2,14 @@ import { NextResponse } from "next/server";
 
 const BASE_URL = "https://music-minds-backend.onrender.com/api/v1/admin/content";
 
-export async function POST(request: Request, { params }: { params: { reviewId: string; action: string } }) {
-  const { reviewId, action } = params;
+export async function POST(
+  request: Request, 
+  { params }: { params: Promise<{ reviewId: string; action: string }> }
+) {
   try {
+    // Await the params since they're now a Promise
+    const { reviewId, action } = await params;
+    
     if (!reviewId || !["approve", "reject"].includes(action)) {
       return NextResponse.json(
         { error: "Invalid review ID or action" },
@@ -60,7 +65,7 @@ export async function POST(request: Request, { params }: { params: { reviewId: s
       { status: 200 }
     );
   } catch (error) {
-    console.error(`${action} review error:`, error);
+    console.error(` review error:`, error);
     return NextResponse.json(
       {
         error: "Internal server error",

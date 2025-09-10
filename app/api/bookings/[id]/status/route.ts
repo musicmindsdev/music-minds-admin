@@ -3,9 +3,13 @@ import { NextResponse } from "next/server";
 const BASE_URL = "https://music-minds-backend.onrender.com/api/v1/admin";
 
 // Update booking status
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  request: Request, 
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = params;
+    // Await the params since they're now a Promise
+    const { id } = await params;
     if (!id) {
       return NextResponse.json(
         { error: "Booking ID is required" },

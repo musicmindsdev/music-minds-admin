@@ -63,10 +63,6 @@ const routes = [
       href: "/support-management",
       links: [
         {
-          label: "Support Tickets",
-          href: "/support-management",
-        },
-        {
           label: "Broadcast Messages",
           href: "/support-management/broadcast",
         },

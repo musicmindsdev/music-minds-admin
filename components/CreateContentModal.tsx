@@ -109,19 +109,28 @@ export default function CreateContentModal({
   };
 
   const handleSave = () => {
+    // Convert type and status to uppercase, and handle Visual -> VIRTUAL mapping
+    let apiType = type.toUpperCase();
+    if (apiType === "VISUAL") {
+      apiType = "VIRTUAL"; // Map Visual to VIRTUAL for the API
+    }
+    
+    const apiStatus = status.toUpperCase();
+    
     const dataToSave = {
       ...(isEditing && { id: announcement?.id }),
-      type,
-      status,
+      type: apiType,
+      status: apiStatus,
       title,
       content: content.slice(0, type === "Textual" ? 1000 : 500),
     };
-
+  
+    // Still check the original type for validation
     if (type === "Visual" && !mediaFile && !mediaPreviewUrl) {
       alert(`Please upload a media file for ${contentType} (Visual type).`);
       return;
     }
-
+  
     onSave({ ...dataToSave, mediaFile });
     onClose();
   };

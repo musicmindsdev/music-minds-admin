@@ -22,6 +22,7 @@ export default function AnnouncementsPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0); // ADD THIS
 
   const handleExport = (data: {
     statusFilter: Record<string, boolean>;
@@ -67,7 +68,9 @@ export default function AnnouncementsPage() {
 
       const result = await response.json();
       console.log(`Announcement ${data.id ? "updated" : "created"}:`, result);
-      // Trigger table refresh if needed
+      
+      setRefreshKey(prev => prev + 1);
+      
     } catch (error) {
       console.error(`Error ${data.id ? "updating" : "creating"} announcement:`, error);
       alert(error instanceof Error ? error.message : "An error occurred");
@@ -110,6 +113,7 @@ export default function AnnouncementsPage() {
             showPagination={true}
             headerText="All Announcements"
             onEdit={handleEdit}
+            refreshKey={refreshKey} // PASS refreshKey HERE
           />
         </CardContent>
       </Card>

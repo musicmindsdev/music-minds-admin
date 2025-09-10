@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { FaRegStar } from "react-icons/fa6";
-import { TbCalendarSearch, TbTicket } from "react-icons/tb";
+import { TbCalendarSearch } from "react-icons/tb";
 import { CiExport } from "react-icons/ci";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
@@ -345,10 +345,6 @@ export default function DashboardPage() {
           <Button variant="outline" className="flex items-center space-x-2">
             <FaRegStar className="mr-2" />
             <span className="hidden md:inline">Moderate Reviews</span>
-          </Button>
-          <Button variant="outline" className="flex items-center space-x-2">
-            <TbTicket className="mr-2" />
-            <span className="hidden md:inline">Support Tickets</span>
           </Button>
           <Button className="text-white flex items-center space-x-2" onClick={() => setIsExportModalOpen(true)}>
             <CiExport className="mr-2" />

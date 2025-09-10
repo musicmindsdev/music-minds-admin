@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -29,9 +29,9 @@ import { TbArrowsExchange2 } from "react-icons/tb";
 import Pending from "@/public/pending.png";
 import Image from "next/image";
 import { toast } from "sonner";
-import AdminDetailsModal from "./AdminDetailsModal"; // Adjust the path as needed
+import AdminDetailsModal from "./AdminDetailsModal";
 import InviteAdminModal from "@/components/invite-admin-modal";
-import ChangeRoleModal from "./ChangeRoleModal"; // Adjust the path as needed
+import ChangeRoleModal from "./ChangeRoleModal";
 
 interface AdminTeamMember {
   id: string;
@@ -48,114 +48,6 @@ interface AdminTeamMember {
   passwordCreated: string;
   lastChanged: string;
 }
-
-export const adminTeamData: AdminTeamMember[] = [
-  {
-    id: "1",
-    name: "Daniel Adaeri C.",
-    email: "danieladaeri@yahoo.com",
-    role: "Super Admin",
-    inviteSent: "Wed, Apr 16, 2025",
-    dateInvited: "08:45 AM",
-    dateInviteAccepted: "08:50 AM",
-    lastLogin: "----",
-    status: "Pending",
-    image: "https://api.dicebear.com/6.x/initials/svg?seed=Daniel",
-    permissions: ["Can manage users", "Can manage content", "Can moderate reviews"],
-    passwordCreated: "Wed, Apr 16, 2025",
-    lastChanged: "Mon, Apr 20, 2025",
-  },
-  {
-    id: "2",
-    name: "Michael Ajobi E.",
-    email: "michaelajobi@gmail.com",
-    role: "Super Admin",
-    inviteSent: "Today",
-    dateInvited: "N/A",
-    dateInviteAccepted: "N/A",
-    lastLogin: "Online",
-    status: "Online",
-    image: "https://api.dicebear.com/6.x/initials/svg?seed=Michael",
-    permissions: ["Can manage users", "Can manage content", "Can moderate reviews"],
-    passwordCreated: "Today",
-    lastChanged: "N/A",
-  },
-  {
-    id: "3",
-    name: "Francis Praise",
-    email: "francispraisegod@yahoo.com",
-    role: "Support",
-    inviteSent: "Apr 15, 2025",
-    dateInvited: "10:00 AM",
-    dateInviteAccepted: "N/A",
-    lastLogin: "Online",
-    status: "Online",
-    image: "https://api.dicebear.com/6.x/initials/svg?seed=Francis",
-    permissions: ["Can manage support tickets"],
-    passwordCreated: "Apr 15, 2025",
-    lastChanged: "N/A",
-  },
-  {
-    id: "4",
-    name: "James D. Shola",
-    email: "jamesdshola@gmail.com",
-    role: "Moderator",
-    inviteSent: "Apr 3, 2025",
-    dateInvited: "02:30 PM",
-    dateInviteAccepted: "N/A",
-    lastLogin: "Online",
-    status: "Online",
-    image: "https://api.dicebear.com/6.x/initials/svg?seed=James",
-    permissions: ["Can moderate reviews"],
-    passwordCreated: "Apr 3, 2025",
-    lastChanged: "N/A",
-  },
-  {
-    id: "5",
-    name: "Anitt Adebayo",
-    email: "adebayoar@gmail.com",
-    role: "Support",
-    inviteSent: "Mar 20, 2025",
-    dateInvited: "09:15 AM",
-    dateInviteAccepted: "N/A",
-    lastLogin: "10 mins ago",
-    status: "Online",
-    image: "https://api.dicebear.com/6.x/initials/svg?seed=Anitt",
-    permissions: ["Can manage support tickets"],
-    passwordCreated: "Mar 20, 2025",
-    lastChanged: "N/A",
-  },
-  {
-    id: "6",
-    name: "Amakiri Justina",
-    email: "amakirijustin@gmail.com",
-    role: "Support",
-    inviteSent: "Mar 16, 2025",
-    dateInvited: "11:00 AM",
-    dateInviteAccepted: "N/A",
-    lastLogin: "Online",
-    status: "Online",
-    image: "https://api.dicebear.com/6.x/initials/svg?seed=Amakiri",
-    permissions: ["Can manage support tickets"],
-    passwordCreated: "Mar 16, 2025",
-    lastChanged: "N/A",
-  },
-  {
-    id: "7",
-    name: "Davida Nathan",
-    email: "davidaakans@gmail.com",
-    role: "Moderator",
-    inviteSent: "Feb 28, 2025",
-    dateInvited: "01:30 PM",
-    dateInviteAccepted: "N/A",
-    lastLogin: "Online",
-    status: "Online",
-    image: "https://api.dicebear.com/6.x/initials/svg?seed=Davida",
-    permissions: ["Can moderate reviews"],
-    passwordCreated: "Feb 28, 2025",
-    lastChanged: "N/A",
-  },
-];
 
 interface AdminTeamTableProps {
   showCheckboxes?: boolean;
@@ -182,24 +74,100 @@ export default function AdminTable({
     setIsInviteAdminModalOpen(true);
   };
 
-  // Simulated API fetch (replace with actual API call when backend is ready)
-  const fetchMembers = async () => {
+  // Real API fetch
+  const fetchMembers = useCallback(async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setMembers(adminTeamData);
+      const query = new URLSearchParams({
+        page: "1",
+        limit: "100",
+        ...(searchQuery && { search: searchQuery }),
+      }).toString();
+
+      const response = await fetch(`/api/admin?${query}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || errorData.message || `Failed to fetch admins (Status: ${response.status})`
+        );
+      }
+
+      const { admins: apiAdmins } = await response.json();
+
+      // Transform API response to match component interface
+      const mappedAdmins: AdminTeamMember[] = Array.isArray(apiAdmins)
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        apiAdmins.map((admin: any) => ({
+            id: admin.id || "N/A",
+            name: `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || 'N/A',
+            email: admin.email || 'N/A',
+            role: admin.roles?.[0]?.name || 'N/A',
+            inviteSent: admin.createdAt 
+              ? new Date(admin.createdAt).toLocaleDateString('en-US', { 
+                  weekday: 'short', 
+                  year: 'numeric', 
+                  month: 'short', 
+                  day: 'numeric' 
+                })
+              : 'N/A',
+            dateInvited: admin.createdAt
+              ? new Date(admin.createdAt).toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+              : 'N/A',
+            dateInviteAccepted: admin.updatedAt && admin.updatedAt !== admin.createdAt
+              ? new Date(admin.updatedAt).toLocaleDateString('en-US', { 
+                  weekday: 'short', 
+                  year: 'numeric', 
+                  month: 'short', 
+                  day: 'numeric' 
+                })
+              : 'N/A',
+            lastLogin: 'N/A',
+            status: 'Online', // Default to Online as API doesn't provide status
+            image: `https://api.dicebear.com/6.x/initials/svg?seed=${encodeURIComponent(admin.firstName || admin.email || 'A')}`,
+            permissions: admin.roles?.[0]?.permissions || ['N/A'],
+            passwordCreated: admin.createdAt 
+              ? new Date(admin.createdAt).toLocaleDateString('en-US', { 
+                  weekday: 'short', 
+                  year: 'numeric', 
+                  month: 'short', 
+                  day: 'numeric' 
+                })
+              : 'N/A',
+            lastChanged: admin.updatedAt && admin.updatedAt !== admin.createdAt
+              ? new Date(admin.updatedAt).toLocaleDateString('en-US', { 
+                  weekday: 'short', 
+                  year: 'numeric', 
+                  month: 'short', 
+                  day: 'numeric' 
+                })
+              : 'N/A',
+          }))
+        : [];
+
+      setMembers(mappedAdmins);
       toast.success("Admin team members loaded successfully.");
-    } /* eslint-disable @typescript-eslint/no-unused-vars */ catch (_err) {
-      toast.error("Failed to fetch admin team members.");
-    } /* eslint-enable @typescript-eslint/no-unused-vars */ finally {
+    } catch (err) {
+      console.error("Error fetching admins:", err);
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while fetching admin team members"
+      );
+    } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery]);
 
   useEffect(() => {
     fetchMembers();
-  }, []);
+  }, [fetchMembers]);
 
   const filteredMembers = members.filter(
     (member) =>
@@ -227,15 +195,41 @@ export default function AdminTable({
   const handleRemove = async () => {
     setLoading(true);
     try {
-      // Simulate API call to remove admins
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Delete each selected admin
+      const deletePromises = selectedMembers.map(memberId =>
+        fetch(`/api/admin/revoke/${memberId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+      );
+
+      const results = await Promise.allSettled(deletePromises);
+      
+      // Check if any deletions failed
+      const failedDeletes = results.filter(result => 
+        result.status === 'rejected' || 
+        (result.status === 'fulfilled' && !result.value.ok)
+      );
+
+      if (failedDeletes.length > 0) {
+        throw new Error(`Failed to remove ${failedDeletes.length} admin(s)`);
+      }
+
+      // Remove the deleted admins from local state
       setMembers((prev) => prev.filter((member) => !selectedMembers.includes(member.id)));
       setSelectedMembers([]);
       setIsRemoveModalOpen(false);
-      toast.success("Admin removed successfully.");
-    } /* eslint-disable @typescript-eslint/no-unused-vars */ catch (_err) {
-      toast.error("Failed to remove admin.");
-    } /* eslint-enable @typescript-eslint/no-unused-vars */ finally {
+      toast.success("Admin(s) removed successfully.");
+    } catch (err) {
+      console.error("Error removing admins:", err);
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while removing admin(s)"
+      );
+    } finally {
       setLoading(false);
     }
   };
@@ -243,12 +237,37 @@ export default function AdminTable({
   const handleResendInvite = async (memberId: string) => {
     setLoading(true);
     try {
-      // Simulate API call to resend invite
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success(`Invite resent successfully to ${memberId}.`);
-    } /* eslint-disable @typescript-eslint/no-unused-vars */ catch (_err) {
-      toast.error("Failed to resend invite.");
-    } /* eslint-enable @typescript-eslint/no-unused-vars */ finally {
+      const member = members.find(m => m.id === memberId);
+      if (!member) throw new Error("Admin not found");
+
+      const response = await fetch(`/api/admin/invite`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: member.email,
+          name: member.name,
+          roleId: "role-id-here", // You'll need to get the appropriate role ID
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || errorData.message || `Failed to resend invite (Status: ${response.status})`
+        );
+      }
+
+      toast.success(`Invite resent successfully to ${member.email}.`);
+    } catch (err) {
+      console.error("Error resending invite:", err);
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while resending the invite"
+      );
+    } finally {
       setLoading(false);
     }
   };
@@ -256,13 +275,30 @@ export default function AdminTable({
   const handleRevokeInvite = async (memberId: string) => {
     setLoading(true);
     try {
-      // Simulate API call to revoke invite
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await fetch(`/api/admin/revoke/${memberId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || errorData.message || `Failed to revoke invite (Status: ${response.status})`
+        );
+      }
+
       setMembers((prev) => prev.filter((member) => member.id !== memberId));
-      toast.success(`Invite revoked successfully for ${memberId}.`);
-    } /* eslint-disable @typescript-eslint/no-unused-vars */ catch (_err) {
-      toast.error("Failed to revoke invite.");
-    } /* eslint-enable @typescript-eslint/no-unused-vars */ finally {
+      toast.success(`Invite revoked successfully.`);
+    } catch (err) {
+      console.error("Error revoking invite:", err);
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while revoking the invite"
+      );
+    } finally {
       setLoading(false);
     }
   };
@@ -306,7 +342,6 @@ export default function AdminTable({
     setAdminToChangeRole(null);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleExport = (_data: {
     statusFilter: Record<string, boolean>;
     roleFilter: string;
@@ -317,6 +352,7 @@ export default function AdminTable({
     adminRole?: string;
   }) => {
     toast.success("Data exported successfully.");
+    console.log(_data);
   };
 
   return (

@@ -61,12 +61,14 @@ interface AnnouncementTableProps {
   showPagination?: boolean;
   headerText?: string;
   onEdit?: (announcement: Announcement) => void;
+  refreshKey?: number; // ADD THIS
 }
 
 export default function AnnouncementTable({
   showCheckboxes = false,
   showPagination = false,
   onEdit,
+  refreshKey = 0, // ADD THIS
 }: AnnouncementTableProps) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -138,7 +140,7 @@ export default function AnnouncementTable({
 
   useEffect(() => {
     fetchAnnouncements();
-  }, [fetchAnnouncements]);
+  }, [fetchAnnouncements, refreshKey]); 
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {

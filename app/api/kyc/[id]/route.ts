@@ -82,7 +82,6 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Await the params since they're now a Promise
     const { id } = await params;
     if (!id) {
       return NextResponse.json(
@@ -101,7 +100,6 @@ export async function PATCH(
         return acc;
       }, {} as Record<string, string>);
       token = cookies.accessToken || null;
-      console.log("Extracted token for KYC review:", token);
     }
 
     if (!token) {
@@ -113,7 +111,7 @@ export async function PATCH(
 
     // Parse request body
     const body = await request.json();
-    const { status, rejectionReason, reviewedById } = body;
+    const { status, rejectionReason } = body;
 
     // Validate required fields
     if (!status || !["APPROVED", "REJECTED"].includes(status)) {
@@ -123,21 +121,41 @@ export async function PATCH(
       );
     }
 
-    // If rejecting, ensure rejection reason is provided
-    if (status === "REJECTED" && !rejectionReason) {
+    // Extract user ID from token to use as reviewedById
+    let reviewedById = null;
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      reviewedById = payload.id;
+    } catch (error) {
+      console.error("Failed to extract user ID from token:", error);
       return NextResponse.json(
-        { error: "Rejection reason is required when rejecting KYC" },
-        { status: 400 }
+        { error: "Invalid authentication token" },
+        { status: 401 }
       );
     }
 
-    // Prepare request body according to API documentation
-    const reviewData = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const reviewData: any = {
       id,
       status,
-      ...(rejectionReason && { rejectionReason }),
-      ...(reviewedById && { reviewedById }),
+      reviewedById,
     };
+
+    // Handle rejection reason based on status
+    if (status === "REJECTED") {
+      if (!rejectionReason) {
+        return NextResponse.json(
+          { error: "Rejection reason is required when rejecting KYC" },
+          { status: 400 }
+        );
+      }
+      reviewData.rejectionReason = rejectionReason;
+    } else {
+      // For APPROVED status, send empty string if backend requires it
+      reviewData.rejectionReason = "";
+    }
+
+    console.log("Sending to backend:", reviewData);
 
     // Call the backend API using the correct endpoint
     const response = await fetch(`${BASE_URL}/kyc/${id}/review`, {
@@ -166,8 +184,6 @@ export async function PATCH(
     }
 
     const responseData = await response.json();
-    console.log("Backend response data:", responseData);
-
     return NextResponse.json(
       {
         message: `KYC submission ${status.toLowerCase()} successfully`,

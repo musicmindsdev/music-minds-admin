@@ -7,75 +7,213 @@ import { Link } from "lucide-react";
 import { TbEdit } from "react-icons/tb";
 import { HiOutlineTrash } from "react-icons/hi";
 import AddDomainModal from "./AddDomainModal";
+import { toast } from "sonner";
+
+// Domain interface based on your API structure
+interface Domain {
+  id: string;
+  name: string;
+  status: 'allowed' | 'blocked';
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Role {
+  id: string;
+  name: string;
+  permissions: string[];
+  description?: string;
+}
 
 export default function EmailDomainTab() {
-  const [allowedDomains, setAllowedDomains] = useState<string[]>(["musicminds.com", "yahoo.com"]);
-  const [blockedDomains, setBlockedDomains] = useState<string[]>(["gmail.com"]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState<string>("");
 
-  // Placeholder for API fetch on mount
+  // Computed properties for allowed and blocked domains (with safety check)
+  const allowedDomains = Array.isArray(domains) ? domains.filter(d => d.status === 'allowed') : [];
+  const blockedDomains = Array.isArray(domains) ? domains.filter(d => d.status === 'blocked') : [];
+
+  // Fetch initial data including roles and domains - following InviteAdminModal pattern
   useEffect(() => {
-    const fetchDomains = async () => {
+    const fetchInitialData = async () => {
       try {
-        const response = await fetch("/api/email-domains");
+        setLoading(true);
+        
+        // Fetch roles first - exactly like InviteAdminModal
+        const rolesResponse = await fetch("/api/admin/roles");
+        if (rolesResponse.ok) {
+          const rolesData = await rolesResponse.json();
+          setRoles(rolesData.roles || []);
+          if (rolesData.roles.length > 0) {
+            setSelectedRoleId(rolesData.roles[0].id);
+          }
+        } else {
+          console.warn("Failed to fetch roles");
+        }
+
+        // Then fetch domains
+        const response = await fetch("/api/admin/domains");
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
-        setAllowedDomains(data.allowedDomains || []);
-        setBlockedDomains(data.blockedDomains || []);
+        
+        // Ensure domains is always an array
+        const domainsArray = Array.isArray(data.domains) ? data.domains : 
+                            Array.isArray(data) ? data : [];
+        
+        setDomains(domainsArray);
       } catch (error) {
-        console.error("Failed to fetch domains:", error);
+        console.error("Failed to fetch initial data:", error);
+        toast.error("Failed to fetch domains");
+        // Set empty array on error to prevent crashes
+        setDomains([]);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchDomains();
+
+    fetchInitialData();
   }, []);
 
   const handleAddDomain = async (domain: string, isAllowed: boolean) => {
     const trimmedDomain = domain.trim();
-    const allDomains = [...allowedDomains, ...blockedDomains];
 
-    if (!trimmedDomain || allDomains.includes(trimmedDomain)) {
-      return; // Skip if domain is empty or already exists
+    if (!trimmedDomain) {
+      toast.error("Domain cannot be empty");
+      return;
     }
 
-    // Placeholder for API call to persist the domain
+    // Check if domain already exists (with safety check)
+    const existingDomain = Array.isArray(domains) ? domains.find(d => d.name === trimmedDomain) : null;
+    if (existingDomain) {
+      toast.error("Domain already exists");
+      return;
+    }
+
     try {
-      await fetch("/api/add-email-domain", {
+      // Use the same logic as InviteAdminModal
+      const roleIdToUse = selectedRoleId || (roles.length > 0 ? roles[0].id : null);
+      
+      if (!roleIdToUse) {
+        throw new Error("No role selected or available");
+      }
+
+      const response = await fetch("/api/admin/domains", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain: trimmedDomain, isAllowed }),
+        body: JSON.stringify({ 
+          domain: trimmedDomain, 
+          roleId: roleIdToUse // Using the same pattern as InviteAdminModal
+        }),
       });
 
-      if (isAllowed) {
-        setAllowedDomains((prev) => [...prev, trimmedDomain]);
-      } else {
-        setBlockedDomains((prev) => [...prev, trimmedDomain]);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to add domain");
       }
+
+      const responseData = await response.json();
+      const newDomainEntry = responseData.domain || {
+        id: Date.now().toString(),
+        name: trimmedDomain,
+        status: isAllowed ? 'allowed' : 'blocked',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Add the new domain to the state (with safety check)
+      setDomains(prev => Array.isArray(prev) ? [...prev, newDomainEntry] : [newDomainEntry]);
+      toast.success("Domain added successfully");
+      
     } catch (error) {
       console.error("Failed to add domain:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to add domain");
     }
   };
 
-  const handleDeleteDomain = async (domain: string, isAllowedDomain: boolean) => {
+  const handleDeleteDomain = async (domainId: string, domainName: string) => {
     try {
-      await fetch("/api/delete-email-domain", {
+      const response = await fetch(`/api/admin/domains/${domainId}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain, isAllowed: isAllowedDomain }),
       });
 
-      if (isAllowedDomain) {
-        setAllowedDomains((prev) => prev.filter((d) => d !== domain));
-      } else {
-        setBlockedDomains((prev) => prev.filter((d) => d !== domain));
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete domain");
       }
+
+      // Remove domain from state (with safety check)
+      setDomains(prev => Array.isArray(prev) ? prev.filter(d => d.id !== domainId) : []);
+      toast.success(`Domain "${domainName}" deleted successfully`);
+      
     } catch (error) {
       console.error("Failed to delete domain:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to delete domain");
     }
   };
 
-  const handleEditDomain = (domain: string, isAllowedDomain: boolean) => {
-    console.log(`Editing ${domain}, isAllowed: ${isAllowedDomain}`);
-    // Placeholder for edit functionality (e.g., open a modal to edit)
+  const handleEditDomain = (domain: Domain) => {
+    console.log(`Editing ${domain.name}, status: ${domain.status}`);
+    // You can implement edit functionality here
+    // For now, just log the action
+    toast.info("Edit functionality coming soon");
   };
+
+  const DomainList = ({ domains: domainList}: { domains: Domain[], type: 'allowed' | 'blocked' }) => (
+    <div className="space-y-2">
+      {domainList.map((domain) => (
+        <div key={domain.id} className="flex items-center justify-between">
+          <p className="text-sm flex items-center">
+            <Link className="w-4 h-4 text-gray-500 mr-2" />
+            {domain.name}
+          </p>
+          <div className="space-x-2 flex gap-2">
+            <a
+              href="#"
+              className="text-blue-600 text-sm flex items-center"
+              onClick={(e) => {
+                e.preventDefault();
+                handleEditDomain(domain);
+              }}
+            >
+              Edit <TbEdit className="ml-1" />
+            </a>
+            <a
+              href="#"
+              className="text-red-600 text-sm flex items-center"
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteDomain(domain.id, domain.name);
+              }}
+            >
+              Delete <HiOutlineTrash className="ml-1" />
+            </a>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <Card className="border-none shadow-sm">
+        <CardContent className="">
+          <div className="flex justify-center items-center py-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+              <p className="text-sm text-gray-500">Loading domains...</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border-none shadow-sm">
@@ -99,38 +237,7 @@ export default function EmailDomainTab() {
           {allowedDomains.length === 0 ? (
             <p className="text-sm text-gray-500">No allowed domains yet.</p>
           ) : (
-            <div className="space-y-2">
-              {allowedDomains.map((domain) => (
-                <div key={domain} className="flex items-center justify-between">
-                  <p className="text-sm flex items-center">
-                    <Link className="w-4 h-4 text-gray-500 mr-2" />
-                    {domain}
-                  </p>
-                  <div className="space-x-2 flex gap-2">
-                    <a
-                      href="#"
-                      className="text-blue-600 text-sm flex items-center"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleEditDomain(domain, true);
-                      }}
-                    >
-                      Edit <TbEdit className="ml-1" />
-                    </a>
-                    <a
-                      href="#"
-                      className="text-red-600 text-sm flex items-center"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleDeleteDomain(domain, true);
-                      }}
-                    >
-                      Delete <HiOutlineTrash className="ml-1" />
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <DomainList domains={allowedDomains} type="allowed" />
           )}
         </div>
 
@@ -140,46 +247,19 @@ export default function EmailDomainTab() {
           {blockedDomains.length === 0 ? (
             <p className="text-sm text-gray-500">No blocked domains yet.</p>
           ) : (
-            <div className="space-y-2">
-              {blockedDomains.map((domain) => (
-                <div key={domain} className="flex items-center justify-between">
-                  <p className="text-sm flex items-center">
-                    <Link className="w-4 h-4 text-gray-500 mr-2" />
-                    {domain}
-                  </p>
-                  <div className="space-x-2 flex gap-2">
-                    <a
-                      href="#"
-                      className="text-blue-600 text-sm flex items-center"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleEditDomain(domain, false);
-                      }}
-                    >
-                      Edit <TbEdit className="ml-1" />
-                    </a>
-                    <a
-                      href="#"
-                      className="text-red-600 text-sm flex items-center"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleDeleteDomain(domain, false);
-                      }}
-                    >
-                      Delete <HiOutlineTrash className="ml-1" />
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <DomainList domains={blockedDomains} type="blocked" />
           )}
         </div>
       </CardContent>
+      
       <AddDomainModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddDomain={handleAddDomain}
-        existingDomains={{ allowed: allowedDomains, blocked: blockedDomains }}
+        existingDomains={{ 
+          allowed: allowedDomains.map(d => d.name), 
+          blocked: blockedDomains.map(d => d.name) 
+        }}
       />
     </Card>
   );

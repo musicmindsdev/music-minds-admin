@@ -6,24 +6,62 @@ import { Button } from "@/components/ui/button";
 import { CiUser } from "react-icons/ci";
 import { LuCalendarClock } from "react-icons/lu";
 import { TbReceipt } from "react-icons/tb";
-import { TbTicket } from "react-icons/tb";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Search, Trash2 } from "lucide-react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { usersData, bookingsData, transactionsData, supportData } from "@/lib/mockData";
 import { useRouter } from "next/navigation";
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  profileType: string;
+  status: string;
+  verified: boolean;
+  lastLogin: string;
+  image: string;
+}
+
+interface Booking {
+  id: string;
+  clientName: string;
+  clientEmail: string;
+  providerName: string;
+  providerEmail: string;
+  serviceOffered: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  location: string;
+  totalAmount: string;
+  status: string;
+  lastLogin: string;
+  paymentAmount: string;
+  platformFee: string;
+  transactionId: string;
+}
+
+interface Transaction {
+  id: string;
+  bookingId: string;
+  clientName: string;
+  providerName: string;
+  serviceOffered: string;
+  totalAmount: string;
+  status: string;
+  lastLogin: string;
+  image: string;
+}
 
 interface SearchModalProps {
   children: React.ReactNode;
   searchQuery: string;
   isOpen: boolean;
   onClose: () => void;
-  users: typeof usersData;
-  bookings: typeof bookingsData;
-  transactions: typeof transactionsData;
-  supports?: typeof supportData;
+  users: User[];
+  bookings: Booking[];
+  transactions: Transaction[];
   trigger: React.ReactNode;
 }
 
@@ -31,29 +69,119 @@ export default function SearchModal({
   searchQuery,
   isOpen,
   onClose,
-  users,
-  bookings,
-  transactions,
-  supports = [],
+  users: initialUsers = [], 
+  bookings: initialBookings = [], 
+  transactions: initialTransactions = [],
   trigger,
 }: SearchModalProps) {
   const router = useRouter();
-  console.log("SearchModal isOpen:", isOpen);
-  console.log("SearchModal data - supports from prop:", supports);
-  console.log("SearchModal data - supportData from import:", supportData);
-
   const [dataType, setDataType] = useState<string | null>(null);
   const [status, setStatus] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [modalSearchQuery, setModalSearchQuery] = useState(searchQuery);
+  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const statusOptions: { [key: string]: string[] } = {
     Users: ["Active", "Suspended", "Deactivated"],
     Bookings: ["Confirmed", "Pending", "Cancelled"],
     Transactions: ["Completed", "Pending", "Failed"],
-    "Support Tickets": ["Open", "Resolved", "In progress"],
   };
+
+  const dataTypes = [
+    { name: "Users", icon: <CiUser className="w-5 h-5" /> },
+    { name: "Bookings", icon: <LuCalendarClock className="w-5 h-5" /> },
+    { name: "Transactions", icon: <TbReceipt className="w-5 h-5" /> },
+  ];
+
+  // Fetch data from APIs
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Fetch Users
+        const usersResponse = await fetch(
+          `/api/users?page=1&limit=10${status !== "all" && dataType === "Users" ? `&status=${status}` : ""}`
+        );
+        if (!usersResponse.ok) {
+          const errorData = await usersResponse.json();
+          throw new Error(errorData.error || "Failed to fetch users");
+        }
+        const usersData = await usersResponse.json();
+        console.log("Users API response:", usersData); // Debug log
+        setUsers(Array.isArray(usersData.users) ? usersData.users : []);
+
+        // Fetch Bookings
+        const bookingsResponse = await fetch(
+          `/api/bookings?page=1&limit=10${status !== "all" && dataType === "Bookings" ? `&status=${status}` : ""}${
+            startDate ? `&fromDate=${startDate}` : ""
+          }${endDate ? `&toDate=${endDate}` : ""}`
+        );
+        if (!bookingsResponse.ok) {
+          const errorData = await bookingsResponse.json();
+          throw new Error(errorData.error || "Failed to fetch bookings");
+        }
+        const bookingsData = await bookingsResponse.json();
+        console.log("Bookings API response:", bookingsData); // Debug log
+        setBookings(Array.isArray(bookingsData.data) ? bookingsData.data : []);
+
+        // Transactions (using initial mock data until endpoint provided)
+        setTransactions(initialTransactions);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "An error occurred";
+        setError(errorMessage);
+        setUsers([]);
+        setBookings([]);
+        setTransactions(initialTransactions);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [isOpen, dataType, status, startDate, endDate, initialUsers, initialBookings, initialTransactions]);
+
+  // Client-side filtering for search query, limited to first 5 results
+  const filteredUserResults = users
+    .filter(
+      (result) =>
+        (result.name.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+         result.email.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+         result.profileType.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+         result.id.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
+        (status === "all" || result.status.toLowerCase() === status.toLowerCase())
+    )
+    .slice(0, 5); // Limit to first 5 users
+
+  const filteredBookingResults = bookings
+    .filter(
+      (result) =>
+        (result.id.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+         result.clientName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+         result.serviceOffered.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
+        (status === "all" || result.status.toLowerCase() === status.toLowerCase())
+    )
+    .slice(0, 5); // Limit to first 5 bookings
+
+  const filteredTransactionResults = transactions
+    .filter(
+      (result) =>
+        (result.id.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+         result.clientName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+         result.bookingId.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+         result.providerName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+         result.serviceOffered.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
+        (status === "all" || result.status.toLowerCase() === status.toLowerCase())
+    )
+    .slice(0, 5); // Limit to first 5 transactions
 
   useEffect(() => {
     if (isOpen) {
@@ -69,52 +197,6 @@ export default function SearchModal({
     setStatus("all");
   }, [dataType]);
 
-  const dataTypes = [
-    { name: "Users", icon: <CiUser className="w-5 h-5" /> },
-    { name: "Bookings", icon: <LuCalendarClock className="w-5 h-5" /> },
-    { name: "Transactions", icon: <TbReceipt className="w-5 h-5" /> },
-    { name: "Support Tickets", icon: <TbTicket className="w-5 h-5" /> },
-  ];
-
-  const filteredUserResults = users.filter(
-    (result) =>
-      (result.name.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-       result.email.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-       result.profileType.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-       result.id.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
-      (status === "all" || result.status.toLowerCase() === status.toLowerCase())
-  );
-
-  const filteredBookingResults = bookings.filter(
-    (result) =>
-      (result.id.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-       result.clientName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-       result.serviceOffered.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
-      (status === "all" || result.status.toLowerCase() === status.toLowerCase())
-  );
-
-  const filteredTransactionResults = transactions.filter(
-    (result) =>
-      (result.id.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-       result.clientName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-       result.bookingId.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-       result.providerName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-       result.serviceOffered.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
-      (status === "all" || result.status.toLowerCase() === status.toLowerCase())
-  );
-
-  const filteredSupportResults = supports.filter(
-    (result) =>
-      (result.id.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-       result.user.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-       result.issue.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
-      (status === "all" || result.status.toLowerCase() === status.toLowerCase())
-  );
-
-  console.log("filteredSupportResults:", filteredSupportResults);
-  console.log("modalSearchQuery:", modalSearchQuery);
-  console.log("status:", status);
-
   const handleClearFilters = () => {
     setDataType(null);
     setStatus("all");
@@ -125,22 +207,17 @@ export default function SearchModal({
 
   const handleUsers = () => {
     router.push("/user-management");
-    onClose(); // Close the modal after navigation
+    onClose();
   };
 
   const handleBookings = () => {
     router.push("/content-management");
-    onClose(); // Close the modal after navigation
+    onClose();
   };
 
   const handleTransactions = () => {
     router.push("/content-management/transactions");
-    onClose(); // Close the modal after navigation
-  };
-
-  const handleSupport = () => {
-    router.push("/support-management");
-    onClose(); // Close the modal after navigation
+    onClose();
   };
 
   return (
@@ -168,6 +245,8 @@ export default function SearchModal({
           </div>
 
           <div className="p-4 space-y-4 bg-background rounded-2xl">
+            {loading && <p className="text-sm text-gray-500">Loading...</p>}
+            {error && <p className="text-sm text-red-500">{error}</p>}
             <div className="flex items-center justify-between">
               <div className="space-y-2 flex-1">
                 <p className="text-sm font-light">Filter by</p>
@@ -254,33 +333,33 @@ export default function SearchModal({
                             <AvatarFallback>{result.name.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
-                              <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3">
                               <div>
-                              <p className="text-sm font-medium">{result.name}</p>
-                              <p className="text-xs text-gray-500">{result.email}</p>
+                                <p className="text-sm font-medium">{result.name}</p>
+                                <p className="text-xs text-gray-500">{result.email}</p>
                               </div>
                               <span
-                              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                                result.status === "Active"
-                                  ? "bg-green-100 text-green-700"
-                                  : result.status === "Suspended"
-                                  ? "bg-yellow-100 text-yellow-700"
-                                  : "bg-gray-100 text-gray-700"
-                              }`}
-                            >
+                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                                  result.status === "Active"
+                                    ? "bg-green-100 text-green-700"
+                                    : result.status === "Suspended"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-gray-100 text-gray-700"
+                                }`}
+                              >
                                 <span
                                   className={`h-2 w-2 rounded-full ${
                                     result.status === "Active"
-                                    ? "bg-green-500 text-green-700"
-                                    : result.status === "Suspended"
-                                    ? "bg-yellow-500 text-yellow-700"
-                                    : "bg-gray-500 text-gray-700"
+                                      ? "bg-green-500"
+                                      : result.status === "Suspended"
+                                      ? "bg-yellow-500"
+                                      : "bg-gray-500"
                                   }`}
                                 />
-                              {result.status}
-                            </span>
+                                {result.status}
+                              </span>
                             </div>
-                            </div>
+                          </div>
                           <p className="text-xs text-gray-500">{result.profileType}</p>
                         </div>
                       ))
@@ -306,21 +385,23 @@ export default function SearchModal({
                             <p className="text-sm font-light">{result.id}</p>
                             <span
                               className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                                result.status === "Confirmed"
+                                result.status === "CONFIRMED"
                                   ? "bg-green-100 text-green-700"
-                                  : result.status === "Pending"
+                                  : result.status === "PENDING"
                                   ? "bg-yellow-100 text-yellow-700"
-                                  : "bg-red-100 text-red-700"
+                                  : result.status === "CANCELLED"
+                                  ? "bg-red-100 text-red-600"
+                                  : "bg-blue-100 text-blue-600"
                               }`}
                             >
                               <span
                                 className={`h-2 w-2 rounded-full ${
-                                  result.status === "Confirmed"
+                                  result.status === "CONFIRMED"
                                     ? "bg-green-500"
-                                    : result.status === "Pending"
+                                    : result.status === "PENDING"
                                     ? "bg-yellow-500"
-                                    : "bg-red-500"
-                                }`}
+                                    : result.status === "CANCELLED" ? "bg-red-500" : "bg-blue-500"
+                                  }`}
                               />
                               {result.status}
                             </span>
@@ -368,7 +449,7 @@ export default function SearchModal({
                                     : result.status === "Pending"
                                     ? "bg-yellow-500"
                                     : "bg-red-500"
-                                }`}
+                                  }`}
                               />
                               {result.status}
                             </span>
@@ -385,54 +466,6 @@ export default function SearchModal({
                     {filteredTransactionResults.length > 0 && (
                       <Button variant="link" className="w-full text-blue-600" onClick={handleTransactions}>
                         Show More Transactions
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-500">
-                      {filteredSupportResults.length} {filteredSupportResults.length === 1 ? "Ticket" : "Tickets"}
-                    </p>
-                    {filteredSupportResults.length > 0 ? (
-                      filteredSupportResults.map((result) => (
-                        <div key={result.id} className="flex items-center justify-between gap-2">
-                          <div className="flex gap-2 items-center">
-                            <TbTicket className="w-5 h-5 text-gray-500" />
-                            <p className="text-sm font-light">{result.id}</p>
-                            <span
-                              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                                result.status.toLowerCase() === "open"
-                                  ? "bg-blue-100 text-blue-700"
-                                  : result.status.toLowerCase() === "resolved"
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-yellow-100 text-yellow-700"
-                              }`}
-                            >
-                              <span
-                                className={`h-2 w-2 rounded-full ${
-                                  result.status.toLowerCase() === "open"
-                                    ? "bg-blue-500"
-                                    : result.status.toLowerCase() === "resolved"
-                                    ? "bg-green-500"
-                                    : "bg-yellow-500"
-                                }`}
-                              />
-                              {result.status}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <p className="text-sm text-gray-500">{result.issue}</p>
-                            <span className="text-gray-500">•</span>
-                            <p className="text-sm text-gray-500">{result.createdDate}</p>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-gray-500">No support tickets found.</p>
-                    )}
-                    {filteredSupportResults.length > 0 && (
-                      <Button variant="link" className="w-full text-blue-600" onClick={handleSupport}>
-                        Show More Support Tickets
                       </Button>
                     )}
                   </div>
@@ -453,33 +486,32 @@ export default function SearchModal({
                             </Avatar>
                             <div className="flex-1">
                               <div className="flex items-center gap-3">
-                              <div>
-                              <p className="text-sm font-medium">{result.name}</p>
-                              <p className="text-xs text-gray-500">{result.email}</p>
-                              </div>
-                              <span
-                              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                                result.status === "Active"
-                                  ? "bg-green-100 text-green-700"
-                                  : result.status === "Suspended"
-                                  ? "bg-yellow-100 text-yellow-700"
-                                  : "bg-gray-100 text-gray-700"
-                              }`}
-                            >
+                                <div>
+                                  <p className="text-sm font-medium">{result.name}</p>
+                                  <p className="text-xs text-gray-500">{result.email}</p>
+                                </div>
                                 <span
-                                  className={`h-2 w-2 rounded-full ${
+                                  className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
                                     result.status === "Active"
-                                    ? "bg-green-500 text-green-700"
-                                    : result.status === "Suspended"
-                                    ? "bg-yellow-500 text-yellow-700"
-                                    : "bg-gray-500 text-gray-700"
+                                      ? "bg-green-100 text-green-700"
+                                      : result.status === "Suspended"
+                                      ? "bg-yellow-100 text-yellow-700"
+                                      : "bg-gray-100 text-gray-700"
                                   }`}
-                                />
-                              {result.status}
-                            </span>
+                                >
+                                  <span
+                                    className={`h-2 w-2 rounded-full ${
+                                      result.status === "Active"
+                                        ? "bg-green-500"
+                                        : result.status === "Suspended"
+                                        ? "bg-yellow-500"
+                                        : "bg-gray-500"
+                                    }`}
+                                  />
+                                  {result.status}
+                                </span>
+                              </div>
                             </div>
-                            </div>
-                          
                             <p className="text-xs text-gray-500">{result.profileType}</p>
                           </div>
                         ))
@@ -487,7 +519,7 @@ export default function SearchModal({
                         <p className="text-sm text-gray-500">No users found.</p>
                       )}
                       {filteredUserResults.length > 0 && (
-                        <Button variant="link" className="w-full text-blue-600">
+                        <Button variant="link" className="w-full text-blue-600" onClick={handleUsers}>
                           Show More Users
                         </Button>
                       )}
@@ -514,9 +546,9 @@ export default function SearchModal({
                                     : "bg-red-100 text-red-700"
                                 }`}
                               >
-                                <span
+                                 <span
                                   className={`h-2 w-2 rounded-full ${
-                                    result.status === "Confirmed"
+                                    result.status === "Completed"
                                       ? "bg-green-500"
                                       : result.status === "Pending"
                                       ? "bg-yellow-500"
@@ -537,7 +569,7 @@ export default function SearchModal({
                         <p className="text-sm text-gray-500">No bookings found.</p>
                       )}
                       {filteredBookingResults.length > 0 && (
-                        <Button variant="link" className="w-full text-blue-600">
+                        <Button variant="link" className="w-full text-blue-600" onClick={handleBookings}>
                           Show More Bookings
                         </Button>
                       )}
@@ -586,58 +618,8 @@ export default function SearchModal({
                         <p className="text-sm text-gray-500">No transactions found.</p>
                       )}
                       {filteredTransactionResults.length > 0 && (
-                        <Button variant="link" className="w-full text-blue-600">
+                        <Button variant="link" className="w-full text-blue-600" onClick={handleTransactions}>
                           Show More Transactions
-                        </Button>
-                      )}
-                    </>
-                  )}
-
-                  {dataType === "Support Tickets" && (
-                    <>
-                      <p className="text-sm text-gray-500">
-                        {filteredSupportResults.length} {filteredSupportResults.length === 1 ? "Ticket" : "Tickets"}
-                      </p>
-                      {filteredSupportResults.length > 0 ? (
-                        filteredSupportResults.map((result) => (
-                          <div key={result.id} className="flex items-center justify-between gap-2">
-                            <div className="flex gap-2 items-center">
-                              <TbTicket className="w-5 h-5 text-gray-500" />
-                              <p className="text-sm font-light">{result.id}</p>
-                              <span
-                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                                  result.status.toLowerCase() === "open"
-                                    ? "bg-blue-100 text-blue-700"
-                                    : result.status.toLowerCase() === "resolved"
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-yellow-100 text-yellow-700"
-                                }`}
-                              >
-                                <span
-                                  className={`h-2 w-2 rounded-full ${
-                                    result.status.toLowerCase() === "open"
-                                      ? "bg-blue-500"
-                                      : result.status.toLowerCase() === "resolved"
-                                      ? "bg-green-500"
-                                      : "bg-yellow-500"
-                                  }`}
-                                />
-                                {result.status}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <p className="text-sm text-gray-500">{result.issue}</p>
-                              <span className="text-gray-500">•</span>
-                              <p className="text-sm text-gray-500">{result.createdDate}</p>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-gray-500">No support tickets found.</p>
-                      )}
-                      {filteredSupportResults.length > 0 && (
-                        <Button variant="link" className="w-full text-blue-600">
-                          Show More Support Tickets
                         </Button>
                       )}
                     </>

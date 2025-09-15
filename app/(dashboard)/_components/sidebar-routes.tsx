@@ -52,6 +52,10 @@ const routes = [
           href: "/content-management/reviews",
         },
         {
+          label: "Transactions",
+          href: "/content-management/transactions",
+        },
+        {
           label: "Announcements",
           href: "/content-management/announcements",
         }

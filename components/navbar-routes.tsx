@@ -15,22 +15,56 @@ import { useState, useEffect } from "react";
 import { MdKeyboardArrowDown } from "react-icons/md";
 import { SearchInput } from "./search-input";
 import { ModeToggle } from "./modetoggle";
-import { usersData, bookingsData, transactionsData, supportData } from "@/lib/mockData";
+import { transactionsData } from "@/lib/mockData";
 import InviteAdminModal from "./invite-admin-modal";
 import Modal from "./Modal";
 import { RiAlertFill } from "react-icons/ri";
 import NotificationsDropdown from "./notificationsDropdown";
 
-interface NavbarRoutesProps {
-  users: typeof usersData;
-  bookings: typeof bookingsData;
-  transactions: typeof transactionsData;
-  supports: typeof supportData;
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  profileType: string;
+  status: string;
+  verified: boolean;
+  lastLogin: string;
+  image: string;
 }
 
-export const NavbarRoutes = ({
-  supports,
-}: NavbarRoutesProps) => {
+interface Booking {
+  id: string;
+  clientName: string;
+  clientEmail: string;
+  providerName: string;
+  providerEmail: string;
+  serviceOffered: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  location: string;
+  totalAmount: string;
+  status: string;
+  lastLogin: string;
+  paymentAmount: string;
+  platformFee: string;
+  transactionId: string;
+}
+
+interface Transaction {
+  id: string;
+  bookingId: string;
+  clientName: string;
+  providerName: string;
+  serviceOffered: string;
+  totalAmount: string;
+  status: string;
+  lastLogin: string;
+  image: string;
+}
+
+
+
+export const NavbarRoutes = () => {
   const router = useRouter();
   const [isInviteAdminModalOpen, setIsInviteAdminModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -42,8 +76,13 @@ export const NavbarRoutes = ({
     image: "https://github.com/shadcn.png",
   });
   const [isMounted, setIsMounted] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [transactions] = useState<Transaction[]>(transactionsData);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load user data from localStorage after component mounts (client-side only)
+  // Load user data from localStorage and fetch users/bookings on mount
   useEffect(() => {
     setIsMounted(true);
     const storedUser = localStorage.getItem("userData");
@@ -54,9 +93,45 @@ export const NavbarRoutes = ({
         console.error("Error parsing user data from localStorage:", error);
       }
     }
+
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Fetch Users
+        const usersResponse = await fetch("/api/users?page=1&limit=10");
+        if (!usersResponse.ok) {
+          const errorData = await usersResponse.json();
+          throw new Error(errorData.error || "Failed to fetch users");
+        }
+        const usersData = await usersResponse.json();
+        console.log("Users API response in Navbar:", usersData); // Debug log
+        setUsers(Array.isArray(usersData.users) ? usersData.users : []);
+
+        // Fetch Bookings
+        const bookingsResponse = await fetch("/api/bookings?page=1&limit=10");
+        if (!bookingsResponse.ok) {
+          const errorData = await bookingsResponse.json();
+          throw new Error(errorData.error || "Failed to fetch bookings");
+        }
+        const bookingsData = await bookingsResponse.json();
+        console.log("Bookings API response in Navbar:", bookingsData); // Debug log
+        setBookings(Array.isArray(bookingsData.data) ? bookingsData.data : []);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "An error occurred";
+        setError(errorMessage);
+        setUsers([]);
+        setBookings([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  // Sync user state with local storage whenever it changes
+  // Sync user state with local storage
   useEffect(() => {
     if (isMounted) {
       localStorage.setItem("userData", JSON.stringify(user));
@@ -76,17 +151,16 @@ export const NavbarRoutes = ({
       await fetch("/api/auth/logout", {
         method: "POST",
       });
-  
+
       if (isMounted) {
         localStorage.removeItem("userData");
       }
-  
+
       router.push("/login");
     } catch (error) {
       console.error("Logout failed:", error);
     }
   };
-  
 
   const openLogoutModal = () => {
     setIsLogoutModalOpen(true);
@@ -96,20 +170,16 @@ export const NavbarRoutes = ({
     setIsLogoutModalOpen(false);
   };
 
-  // Don't render anything until component is mounted (client-side)
-  if (!isMounted) {
+  // Render loading state until component is mounted or data is fetched
+  if (!isMounted || loading) {
     return (
       <div className="flex items-center justify-end gap-6 w-full p-4">
         <div className="hidden md:block max-w-md">
-          {/* Placeholder for search input */}
           <div className="h-10 w-full bg-gray-200 rounded-md animate-pulse"></div>
         </div>
         <div className="flex items-center gap-3">
-          {/* Placeholder for mode toggle */}
           <div className="h-9 w-9 bg-gray-200 rounded-md animate-pulse"></div>
-          {/* Placeholder for notifications */}
           <div className="h-9 w-9 bg-gray-200 rounded-md animate-pulse"></div>
-          {/* Placeholder for user avatar */}
           <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse"></div>
         </div>
       </div>
@@ -119,12 +189,15 @@ export const NavbarRoutes = ({
   return (
     <div className="flex items-center justify-end gap-6 w-full p-4">
       <div className="hidden md:block max-w-md">
-        <SearchInput
-          users={usersData}
-          bookings={bookingsData}
-          transactions={transactionsData}
-          supports={supports}
-        />
+        {error ? (
+          <p className="text-sm text-red-500">Error: {error}</p>
+        ) : (
+          <SearchInput
+            users={users}
+            bookings={bookings}
+            transactions={transactions}
+          />
+        )}
       </div>
       <div className="flex items-center gap-3">
         <ModeToggle />

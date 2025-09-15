@@ -47,23 +47,13 @@ interface Transaction {
   image: string;
 }
 
-interface Support{
-  id: string;
-  user: string;
-  issue: string;
-  priority: string;
-  status: string;
-  createdDate: string;
-}
-
 interface SearchInputProps {
   users: User[];
   bookings: Booking[];
   transactions: Transaction[];
-  supports: Support[];
 }
 
-export const SearchInput = ({ users, bookings, transactions, supports }: SearchInputProps) => {
+export const SearchInput = ({ users, bookings, transactions }: SearchInputProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
@@ -91,7 +81,6 @@ export const SearchInput = ({ users, bookings, transactions, supports }: SearchI
       users={users}
       bookings={bookings}
       transactions={transactions}
-      supports={supports}
       trigger={
         <Input
           type="text"
@@ -103,8 +92,8 @@ export const SearchInput = ({ users, bookings, transactions, supports }: SearchI
         />
       }
     >
-      <form onSubmit={handleSearch} className="relative ">
-        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none ">
+      <form onSubmit={handleSearch} className="relative">
+        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
           <Search className="h-5 w-5 text-gray-400" />
         </div>
         <Input

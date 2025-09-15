@@ -658,7 +658,7 @@ export default function BookingTable({
                   <TableCell>
                     <span
                       className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 text-xs ${
-                        booking.status === "CONFIRMED"
+                        booking.status === "CONFIRMED" 
                           ? "bg-green-100 text-green-600"
                           : booking.status === "PENDING"
                           ? "bg-yellow-100 text-yellow-600"

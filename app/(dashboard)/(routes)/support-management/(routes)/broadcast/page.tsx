@@ -3,45 +3,102 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CiExport } from "react-icons/ci";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import ExportModal from "@/components/ExportModal";
 import BroadcastMessagesTable from "../../_components/BroadcastMessagesTable";
 import { AiOutlineMessage } from "react-icons/ai";
 import SendMessageModal from "../../_components/SendMessageModal";
 
+// Define CreateBroadcastData interface directly here
+interface CreateBroadcastData {
+  title: string;
+  message: string;
+  type: 'PUSH_NOTIFICATION' | 'IN_APP_NOTIFICATION' | 'EMAIL' | 'SMS';
+  recipientsType: 'ALL_USERS' | 'SPECIFIC_USERS' | 'FILTERED_USERS';
+  specificUsers?: string[];
+  userFilters?: {
+    roles?: string[];
+    countries?: string[];
+    lastLoginDays?: number;
+  };
+  isEmergency: boolean;
+  priority: 'LOW' | 'NORMAL' | 'HIGH';
+  sendAt?: string;
+  status: 'DRAFT' | 'SCHEDULED';
+}
+
+// Available broadcast types from API
+const broadcastTypes = [
+  { value: "ALL", label: "All Types" },
+  { value: "PUSH_NOTIFICATION", label: "Push Notification" },
+  { value: "IN_APP_NOTIFICATION", label: "In-App Notification" },
+  { value: "EMAIL", label: "Email" },
+  { value: "SMS", label: "SMS" }
+];
+
 export default function BroadcastMessagesPage() {
-  const [activeTab, setActiveTab] = useState("Push Notification");
+  const [activeTab, setActiveTab] = useState("PUSH_NOTIFICATION");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isSendMessageModalOpen, setIsSendMessageModalOpen] = useState(false);
-
-  const handleExport = (data: {
-    statusFilter: Record<string, boolean>;
-    priorityFilter: Record<string, boolean>;
-    messageTypeFilter: Record<string, boolean>;
-    recipientTypeFilter: Record<string, boolean>;
-    roleFilter: string;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-    adminRole?: string;
-  }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [editingBroadcast, setEditingBroadcast] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleExport = (data: any) => {
     console.log("Exporting Broadcast Messages data:", data);
-    // Add export logic here (e.g., generate CSV/JSON)
   };
 
-  const handleSendMessage = (data: {
-    messageType: string;
-    status: string;
-    recipientType: string;
-    title: string;
-    message: string;
-  }) => {
-    console.log("Sending Broadcast Message:", data);
-    // Add API call or logic to save the message here
+  const handleSaveBroadcast = async (data: CreateBroadcastData) => {
+    try {
+      const url = isEditing && editingBroadcast 
+        ? `/api/broadcasts/${editingBroadcast.id}`
+        : '/api/broadcasts';
+
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to ${isEditing ? 'update' : 'create'} broadcast`);
+      }
+
+      console.log(isEditing ? "Broadcast updated successfully" : "Broadcast created successfully");
+      
+      // Refresh the table
+      setRefreshKey(prev => prev + 1);
+      
+      // Close modal and reset state
+      handleCloseModal();
+    } catch (error) {
+      console.error(`Error ${isEditing ? 'updating' : 'creating'} broadcast:`, error);
+      alert(error instanceof Error ? error.message : "An error occurred");
+    }
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleEditBroadcast = (broadcast: any) => {
+    setEditingBroadcast(broadcast);
+    setIsEditing(true);
+    setIsSendMessageModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsSendMessageModalOpen(false);
+    setEditingBroadcast(null);
+    setIsEditing(false);
+  };
+
+  const handleNewBroadcast = () => {
+    setEditingBroadcast(null);
+    setIsEditing(false);
+    setIsSendMessageModalOpen(true);
   };
 
   return (
@@ -53,10 +110,10 @@ export default function BroadcastMessagesPage() {
             <Button
               variant="outline"
               className="flex items-center space-x-2"
-              onClick={() => setIsSendMessageModalOpen(true)}
+              onClick={handleNewBroadcast}
             >
               <AiOutlineMessage className="mr-2" />
-              <span className="hidden md:inline">Send Message</span>
+              <span className="hidden md:inline">Create Broadcast</span>
             </Button>
             <Button
               className="flex items-center space-x-2"
@@ -67,67 +124,82 @@ export default function BroadcastMessagesPage() {
             </Button>
           </div>
         </div>
+
+        {/* Dynamic Tabs based on API types */}
         <div className="flex space-x-2 border border-b-0 mb-0 px-2 pt-2 rounded-t-lg bg-card">
-          <Button
-            variant={"ghost"}
-            className={` px-4 rounded-none ${activeTab === "Push Notification" ? "border-b border-[#5243FE] text-[#5243FE]" : ""}`}
-            onClick={() => setActiveTab("Push Notification")}
-          >
-            Push Notification
-          </Button>
-          <Button
-            variant={"ghost"}
-            className={` px-4 rounded-none ${activeTab === "Emergency Notification" ? "border-b border-[#5243FE] text-[#5243FE]" : ""}`}
-            onClick={() => setActiveTab("Emergency Notification")}
-          >
-            Emergency Notification
-          </Button>
+          {broadcastTypes.map((type) => (
+            <Button
+              key={type.value}
+              variant={"ghost"}
+              className={`px-4 rounded-none ${
+                activeTab === type.value ? "border-b border-[#5243FE] text-[#5243FE]" : ""
+              }`}
+              onClick={() => setActiveTab(type.value)}
+            >
+              {type.label}
+            </Button>
+          ))}
         </div>
+
         <Card className="rounded-none mt-0">
           <CardContent>
             <BroadcastMessagesTable
               showCheckboxes={true}
               showPagination={true}
-              activeTab={activeTab} // Pass activeTab to switch between tables
+              activeTab={activeTab}
+              onEdit={handleEditBroadcast}
+              refreshKey={refreshKey}
             />
           </CardContent>
         </Card>
       </div>
+
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        title="Export Data"
+        title="Export Broadcast Data"
         statusFilters={[
           { label: "All", value: "All" },
-          { label: "Draft", value: "Draft" },
-          { label: "Sent", value: "Sent" },
-          { label: "Scheduled", value: "Scheduled" },
+          { label: "Draft", value: "DRAFT" },
+          { label: "Scheduled", value: "SCHEDULED" },
+          { label: "Sending", value: "SENDING" },
+          { label: "Sent", value: "SENT" },
+          { label: "Cancelled", value: "CANCELLED" },
+          { label: "Failed", value: "FAILED" },
         ]}
-        messageTypeFilters={[
-          { label: "All", value: "All" },
-          { label: "Push Notification", value: "Push Notification" },
-          { label: "Emergency Notification", value: "Emergency Notification" },
-        ]}
+        messageTypeFilters={broadcastTypes.filter(t => t.value !== 'ALL')}
         recipientTypeFilters={[
-          { label: "All", value: "All" },
-          { label: "Clients", value: "Clients" },
-          { label: "Service Providers", value: "Service Providers" },
+          { label: "All Users", value: "ALL_USERS" },
+          { label: "Specific Users", value: "SPECIFIC_USERS" },
+          { label: "Filtered Users", value: "FILTERED_USERS" },
         ]}
-        priorityFilters={[]} // No priority filter for this table
+        priorityFilters={[
+          { label: "Low", value: "LOW" },
+          { label: "Normal", value: "NORMAL" },
+          { label: "High", value: "HIGH" },
+        ]}
         roleFilters={[]}
         fieldOptions={[
-          { label: "Broadcast ID", value: "Broadcast ID" },
-          { label: "Created By", value: "Created By" },
-          { label: "Title", value: "Title" },
-          { label: "Published Date", value: "Published Date" },
-          { label: "Message", value: "Message" },
+          { label: "Broadcast ID", value: "id" },
+          { label: "Title", value: "title" },
+          { label: "Message", value: "message" },
+          { label: "Type", value: "type" },
+          { label: "Status", value: "status" },
+          { label: "Recipients Type", value: "recipientsType" },
+          { label: "Priority", value: "priority" },
+          { label: "Emergency", value: "isEmergency" },
+          { label: "Created Date", value: "createdAt" },
+          { label: "Scheduled Date", value: "sendAt" },
         ]}
         onExport={handleExport}
       />
+
       <SendMessageModal
         isOpen={isSendMessageModalOpen}
-        onClose={() => setIsSendMessageModalOpen(false)}
-        onSave={handleSendMessage}
+        onClose={handleCloseModal}
+        onSave={handleSaveBroadcast}
+        editBroadcast={editingBroadcast}
+        isEditing={isEditing}
       />
     </div>
   );

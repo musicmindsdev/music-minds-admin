@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, ReactNode, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Filter, Search, Calendar, EllipsisVertical, Eye, Ban, CheckCircle } from "lucide-react";
+import { Filter, Search, Calendar, EllipsisVertical, Eye } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,63 +23,73 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { CiExport } from "react-icons/ci";
-import Modal from "@/components/Modal";
-import { FaCheck, FaBan } from "react-icons/fa6";
 import ExportModal from "@/components/ExportModal";
 import { usePathname, useRouter } from "next/navigation";
 import BookingDetailsModal from "../../content-management/_components/BookingDetailsModal";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Define interfaces for API response data
-interface ApiClient {
-  id?: string;
-  name?: string;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-}
-
-interface ApiProvider {
-  id?: string;
-  name?: string;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
+interface ApiUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
 }
 
 interface ApiService {
-  id?: string;
-  name?: string;
+  id: string;
+  name: string;
+}
+
+interface ApiBookingInvitation {
+  id: string;
+}
+
+interface ApiReview {
+  id: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
 }
 
 interface ApiBooking {
   id: string;
-  client?: ApiClient;
-  provider?: ApiProvider;
-  service?: ApiService;
-  totalAmount?: string | number;
-  status?: string;
-  scheduledDate?: string;
-  scheduledTime?: string;
-  location?: string;
-  paymentAmount?: string | number;
-  platformFee?: string | number;
-  transactionId?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  title?: string; 
-  price?: string | number;
+  userId: string;
+  title: string;
+  description: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  country: string;
+  city: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  price: number;
+  currency: string;
+  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  paymentStatus: string;
+  createdAt: string;
+  updatedAt: string;
+  bookingInvitationId: string;
+  serviceId: string;
+  bookingSlotId: string | null;
+  remindersSent: number;
+  user: ApiUser;
+  bookingInvitation: ApiBookingInvitation;
+  service: ApiService;
+  reviews: ApiReview[];
 }
 
-// Define the Booking interface based on API response
+// Define the Booking interface for the frontend
 export interface Booking {
   id: string;
-  scheduledDate: ReactNode;
-  scheduledTime: ReactNode;
-  location: ReactNode;
-  paymentAmount: ReactNode;
-  platformFee: ReactNode;
-  transactionId: ReactNode;
+  scheduledDate: string;
+  scheduledTime: string;
+  location: string;
+  paymentAmount: string;
+  platformFee: string;
+  transactionId: string;
   clientName: string;
   clientEmail: string;
   providerName: string;
@@ -90,25 +100,67 @@ export interface Booking {
   createdAt: string;
   updatedAt: string;
   lastLogin: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    country: string;
+    city: string;
+    address: string;
+    reviews: ApiReview[];
+    user: ApiUser;
 }
 
 // Helper function to convert API booking to component booking
 const mapApiBookingToComponentBooking = (apiBooking: ApiBooking): Booking => {
+  // Extract client information from user object
+  const clientName = apiBooking.user 
+    ? `${apiBooking.user.firstName || ''} ${apiBooking.user.lastName || ''}`.trim() 
+    : "Unknown Client";
+  
+  const clientEmail = apiBooking.user?.email || "No email";
+
+  // For provider information - you might need to adjust this based on your actual API
+  const providerName = "Provider Name";
+  const providerEmail = "provider@example.com";
+
+  // Format dates properly using the actual API fields
+  const scheduledDate = apiBooking.date ? new Date(apiBooking.date).toLocaleDateString() : "Not scheduled";
+  
+  // Format time range using startTime and endTime
+  const formatTime = (timeString: string) => {
+    return timeString ? new Date(timeString).toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    }) : "";
+  };
+  
+  const startTimeFormatted = formatTime(apiBooking.startTime);
+  const endTimeFormatted = formatTime(apiBooking.endTime);
+  const scheduledTime = startTimeFormatted && endTimeFormatted 
+    ? `${startTimeFormatted} - ${endTimeFormatted}`
+    : "Not scheduled";
+
+  // Format location using address, city, and country
+  const location = [apiBooking.address, apiBooking.city, apiBooking.country]
+    .filter(Boolean)
+    .join(", ") || "Not specified";
+
   return {
     id: apiBooking.id,
-    clientName: apiBooking.client?.name || `${apiBooking.client?.firstName || ''} ${apiBooking.client?.lastName || ''}`.trim() || "Unknown Client",
-    clientEmail: apiBooking.client?.email || "No email",
-    providerName: apiBooking.provider?.name || `${apiBooking.provider?.firstName || ''} ${apiBooking.provider?.lastName || ''}`.trim() || "Unknown Provider",
-    providerEmail: apiBooking.provider?.email || "No email",
+    clientName,
+    clientEmail,
+    providerName,
+    providerEmail,
     serviceOffered: apiBooking.title || apiBooking.service?.name || "Unknown Service",
-    totalAmount: apiBooking.price ? `$${parseFloat(apiBooking.price.toString()).toFixed(2)}` : (apiBooking.totalAmount ? `$${parseFloat(apiBooking.totalAmount.toString()).toFixed(2)}` : "$0.00"),
-    status: (apiBooking.status as "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED") || "PENDING",
-    scheduledDate: apiBooking.scheduledDate ? new Date(apiBooking.scheduledDate).toLocaleDateString() : "Not scheduled",
-    scheduledTime: apiBooking.scheduledTime || "Not scheduled",
-    location: apiBooking.location || "Not specified",
-    paymentAmount: apiBooking.paymentAmount ? `$${parseFloat(apiBooking.paymentAmount.toString()).toFixed(2)}` : "$0.00",
-    platformFee: apiBooking.platformFee ? `$${parseFloat(apiBooking.platformFee.toString()).toFixed(2)}` : "$0.00",
-    transactionId: apiBooking.transactionId || "N/A",
+    totalAmount: apiBooking.price ? `${apiBooking.currency || '$'}${apiBooking.price.toFixed(2)}` : "$0.00",
+    status: apiBooking.status,
+    scheduledDate,
+    scheduledTime,
+    location,
+    paymentAmount: apiBooking.price ? `${apiBooking.currency || '$'}${apiBooking.price.toFixed(2)}` : "$0.00",
+    platformFee: "$0.00",
+    transactionId: "N/A",
     lastLogin: apiBooking.updatedAt ? new Date(apiBooking.updatedAt).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -117,8 +169,16 @@ const mapApiBookingToComponentBooking = (apiBooking: ApiBooking): Booking => {
       minute: '2-digit',
       hour12: true
     }) : "Unknown",
-    createdAt: apiBooking.createdAt || new Date().toISOString(),
-    updatedAt: apiBooking.updatedAt || new Date().toISOString()
+    createdAt: apiBooking.createdAt,
+    updatedAt: apiBooking.updatedAt,
+      date: apiBooking.date,
+      startTime: apiBooking.startTime,
+      endTime: apiBooking.endTime,
+      country: apiBooking.country,
+      city: apiBooking.city,
+      address: apiBooking.address,
+      reviews: apiBooking.reviews || [],
+      user: apiBooking.user
   };
 };
 
@@ -153,8 +213,6 @@ export default function BookingTable({
   const [dateRangeFrom, setDateRangeFrom] = useState("");
   const [dateRangeTo, setDateRangeTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
-  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
@@ -206,23 +264,27 @@ export default function BookingTable({
       }
       
       const responseData = await response.json();
+      console.log("Raw API Response:", responseData);
       
-      // Handle the new response structure
+      // Handle the response structure
       let bookingsData: ApiBooking[] = [];
       let totalCount = 0;
       
-      if (responseData.data) {
-        if (Array.isArray(responseData.data)) {
-          bookingsData = responseData.data;
-          totalCount = responseData.meta?.total || responseData.data.length;
-        }
+      if (responseData.data && Array.isArray(responseData.data)) {
+        bookingsData = responseData.data;
+        totalCount = responseData.meta?.total || responseData.data.length;
+        console.log("First booking sample:", bookingsData[0]);
       } else if (Array.isArray(responseData)) {
         bookingsData = responseData;
         totalCount = responseData.length;
       }
       
       // Map API bookings to component bookings
-      const mappedBookings = bookingsData.map(mapApiBookingToComponentBooking);
+      const mappedBookings = bookingsData.map((booking) => {
+        const mappedBooking = mapApiBookingToComponentBooking(booking);
+        console.log("Mapped booking:", mappedBooking);
+        return mappedBooking;
+      });
       setBookings(mappedBookings);
       setTotalBookings(totalCount);
       
@@ -237,12 +299,13 @@ export default function BookingTable({
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
+
   const filteredBookings = bookings.filter((booking: Booking) => {
     const query = searchQuery.toLowerCase();
     const searchMatch =
       searchQuery === "" ||
       booking.id.toLowerCase().includes(query) ||
-      booking.clientName.toLowerCase().includes(query) ||
+      booking.clientEmail.toLowerCase().includes(query) ||
       booking.providerName.toLowerCase().includes(query) ||
       booking.serviceOffered.toLowerCase().includes(query);
 
@@ -288,6 +351,12 @@ export default function BookingTable({
     }
   };
 
+  const handleViewDetails = (booking: Booking) => {
+    console.log("Selected booking for modal:", booking);
+    setSelectedBooking(booking);
+    setIsDetailsModalOpen(true);
+  };
+
   useEffect(() => {
     setSelectedBookings([]);
   }, [currentPage]);
@@ -302,85 +371,6 @@ export default function BookingTable({
     if (pathname !== "/content-management") {
       router.push("/content-management");
     }
-  };
-
-  const handleViewDetails = (booking: Booking) => {
-    setSelectedBooking(booking);
-    setIsDetailsModalOpen(true);
-  };
-
-  const handleApprove = async () => {
-    try {
-      for (const bookingId of selectedBookings) {
-        const response = await fetch(`/api/bookings/${bookingId}/status`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            status: 'CONFIRMED'
-          }),
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Failed to approve booking');
-        }
-      }
-      
-      console.log("Approved bookings:", selectedBookings);
-      setSelectedBookings([]);
-      setIsApproveModalOpen(false);
-      fetchBookings(); // Refresh the bookings list
-    } catch (err) {
-      console.error('Error approving bookings:', err);
-      setError(err instanceof Error ? err.message : 'Failed to approve bookings');
-    }
-  };
-  
-  const openApproveModal = () => {
-    setIsApproveModalOpen(true);
-  };
-
-  const closeApproveModal = () => {
-    setIsApproveModalOpen(false);
-  };
-
-  const handleCancel = async () => {
-    try {
-      for (const bookingId of selectedBookings) {
-        const response = await fetch(`/api/bookings/${bookingId}/status`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            status: 'CANCELLED'
-          }),
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Failed to cancel booking');
-        }
-      }
-      
-      console.log("Cancelled bookings:", selectedBookings);
-      setSelectedBookings([]);
-      setIsCancelModalOpen(false);
-      fetchBookings(); // Refresh the bookings list
-    } catch (err) {
-      console.error('Error cancelling bookings:', err);
-      setError(err instanceof Error ? err.message : 'Failed to cancel bookings');
-    }
-  };
-
-  const openCancelModal = () => {
-    setIsCancelModalOpen(true);
-  };
-
-  const closeCancelModal = () => {
-    setIsCancelModalOpen(false);
   };
 
   const handleExport = (data: {
@@ -605,19 +595,6 @@ export default function BookingTable({
         </div>
       ) : (
         <>
-          {selectedBookings.length > 0 && (
-            <div className="flex justify-end space-x-2 mt-2 p-4">
-              <Button variant="outline" size="sm" onClick={openApproveModal} className="text-green-600">
-                <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                Approve
-              </Button>
-              <Button variant="outline" size="sm" onClick={openCancelModal} className="text-red-600">
-                <Ban className="h-4 w-4 mr-2 text-red-600" />
-                Cancel
-              </Button>
-            </div>
-          )}
-          
           <Table>
             <TableHeader>
               <TableRow>
@@ -650,8 +627,8 @@ export default function BookingTable({
                       />
                     </TableCell>
                   )}
-                  <TableCell>{booking.id}</TableCell>
-                  <TableCell>{booking.clientName}</TableCell>
+                  <TableCell className="font-mono text-xs">{booking.id}</TableCell>
+                  <TableCell>{booking.clientEmail}</TableCell>
                   <TableCell>{booking.providerName}</TableCell>
                   <TableCell>{booking.serviceOffered}</TableCell>
                   <TableCell>{booking.totalAmount}</TableCell>
@@ -691,16 +668,6 @@ export default function BookingTable({
                         <DropdownMenuItem onClick={() => handleViewDetails(booking)}>
                           <Eye className="h-4 w-4 mr-2" />
                           View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={openApproveModal}>
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Approve Booking
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={openCancelModal} className="text-red-600">
-                          <Ban className="h-4 w-4 mr-2 text-red-600" />
-                          Cancel Booking
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -785,34 +752,6 @@ export default function BookingTable({
         </>
       )}
       
-      <Modal
-        isOpen={isApproveModalOpen}
-        onClose={closeApproveModal}
-        title="Approve Booking"
-        icon={<FaCheck className="h-8 w-8 text-green-500" />}
-        iconBgColor="#D6FCE0"
-        message1="Approving Booking?"
-        message="Are you sure you want to approve this booking?"
-        cancelText="No, I don't"
-        confirmText="Yes, approve"
-        confirmButtonColor="#00A424"
-        onConfirm={handleApprove}
-      />
-      
-      <Modal
-        isOpen={isCancelModalOpen}
-        onClose={closeCancelModal}
-        title="Cancel Booking"
-        icon={<FaBan className="h-8 w-8 text-red-500" />}
-        iconBgColor="#FEE2E2"
-        message1="Cancelling Booking?"
-        message="Are you sure you want to cancel this booking?"
-        cancelText="No, I don't"
-        confirmText="Yes, cancel"
-        confirmButtonColor="#EF4444"
-        onConfirm={handleCancel}
-      />
-      
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
@@ -826,7 +765,7 @@ export default function BookingTable({
         roleFilters={[]}
         fieldOptions={[
           { label: "Booking ID", value: "Booking ID" },
-          { label: "Client Name", value: "Client Name" },
+          { label: "Client Email", value: "Client Email" },
           { label: "Provider Name", value: "Provider Name" },
           { label: "Service Offered", value: "Service Offered" },
           { label: "Total Amount", value: "Total Amount" },

@@ -13,70 +13,84 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Editor } from "@/components/Editor";
-import { Trash } from "lucide-react";
+import { Trash, Calendar } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
-interface Announcement {
+interface ContentItem {
   id?: string;
   title: string;
   content: string;
-  type: string;
+  type?: string;
   status: string;
   mediaUrl?: string;
+  category?: string;
+  publishAt?: string;
 }
 
 interface CreateContentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: {
-    id?: string;
-    type: string;
-    status: string;
-    title: string;
-    content: string;
-    mediaFile?: File | null;
-  }) => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onSave: (data: any) => void;
+  onSchedule?: (data: { id: string; publishAt: string }) => void;
   contentType: "Announcement" | "Article";
-  announcement?: Announcement; // Prefilled data for editing
-  isEditing?: boolean; // Flag to indicate edit mode
+  announcement?: ContentItem;
+  article?: ContentItem;
+  isEditing?: boolean;
+  isScheduling?: boolean;
 }
 
 export default function CreateContentModal({
   isOpen,
   onClose,
   onSave,
+  onSchedule,
   contentType,
   announcement,
+  article,
   isEditing = false,
+  isScheduling = false,
 }: CreateContentModalProps) {
-  const [type, setType] = useState(announcement?.type || "Textual");
-  const [status, setStatus] = useState(announcement?.status || "Draft");
-  const [title, setTitle] = useState(announcement?.title || "");
-  const [content, setContent] = useState(announcement?.content || "");
+  const contentData = announcement || article;
+  
+  const [type, setType] = useState(contentData?.type || "Textual");
+  const [status, setStatus] = useState(contentData?.status || "Draft");
+  const [title, setTitle] = useState(contentData?.title || "");
+  const [content, setContent] = useState(contentData?.content || "");
+  const [category, setCategory] = useState(contentData?.category || "GUIDE");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(
-    announcement?.mediaUrl || null
+    contentData?.mediaUrl || null
+  );
+  const [publishAt, setPublishAt] = useState<Date | undefined>(
+    contentData?.publishAt ? new Date(contentData.publishAt) : undefined
   );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
-      setType(announcement?.type || "Textual");
-      setStatus(announcement?.status || "Draft");
-      setTitle(announcement?.title || "");
-      setContent(announcement?.content || "");
+      const data = announcement || article;
+      setType(data?.type || "Textual");
+      setStatus(data?.status || "Draft");
+      setTitle(data?.title || "");
+      setContent(data?.content || "");
+      setCategory(data?.category || "GUIDE");
       setMediaFile(null);
-      setMediaPreviewUrl(announcement?.mediaUrl || null);
+      setMediaPreviewUrl(data?.mediaUrl || null);
+      setPublishAt(data?.publishAt ? new Date(data.publishAt) : undefined);
     }
-  }, [isOpen, announcement]);
+  }, [isOpen, announcement, article]);
 
   useEffect(() => {
     return () => {
-      if (mediaPreviewUrl && !announcement?.mediaUrl) {
+      if (mediaPreviewUrl && !contentData?.mediaUrl) {
         URL.revokeObjectURL(mediaPreviewUrl);
       }
     };
-  }, [mediaPreviewUrl, announcement]);
+  }, [mediaPreviewUrl, contentData]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -90,7 +104,7 @@ export default function CreateContentModal({
         return;
       }
       setMediaFile(file);
-      if (mediaPreviewUrl && !announcement?.mediaUrl) {
+      if (mediaPreviewUrl && !contentData?.mediaUrl) {
         URL.revokeObjectURL(mediaPreviewUrl);
       }
       setMediaPreviewUrl(URL.createObjectURL(file));
@@ -99,7 +113,7 @@ export default function CreateContentModal({
 
   const handleRemoveMedia = () => {
     setMediaFile(null);
-    if (mediaPreviewUrl && !announcement?.mediaUrl) {
+    if (mediaPreviewUrl && !contentData?.mediaUrl) {
       URL.revokeObjectURL(mediaPreviewUrl);
     }
     setMediaPreviewUrl(null);
@@ -109,155 +123,285 @@ export default function CreateContentModal({
   };
 
   const handleSave = () => {
-    // Convert type and status to uppercase, and handle Visual -> VIRTUAL mapping
-    let apiType = type.toUpperCase();
-    if (apiType === "VISUAL") {
-      apiType = "VIRTUAL"; // Map Visual to VIRTUAL for the API
-    }
-    
-    const apiStatus = status.toUpperCase();
-    
-    const dataToSave = {
-      ...(isEditing && { id: announcement?.id }),
-      type: apiType,
-      status: apiStatus,
-      title,
-      content: content.slice(0, type === "Textual" ? 1000 : 500),
-    };
-  
-    // Still check the original type for validation
-    if (type === "Visual" && !mediaFile && !mediaPreviewUrl) {
-      alert(`Please upload a media file for ${contentType} (Visual type).`);
+    if (isScheduling && onSchedule && contentData?.id && publishAt) {
+      // Handle scheduling
+      onSchedule({
+        id: contentData.id,
+        publishAt: publishAt.toISOString()
+      });
+      onClose();
       return;
     }
-  
-    onSave({ ...dataToSave, mediaFile });
+
+    if (contentType === "Announcement") {
+      let apiType = type.toUpperCase();
+      if (apiType === "VISUAL") {
+        apiType = "VIRTUAL";
+      }
+      
+      const apiStatus = status.toUpperCase();
+      
+      const dataToSave = {
+        ...(isEditing && { id: contentData?.id }),
+        type: apiType,
+        status: apiStatus,
+        title,
+        content: content.slice(0, type === "Textual" ? 1000 : 500),
+      };
+    
+      if (type === "Visual" && !mediaFile && !mediaPreviewUrl) {
+        alert(`Please upload a media file for ${contentType} (Visual type).`);
+        return;
+      }
+    
+      onSave({ ...dataToSave, mediaFile });
+    } else {
+      let apiType = type.toUpperCase();
+      if (apiType === "VISUAL") {
+        apiType = "VIRTUAL";
+      }
+      
+      const dataToSave = {
+        ...(isEditing && { id: contentData?.id }),
+        title,
+        content,
+        category,
+        status: status.toUpperCase(),
+        type: apiType,
+        slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        excerpt: content.substring(0, 150),
+        seoTitle: title,
+        seoDescription: content.substring(0, 160),
+        tags: [],
+        sendImmediately: false,
+        ...(publishAt && { publishAt: publishAt.toISOString() })
+      };
+    
+      if (type === "Visual" && !mediaFile && !mediaPreviewUrl) {
+        alert(`Please upload a media file for ${contentType} (Visual type).`);
+        return;
+      }
+    
+      onSave({ ...dataToSave, mediaFile });
+    }
+    
     onClose();
   };
 
   const contentCharLimit = type === "Textual" ? 1000 : 500;
 
+  const categoryOptions = [
+    { value: "FAQ", label: "FAQ" },
+    { value: "GUIDE", label: "Guide" },
+    { value: "TROUBLESHOOTING", label: "Troubleshooting" },
+    { value: "POLICY", label: "Policy" },
+    { value: "NEWS", label: "News" }
+  ];
+
+  const statusOptions = contentType === "Article" 
+    ? [
+        { value: "DRAFT", label: "Draft" },
+        { value: "PUBLISHED", label: "Published" },
+        { value: "SCHEDULED", label: "Scheduled" },
+        { value: "ARCHIVED", label: "Archived" }
+      ]
+    : [
+        { value: "Draft", label: "Draft" },
+        { value: "Published", label: "Published" },
+        { value: "Archived", label: "Archived" }
+      ];
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogOverlay className="backdrop-blur-xs">
         <DialogContent
-          className={`rounded-lg p-6 transition-all duration-300 ${
+          className={`rounded-lg px-6 transition-all duration-300 ${
             type === "Visual" ? "sm:max-w-[950px]" : "sm:max-w-[571px]"
           }`}
         >
-          <DialogHeader className="flex justify-between items-start pb-4">
+          <DialogHeader className="flex justify-between items-start ">
             <DialogTitle className="text-lg font-semibold">
-              {isEditing ? `Edit ${contentType}` : `Create ${contentType}`}
+              {isScheduling ? `Schedule ${contentType}` : 
+               isEditing ? `Edit ${contentType}` : `Create ${contentType}`}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-2 mb-2">
-            <Label>{contentType} Type</Label>
-            <div className="flex space-x-2">
-              <Button
-                variant={type === "Textual" ? "default" : "outline"}
-                className="rounded-lg"
-                onClick={() => {
-                  setType("Textual");
-                  setMediaFile(null);
-                  setMediaPreviewUrl(null);
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = "";
-                  }
-                }}
-              >
-                Textual
-              </Button>
-              <Button
-                variant={type === "Visual" ? "default" : "outline"}
-                className="rounded-lg"
-                onClick={() => {
-                  setType("Visual");
-                  setContent("");
-                }}
-              >
-                Visual
-              </Button>
+          {!isScheduling && (
+            <div className="space-y-1">
+              <Label>{contentType} Type</Label>
+              <div className="flex space-x-2">
+                <Button
+                  variant={type === "Textual" ? "default" : "outline"}
+                  className="rounded-lg"
+                  onClick={() => {
+                    setType("Textual");
+                    setMediaFile(null);
+                    setMediaPreviewUrl(null);
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = "";
+                    }
+                  }}
+                >
+                  Textual
+                </Button>
+                <Button
+                  variant={type === "Visual" ? "default" : "outline"}
+                  className="rounded-lg"
+                  onClick={() => {
+                    setType("Visual");
+                    setContent("");
+                  }}
+                >
+                  Visual
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className={`${type === "Visual" ? "flex flex-row gap-8" : "block"}`}>
-            <div className={`${type === "Visual" ? "flex-1 flex flex-col" : "w-full"}`}>
-              <div className="space-y-6 flex-1 overflow-y-auto">
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full p-2 border rounded-lg text-gray-700 bg-card"
-                  >
-                    <option value="Draft">Draft</option>
-                    <option value="Published">Published</option>
-                    <option value="Archived">Archived</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Title</Label>
-                  <div className="relative">
-                    <Input
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value.slice(0, 100))}
-                      className="w-full p-2 border rounded-lg bg-white"
-                      placeholder={`Enter ${contentType} Title...`}
-                    />
-                    <span className="absolute right-2 top-2 text-sm text-gray-500">
-                      {title.length}/100
-                    </span>
-                  </div>
-                </div>
-
-                {type === "Visual" && (
+          <div className={`${type === "Visual" && !isScheduling ? "flex flex-row gap-8" : "block"}`}>
+            <div className={`${type === "Visual" && !isScheduling ? "flex-1 flex flex-col" : "w-full"}`}>
+              <div className="space-y-3 flex-1 overflow-y-auto">
+                {!isScheduling && (
                   <div className="space-y-2">
-                    <Label>Upload Media</Label>
-                    <div className="relative">
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        className="hidden"
-                        onChange={handleFileChange}
-                        accept="image/png, image/jpeg, video/mp4, image/gif"
-                      />
-                      <Button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full p-2 border rounded-lg bg-white text-gray-700 hover:bg-gray-50"
-                        variant="outline"
-                      >
-                        Choose File
-                      </Button>
-                      <p className="text-sm text-gray-500 mt-2">
-                        Supported formats: PNG, JPEG, MP4, GIF. Max size: 10MB
-                      </p>
-                    </div>
+                    <Label>Status</Label>
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className="w-full p-2 border rounded-lg text-gray-700 bg-card"
+                    >
+                      {statusOptions.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <Label>Content</Label>
-                  <div className="relative bg-card">
-                    <Editor value={content} onChange={setContent} />
-                    <span className="absolute right-2 bottom-2 text-sm text-gray-500">
-                      {content.length}/{contentCharLimit}
-                    </span>
+                {contentType === "Article" && !isScheduling && (
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <select
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="w-full p-2 border rounded-lg text-gray-700 bg-card"
+                    >
+                      {categoryOptions.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                </div>
+                )}
+
+                {contentType === "Article" && (
+                  <div className="space-y-2">
+                    <Label>
+                      {isScheduling ? "Schedule Publishing Date" : "Publishing Date"}
+                    </Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {publishAt ? format(publishAt, "PPP 'at' p") : "Select date and time"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <CalendarComponent
+                          mode="single"
+                          selected={publishAt}
+                          onSelect={setPublishAt}
+                          initialFocus
+                        />
+                        <div className="p-3 border-t">
+                          <Input
+                            type="time"
+                            value={publishAt ? format(publishAt, "HH:mm") : ""}
+                            onChange={(e) => {
+                              if (publishAt && e.target.value) {
+                                const [hours, minutes] = e.target.value.split(':');
+                                const newDate = new Date(publishAt);
+                                newDate.setHours(parseInt(hours), parseInt(minutes));
+                                setPublishAt(newDate);
+                              }
+                            }}
+                          />
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+
+                {!isScheduling && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Title</Label>
+                      <div className="relative">
+                        <Input
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value.slice(0, 100))}
+                          className="w-full p-2 border rounded-lg bg-white"
+                          placeholder={`Enter ${contentType} Title...`}
+                        />
+                        <span className="absolute right-2 top-2 text-sm text-gray-500">
+                          {title.length}/100
+                        </span>
+                      </div>
+                    </div>
+
+                    {type === "Visual" && (
+                      <div className="space-y-2">
+                        <Label>Upload Media</Label>
+                        <div className="relative">
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            onChange={handleFileChange}
+                            accept="image/png, image/jpeg, video/mp4, image/gif"
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full p-2 border rounded-lg bg-white text-gray-700 hover:bg-gray-50"
+                            variant="outline"
+                          >
+                            Choose File
+                          </Button>
+                          <p className="text-sm text-gray-500 mt-2">
+                            Supported formats: PNG, JPEG, MP4, GIF. Max size: 10MB
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label>Content</Label>
+                      <div className="relative bg-card">
+                        <Editor value={content} onChange={setContent} />
+                        <span className="absolute right-2 bottom-2 text-sm text-gray-500">
+                          {content.length}/{contentType === "Article" ? 5000 : contentCharLimit}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
               <DialogFooter className="flex justify-between pt-6">
                 <Button variant="outline" onClick={onClose} className="w-[50%]">
                   Cancel
                 </Button>
                 <Button onClick={handleSave} className="w-[50%]">
-                  {isEditing ? "Update" : "Save"}
+                  {isScheduling ? "Schedule" : isEditing ? "Update" : "Save"}
                 </Button>
               </DialogFooter>
             </div>
 
-            {type === "Visual" && (
+            {type === "Visual" && !isScheduling && (
               <div className="flex-1 flex flex-col h-full">
                 <div className="space-y-2 flex-1 flex flex-col">
                   <Label className="flex justify-between items-center">
@@ -274,7 +418,10 @@ export default function CreateContentModal({
                   </Label>
                   <div className="w-full flex-1 border rounded-lg bg-card flex items-center justify-center overflow-hidden">
                     {mediaPreviewUrl ? (
-                      mediaFile?.type.startsWith("image/") || mediaPreviewUrl.endsWith(".png") || mediaPreviewUrl.endsWith(".jpeg") || mediaPreviewUrl.endsWith(".gif") ? (
+                      mediaFile?.type.startsWith("image/") || 
+                      mediaPreviewUrl.endsWith(".png") || 
+                      mediaPreviewUrl.endsWith(".jpeg") || 
+                      mediaPreviewUrl.endsWith(".gif") ? (
                         <img
                           src={mediaPreviewUrl}
                           alt="Media Preview"

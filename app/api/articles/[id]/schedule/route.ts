@@ -4,7 +4,7 @@ const BASE_URL = "https://music-minds-backend.onrender.com/api/v1";
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieHeader = request.headers.get("cookie");
@@ -27,7 +27,8 @@ export async function POST(
       );
     }
 
-    const { id } = params;
+    // Await the params Promise
+    const { id } = await params;
     const body = await request.json();
     const { publishAt } = body;
 

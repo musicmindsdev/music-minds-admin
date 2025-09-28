@@ -1,11 +1,10 @@
-
 import { NextResponse } from "next/server";
 
 const BASE_URL = "https://music-minds-backend.onrender.com/api/v1";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieHeader = request.headers.get("cookie");
@@ -28,7 +27,8 @@ export async function GET(
       );
     }
 
-    const { id } = params;
+    // Await the params Promise
+    const { id } = await params;
 
     const response = await fetch(`${BASE_URL}/admin/articles/${id}`, {
       method: "GET",
@@ -63,7 +63,7 @@ export async function GET(
 // PUT - Update article
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Extract token from cookies
@@ -87,7 +87,8 @@ export async function PUT(
       );
     }
 
-    const { id } = params;
+    // Await the params Promise
+    const { id } = await params;
     const body = await request.json();
 
     const {
@@ -157,7 +158,7 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieHeader = request.headers.get("cookie");
@@ -180,7 +181,8 @@ export async function DELETE(
       );
     }
 
-    const { id } = params;
+    // Await the params Promise
+    const { id } = await params;
 
     const response = await fetch(`${BASE_URL}/admin/articles/${id}`, {
       method: "DELETE",

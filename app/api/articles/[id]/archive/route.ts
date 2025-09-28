@@ -4,7 +4,7 @@ const BASE_URL = "https://music-minds-backend.onrender.com/api/v1";
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Extract token from cookies
@@ -28,7 +28,8 @@ export async function POST(
       );
     }
 
-    const { id } = params;
+    // Await the params Promise
+    const { id } = await params;
 
     // Call the backend archive endpoint - no request body needed
     const response = await fetch(`${BASE_URL}/admin/articles/${id}/archive`, {

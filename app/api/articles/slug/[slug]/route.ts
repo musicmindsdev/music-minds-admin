@@ -4,7 +4,7 @@ const BASE_URL = "https://music-minds-backend.onrender.com/api/v1";
 
 export async function GET(
   request: Request,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const cookieHeader = request.headers.get("cookie");
@@ -20,7 +20,8 @@ export async function GET(
       token = cookies.accessToken || null;
     }
 
-    const { slug } = params;
+    // Await the params Promise
+    const { slug } = await params;
 
     const response = await fetch(`${BASE_URL}/admin/articles/slug/${slug}`, {
       method: "GET",

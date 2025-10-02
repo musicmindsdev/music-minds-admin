@@ -39,10 +39,12 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
-    console.log("Backend verify response:", data); // 👈 see structure
+    console.log("Backend verify response:", data);
 
-    // ✅ extract correct token
+    // Extract token and user data
     const token = data?.data?.access_token;
+    const user = data?.data?.user;
+
     if (!token) {
       return NextResponse.json(
         { error: "Token not found in response" },
@@ -50,22 +52,49 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create response with Set-Cookie header
+    // Create response
     const nextResponse = NextResponse.json(
       {
         message: "OTP verified successfully",
-        user: data?.data?.user, // include user in response if needed
+        user: {
+          id: user?.id,
+          email: user?.email,
+          role: user?.role,
+          isEmailVerified: user?.is_email_verified,
+        },
       },
       { status: 200 }
     );
 
-    // ✅ set cookie
+    // Set access token cookie (httpOnly for security)
     nextResponse.cookies.set({
       name: "accessToken",
       value: token,
       path: "/",
-      httpOnly: true, // make cookie secure
-      maxAge: 3600, // 1 hour
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    // Set user email cookie (accessible client-side)
+    nextResponse.cookies.set({
+      name: "userEmail",
+      value: user?.email || email,
+      path: "/",
+      httpOnly: false,
+      maxAge: 7 * 24 * 60 * 60,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    // Set user role cookie (accessible client-side)
+    nextResponse.cookies.set({
+      name: "userRole",
+      value: user?.role || "ADMIN",
+      path: "/",
+      httpOnly: false,
+      maxAge: 7 * 24 * 60 * 60,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
     });

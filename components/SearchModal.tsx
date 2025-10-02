@@ -69,8 +69,8 @@ export default function SearchModal({
   searchQuery,
   isOpen,
   onClose,
-  users: initialUsers = [], 
-  bookings: initialBookings = [], 
+  users: initialUsers = [],
+  bookings: initialBookings = [],
   transactions: initialTransactions = [],
   trigger,
 }: SearchModalProps) {
@@ -98,7 +98,6 @@ export default function SearchModal({
     { name: "Transactions", icon: <TbReceipt className="w-5 h-5" /> },
   ];
 
-  // Fetch data from APIs
   useEffect(() => {
     if (!isOpen) return;
 
@@ -116,13 +115,12 @@ export default function SearchModal({
           throw new Error(errorData.error || "Failed to fetch users");
         }
         const usersData = await usersResponse.json();
-        console.log("Users API response:", usersData); // Debug log
+        console.log("Users API response:", usersData);
         setUsers(Array.isArray(usersData.users) ? usersData.users : []);
 
         // Fetch Bookings
         const bookingsResponse = await fetch(
-          `/api/bookings?page=1&limit=10${status !== "all" && dataType === "Bookings" ? `&status=${status}` : ""}${
-            startDate ? `&fromDate=${startDate}` : ""
+          `/api/bookings?page=1&limit=10${status !== "all" && dataType === "Bookings" ? `&status=${status}` : ""}${startDate ? `&fromDate=${startDate}` : ""
           }${endDate ? `&toDate=${endDate}` : ""}`
         );
         if (!bookingsResponse.ok) {
@@ -130,33 +128,42 @@ export default function SearchModal({
           throw new Error(errorData.error || "Failed to fetch bookings");
         }
         const bookingsData = await bookingsResponse.json();
-        console.log("Bookings API response:", bookingsData); // Debug log
+        console.log("Bookings API response:", bookingsData);
         setBookings(Array.isArray(bookingsData.data) ? bookingsData.data : []);
 
-        // Transactions (using initial mock data until endpoint provided)
-        setTransactions(initialTransactions);
+        // Fetch Transactions
+        const transactionsResponse = await fetch(
+          `/api/transactions?page=1&limit=10${status !== "all" && dataType === "Transactions" ? `&status=${status}` : ""}${startDate ? `&dateFrom=${startDate}` : ""
+          }${endDate ? `&dateTo=${endDate}` : ""}`
+        );
+        if (!transactionsResponse.ok) {
+          const errorData = await transactionsResponse.json();
+          throw new Error(errorData.error || "Failed to fetch transactions");
+        }
+        const transactionsData = await transactionsResponse.json();
+        console.log("Transactions API response:", transactionsData);
+        setTransactions(Array.isArray(transactionsData.transactions) ? transactionsData.transactions : []);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "An error occurred";
         setError(errorMessage);
         setUsers([]);
         setBookings([]);
-        setTransactions(initialTransactions);
+        setTransactions([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [isOpen, dataType, status, startDate, endDate, initialUsers, initialBookings, initialTransactions]);
-
-  // Client-side filtering for search query, limited to first 5 results
+  }, [isOpen, dataType, status, startDate, endDate]); 
+  
   const filteredUserResults = users
     .filter(
       (result) =>
         (result.name.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-         result.email.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-         result.profileType.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-         result.id.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
+          result.email.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+          result.profileType.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+          result.id.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
         (status === "all" || result.status.toLowerCase() === status.toLowerCase())
     )
     .slice(0, 5); // Limit to first 5 users
@@ -165,8 +172,8 @@ export default function SearchModal({
     .filter(
       (result) =>
         (result.id.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-         result.clientName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-         result.serviceOffered.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
+          result.clientName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+          result.serviceOffered.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
         (status === "all" || result.status.toLowerCase() === status.toLowerCase())
     )
     .slice(0, 5); // Limit to first 5 bookings
@@ -175,10 +182,10 @@ export default function SearchModal({
     .filter(
       (result) =>
         (result.id.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-         result.clientName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-         result.bookingId.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-         result.providerName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
-         result.serviceOffered.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
+          result.clientName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+          result.bookingId.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+          result.providerName.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+          result.serviceOffered.toLowerCase().includes(modalSearchQuery.toLowerCase())) &&
         (status === "all" || result.status.toLowerCase() === status.toLowerCase())
     )
     .slice(0, 5); // Limit to first 5 transactions
@@ -255,9 +262,8 @@ export default function SearchModal({
                     <Button
                       key={type.name}
                       variant={dataType === type.name ? "default" : "outline"}
-                      className={`rounded-full px-3 py-1 text-xs flex items-center gap-2 ${
-                        dataType === type.name ? "text-white" : "text-gray-700"
-                      }`}
+                      className={`rounded-full px-3 py-1 text-xs flex items-center gap-2 ${dataType === type.name ? "text-white" : "text-gray-700"
+                        }`}
                       onClick={() => setDataType(type.name)}
                     >
                       {type.icon}
@@ -339,22 +345,20 @@ export default function SearchModal({
                                 <p className="text-xs text-gray-500">{result.email}</p>
                               </div>
                               <span
-                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                                  result.status === "Active"
+                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${result.status === "Active"
                                     ? "bg-green-100 text-green-700"
                                     : result.status === "Suspended"
-                                    ? "bg-yellow-100 text-yellow-700"
-                                    : "bg-gray-100 text-gray-700"
-                                }`}
+                                      ? "bg-yellow-100 text-yellow-700"
+                                      : "bg-gray-100 text-gray-700"
+                                  }`}
                               >
                                 <span
-                                  className={`h-2 w-2 rounded-full ${
-                                    result.status === "Active"
+                                  className={`h-2 w-2 rounded-full ${result.status === "Active"
                                       ? "bg-green-500"
                                       : result.status === "Suspended"
-                                      ? "bg-yellow-500"
-                                      : "bg-gray-500"
-                                  }`}
+                                        ? "bg-yellow-500"
+                                        : "bg-gray-500"
+                                    }`}
                                 />
                                 {result.status}
                               </span>
@@ -384,23 +388,21 @@ export default function SearchModal({
                             <LuCalendarClock className="w-5 h-5 text-gray-500" />
                             <p className="text-sm font-light">{result.id}</p>
                             <span
-                              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                                result.status === "CONFIRMED"
+                              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${result.status === "CONFIRMED"
                                   ? "bg-green-100 text-green-700"
                                   : result.status === "PENDING"
-                                  ? "bg-yellow-100 text-yellow-700"
-                                  : result.status === "CANCELLED"
-                                  ? "bg-red-100 text-red-600"
-                                  : "bg-blue-100 text-blue-600"
-                              }`}
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : result.status === "CANCELLED"
+                                      ? "bg-red-100 text-red-600"
+                                      : "bg-blue-100 text-blue-600"
+                                }`}
                             >
                               <span
-                                className={`h-2 w-2 rounded-full ${
-                                  result.status === "CONFIRMED"
+                                className={`h-2 w-2 rounded-full ${result.status === "CONFIRMED"
                                     ? "bg-green-500"
                                     : result.status === "PENDING"
-                                    ? "bg-yellow-500"
-                                    : result.status === "CANCELLED" ? "bg-red-500" : "bg-blue-500"
+                                      ? "bg-yellow-500"
+                                      : result.status === "CANCELLED" ? "bg-red-500" : "bg-blue-500"
                                   }`}
                               />
                               {result.status}
@@ -434,21 +436,19 @@ export default function SearchModal({
                             <TbReceipt className="w-5 h-5 text-gray-500" />
                             <p className="text-sm font-light text-blue">{result.id}</p>
                             <span
-                              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                                result.status === "Completed"
+                              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${result.status === "Completed"
                                   ? "bg-green-100 text-green-700"
                                   : result.status === "Pending"
-                                  ? "bg-yellow-100 text-yellow-700"
-                                  : "bg-red-100 text-red-700"
-                              }`}
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
                             >
                               <span
-                                className={`h-2 w-2 rounded-full ${
-                                  result.status === "Completed"
+                                className={`h-2 w-2 rounded-full ${result.status === "Completed"
                                     ? "bg-green-500"
                                     : result.status === "Pending"
-                                    ? "bg-yellow-500"
-                                    : "bg-red-500"
+                                      ? "bg-yellow-500"
+                                      : "bg-red-500"
                                   }`}
                               />
                               {result.status}
@@ -491,22 +491,20 @@ export default function SearchModal({
                                   <p className="text-xs text-gray-500">{result.email}</p>
                                 </div>
                                 <span
-                                  className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                                    result.status === "Active"
+                                  className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${result.status === "Active"
                                       ? "bg-green-100 text-green-700"
                                       : result.status === "Suspended"
-                                      ? "bg-yellow-100 text-yellow-700"
-                                      : "bg-gray-100 text-gray-700"
-                                  }`}
+                                        ? "bg-yellow-100 text-yellow-700"
+                                        : "bg-gray-100 text-gray-700"
+                                    }`}
                                 >
                                   <span
-                                    className={`h-2 w-2 rounded-full ${
-                                      result.status === "Active"
+                                    className={`h-2 w-2 rounded-full ${result.status === "Active"
                                         ? "bg-green-500"
                                         : result.status === "Suspended"
-                                        ? "bg-yellow-500"
-                                        : "bg-gray-500"
-                                    }`}
+                                          ? "bg-yellow-500"
+                                          : "bg-gray-500"
+                                      }`}
                                   />
                                   {result.status}
                                 </span>
@@ -538,22 +536,20 @@ export default function SearchModal({
                               <LuCalendarClock className="w-5 h-5 text-gray-500" />
                               <p className="text-sm font-light">{result.id}</p>
                               <span
-                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                                  result.status === "Confirmed"
+                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${result.status === "Confirmed"
                                     ? "bg-green-100 text-green-700"
                                     : result.status === "Pending"
-                                    ? "bg-yellow-100 text-yellow-700"
-                                    : "bg-red-100 text-red-700"
-                                }`}
+                                      ? "bg-yellow-100 text-yellow-700"
+                                      : "bg-red-100 text-red-700"
+                                  }`}
                               >
-                                 <span
-                                  className={`h-2 w-2 rounded-full ${
-                                    result.status === "Completed"
+                                <span
+                                  className={`h-2 w-2 rounded-full ${result.status === "Completed"
                                       ? "bg-green-500"
                                       : result.status === "Pending"
-                                      ? "bg-yellow-500"
-                                      : "bg-red-500"
-                                  }`}
+                                        ? "bg-yellow-500"
+                                        : "bg-red-500"
+                                    }`}
                                 />
                                 {result.status}
                               </span>
@@ -588,22 +584,20 @@ export default function SearchModal({
                               <TbReceipt className="w-5 h-5 text-gray-500" />
                               <p className="text-sm font-light text-blue">{result.id}</p>
                               <span
-                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                                  result.status === "Completed"
+                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${result.status === "Completed"
                                     ? "bg-green-100 text-green-700"
                                     : result.status === "Pending"
-                                    ? "bg-yellow-100 text-yellow-700"
-                                    : "bg-red-100 text-red-700"
-                                }`}
+                                      ? "bg-yellow-100 text-yellow-700"
+                                      : "bg-red-100 text-red-700"
+                                  }`}
                               >
                                 <span
-                                  className={`h-2 w-2 rounded-full ${
-                                    result.status === "Completed"
+                                  className={`h-2 w-2 rounded-full ${result.status === "Completed"
                                       ? "bg-green-500"
                                       : result.status === "Pending"
-                                      ? "bg-yellow-500"
-                                      : "bg-red-500"
-                                  }`}
+                                        ? "bg-yellow-500"
+                                        : "bg-red-500"
+                                    }`}
                                 />
                                 {result.status}
                               </span>

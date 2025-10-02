@@ -41,10 +41,26 @@ export default function RolesTab() {
       }
 
       const data = await response.json();
-      setRoles(data.roles || []);
+      
+      // Handle different possible response structures
+      let rolesArray: Role[] = [];
+      
+      if (Array.isArray(data)) {
+        rolesArray = data;
+      } else if (Array.isArray(data.roles)) {
+        rolesArray = data.roles;
+      } else if (data.data && Array.isArray(data.data)) {
+        rolesArray = data.data;
+      } else {
+        console.warn("Unexpected API response structure:", data);
+        rolesArray = [];
+      }
+      
+      setRoles(rolesArray);
     } catch (error) {
       console.error("Failed to fetch roles:", error);
       toast.error(error instanceof Error ? error.message : "Failed to load roles");
+      setRoles([]);
     } finally {
       setLoading(false);
     }
@@ -176,6 +192,7 @@ export default function RolesTab() {
       }
 
       setIsModalOpen(false);
+      setSelectedRole(null);
     } catch (error) {
       console.error("Failed to save role:", error);
       toast.error(error instanceof Error ? error.message : "Failed to save role");
@@ -184,7 +201,10 @@ export default function RolesTab() {
     }
   };
 
-  if (loading && roles.length === 0) {
+  // Safe roles for rendering - ensure it's always an array
+  const safeRoles = Array.isArray(roles) ? roles : [];
+
+  if (loading && safeRoles.length === 0) {
     return (
       <div className="w-full flex items-center justify-center py-8">
         <RotateCw className="h-8 w-8 animate-spin text-blue-600" />
@@ -215,10 +235,10 @@ export default function RolesTab() {
 
       {/* Roles Accordion */}
       <div className="space-y-3">
-        {roles.length === 0 ? (
+        {safeRoles.length === 0 ? (
           <p className="text-sm text-gray-500">No roles found. Create your first role!</p>
         ) : (
-          roles.map((role) => {
+          safeRoles.map((role) => {
             const isExpanded = expandedRoles.has(role.id);
             return (
               <div key={role.id} className="border border-gray-200 rounded-lg bg-white">
@@ -271,7 +291,7 @@ export default function RolesTab() {
                   <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
                     <h5 className="text-xs font-medium text-gray-700 mb-2">Permissions:</h5>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {role.permissions.map((permission, index) => (
+                      {role.permissions && role.permissions.map((permission, index) => (
                         <div key={index} className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                           <span className="text-xs text-gray-600">{permission}</span>

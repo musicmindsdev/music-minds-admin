@@ -44,6 +44,14 @@ interface ApiTransaction {
   createdAt?: string;
   updatedAt?: string;
   image?: string;
+  payer?: {
+    name?: string;
+    image?: string;
+  };
+  payee?: {
+    name?: string;
+    image?: string;
+  };
 }
 
 export interface Transaction {
@@ -63,8 +71,8 @@ const mapApiTransactionToComponentTransaction = (apiTransaction: ApiTransaction)
   return {
     id: apiTransaction.id,
     bookingId: apiTransaction.bookingId || "N/A",
-    clientName: apiTransaction.clientName || "Unknown Client",
-    providerName: apiTransaction.providerName || "Unknown Provider",
+    clientName: apiTransaction.payer?.name || apiTransaction.clientName || "Unknown Client",
+    providerName: apiTransaction.payee?.name || apiTransaction.providerName || "Unknown Provider",
     serviceOffered: apiTransaction.serviceOffered || "Unknown Service",
     totalAmount: apiTransaction.totalAmount
       ? `$${parseFloat(apiTransaction.totalAmount.toString()).toFixed(2)}`
@@ -80,7 +88,7 @@ const mapApiTransactionToComponentTransaction = (apiTransaction: ApiTransaction)
           hour12: true,
         })
       : "Unknown",
-    image: apiTransaction.image || "/placeholder-avatar.jpg",
+    image: apiTransaction.payer?.image || apiTransaction.image || "/placeholder-avatar.jpg",
   };
 };
 
@@ -254,20 +262,45 @@ export default function TransactionTable({
     }
   };
 
-  const handleViewDetails = (transaction: Transaction) => {
-    setSelectedTransaction(transaction);
+  const handleViewDetails = async (transaction: Transaction) => {
+    try {
+      // Fetch detailed transaction data from the new endpoint
+      const response = await fetch(`/api/transactions/${transaction.id}`, {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const responseData = await response.json();
+        const detailedTransaction = responseData.transaction;
+        
+        // Merge the detailed data with the existing transaction data
+        const enhancedTransaction = {
+          ...transaction,
+          ...mapApiTransactionToComponentTransaction(detailedTransaction),
+        };
+        setSelectedTransaction(enhancedTransaction);
+      } else {
+        // If detailed fetch fails, use the basic transaction data
+        setSelectedTransaction(transaction);
+      }
+    } catch (err) {
+      // If any error occurs, use the basic transaction data
+      setSelectedTransaction(transaction);
+      console.log(err)
+    }
     setIsDetailsModalOpen(true);
   };
 
   const handleProcessPayout = async () => {
     try {
       for (const transactionId of selectedTransactions) {
-        const response = await fetch(`/api/transactions/${transactionId}/payout`, {
-          method: "POST",
+        const response = await fetch(`/api/transactions/${transactionId}/status`, {
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           credentials: "include",
+          body: JSON.stringify({ status: "COMPLETED" }),
         });
 
         if (!response.ok) {
@@ -278,7 +311,7 @@ export default function TransactionTable({
 
       setSelectedTransactions([]);
       setIsProcessPayoutModalOpen(false);
-      fetchTransactions();
+      fetchTransactions(); // Refresh the list
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to process payouts");
     }
@@ -287,12 +320,13 @@ export default function TransactionTable({
   const handleRetryPayment = async () => {
     try {
       for (const transactionId of selectedTransactions) {
-        const response = await fetch(`/api/transactions/${transactionId}/retry`, {
-          method: "POST",
+        const response = await fetch(`/api/transactions/${transactionId}/status`, {
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           credentials: "include",
+          body: JSON.stringify({ status: "PENDING" }),
         });
 
         if (!response.ok) {
@@ -303,7 +337,7 @@ export default function TransactionTable({
 
       setSelectedTransactions([]);
       setIsRetryPaymentModalOpen(false);
-      fetchTransactions();
+      fetchTransactions(); // Refresh the list
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to retry payments");
     }

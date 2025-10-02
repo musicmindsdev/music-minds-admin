@@ -62,7 +62,17 @@ interface Transaction {
   image: string;
 }
 
-
+// Helper function to get cookie value and decode it
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    const cookieValue = parts.pop()?.split(';').shift() || null;
+    return cookieValue ? decodeURIComponent(cookieValue) : null;
+  }
+  return null;
+}
 
 export const NavbarRoutes = () => {
   const router = useRouter();
@@ -82,15 +92,42 @@ export const NavbarRoutes = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load user data from localStorage and fetch users/bookings on mount
+  // Load user data from cookies on mount
   useEffect(() => {
     setIsMounted(true);
-    const storedUser = localStorage.getItem("userData");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error("Error parsing user data from localStorage:", error);
+
+    // Get email and role from cookies
+    const userEmail = getCookie('userEmail');
+    const userRole = getCookie('userRole');
+
+    if (userEmail && userRole) {
+      // Extract name from email (everything before @)
+      const nameFromEmail = userEmail.split('@')[0];
+      
+      // Update user state with data from cookies
+      setUser(prev => ({
+        ...prev,
+        email: userEmail,
+        role: userRole,
+        name: nameFromEmail,
+      }));
+
+      // Also save to localStorage for persistence
+      localStorage.setItem("userData", JSON.stringify({
+        ...user,
+        email: userEmail,
+        role: userRole,
+        name: nameFromEmail,
+      }));
+    } else {
+      // Fallback to localStorage if cookies aren't available
+      const storedUser = localStorage.getItem("userData");
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (error) {
+          console.error("Error parsing user data from localStorage:", error);
+        }
       }
     }
 
@@ -106,7 +143,6 @@ export const NavbarRoutes = () => {
           throw new Error(errorData.error || "Failed to fetch users");
         }
         const usersData = await usersResponse.json();
-        console.log("Users API response in Navbar:", usersData); // Debug log
         setUsers(Array.isArray(usersData.users) ? usersData.users : []);
 
         // Fetch Bookings
@@ -116,7 +152,6 @@ export const NavbarRoutes = () => {
           throw new Error(errorData.error || "Failed to fetch bookings");
         }
         const bookingsData = await bookingsResponse.json();
-        console.log("Bookings API response in Navbar:", bookingsData); // Debug log
         setBookings(Array.isArray(bookingsData.data) ? bookingsData.data : []);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "An error occurred";
@@ -130,13 +165,6 @@ export const NavbarRoutes = () => {
 
     fetchData();
   }, []);
-
-  // Sync user state with local storage
-  useEffect(() => {
-    if (isMounted) {
-      localStorage.setItem("userData", JSON.stringify(user));
-    }
-  }, [user, isMounted]);
 
   const handleSettings = () => {
     router.push("/settings");
@@ -152,6 +180,12 @@ export const NavbarRoutes = () => {
         method: "POST",
       });
 
+      // Clear cookies by setting them to expire
+      document.cookie = "accessToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = "userEmail=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = "userRole=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+      // Clear localStorage
       if (isMounted) {
         localStorage.removeItem("userData");
       }
@@ -170,7 +204,6 @@ export const NavbarRoutes = () => {
     setIsLogoutModalOpen(false);
   };
 
-  // Render loading state until component is mounted or data is fetched
   if (!isMounted || loading) {
     return (
       <div className="flex items-center justify-end gap-6 w-full p-4">
@@ -208,7 +241,7 @@ export const NavbarRoutes = () => {
             <Button variant="ghost" className="relative flex items-center gap-2">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user.image} alt={user.name} />
-                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                <AvatarFallback>{user.email.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <MdKeyboardArrowDown className="h-5 w-5 text-gray-500" />
             </Button>
@@ -218,7 +251,7 @@ export const NavbarRoutes = () => {
               <div className="flex items-center gap-3 p-3 w-full">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={user.image} alt={user.name} />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>{user.email.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <p className="text-sm font-medium">{user.name}</p>

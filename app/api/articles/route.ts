@@ -4,7 +4,6 @@ const BASE_URL = "https://music-minds-backend.onrender.com/api/v1";
 
 export async function GET(request: Request) {
   try {
-    // Extract token from cookies
     const cookieHeader = request.headers.get("cookie");
     let token = null;
 
@@ -38,21 +37,27 @@ export async function GET(request: Request) {
     const tag = searchParams.get("tag") || "";
 
     // Build query string
-    const query = new URLSearchParams({
+    const queryParams = new URLSearchParams({
       page,
       limit,
-      ...(status && { status }),
-      ...(category && { category }),
-      ...(authorId && { authorId }),
-      ...(fromDate && { fromDate }),
-      ...(toDate && { toDate }),
-      ...(search && { search }),
-      ...(tag && { tag }),
-    }).toString();
+    });
+
+    // Add optional parameters only if they exist
+    if (status) queryParams.append("status", status);
+    if (category) queryParams.append("category", category);
+    if (authorId) queryParams.append("authorId", authorId);
+    if (fromDate) queryParams.append("fromDate", fromDate);
+    if (toDate) queryParams.append("toDate", toDate);
+    if (search) queryParams.append("search", search);
+    if (tag) queryParams.append("tag", tag);
+
+    const queryString = queryParams.toString();
+    
+    console.log("Fetching articles from:", `${BASE_URL}/admin/articles?${queryString}`);
 
     // Call the backend API
     const response = await fetch(
-      `${BASE_URL}/admin/articles?${query}`,
+      `${BASE_URL}/admin/articles?${queryString}`,
       {
         method: "GET",
         headers: {
@@ -62,24 +67,31 @@ export async function GET(request: Request) {
       }
     );
 
+    console.log("Backend response status:", response.status);
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorText = await response.text();
+      console.error("Backend error response:", errorText);
+      
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { message: errorText || "Failed to fetch articles" };
+      }
+      
       return NextResponse.json(
-        { error: errorData.message || "Failed to fetch articles" },
+        { error: errorData.message || `HTTP error! status: ${response.status}` },
         { status: response.status }
       );
     }
 
     const data = await response.json();
-    return NextResponse.json(
-      {
-        message: "Articles fetched successfully",
-        articles: data.articles || data,
-        total: data.total || data.length,
-        pages: data.pages || Math.ceil(data.total / parseInt(limit)),
-      },
-      { status: 200 }
-    );
+    console.log("Backend data received:", data);
+
+    // Return the data as-is from backend to avoid structure mismatches
+    return NextResponse.json(data, { status: 200 });
+    
   } catch (error) {
     console.error("Fetch articles error:", error);
     return NextResponse.json(
@@ -88,7 +100,6 @@ export async function GET(request: Request) {
     );
   }
 }
-
 export async function POST(request: Request) {
   try {
     // Extract token from cookies

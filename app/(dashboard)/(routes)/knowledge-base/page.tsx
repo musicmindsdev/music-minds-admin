@@ -67,42 +67,45 @@ export default function ArticlesPage() {
     tags?: string[];
     publishAt?: string;
     sendImmediately?: boolean;
+    mediaFile?: File; // Add this line
   }) => {
     try {
-      const payload = {
-        title: data.title,
-        slug: data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        excerpt: data.excerpt || "",
-        content: data.content,
-        category: data.category || "GUIDE",
-        status: data.status,
-        thumbnail: data.thumbnail || "",
-        emailTemplate: data.emailTemplate || "DEFAULT",
-        emailSubject: data.emailSubject || data.title,
-        emailPreview: data.emailPreview || data.excerpt || "",
-        seoTitle: data.seoTitle || data.title,
-        seoDescription: data.seoDescription || data.excerpt || "",
-        tags: data.tags || [],
-        publishAt: data.publishAt || null,
-        sendImmediately: data.sendImmediately || false
-      };
-
+      // Create FormData for file upload
+      const formData = new FormData();
+      
+      // Append all fields
+      formData.append("title", data.title);
+      formData.append("slug", data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+      formData.append("content", data.content);
+      formData.append("category", data.category || "GUIDE");
+      formData.append("status", data.status);
+      
+      // Append optional fields
+      if (data.excerpt) formData.append("excerpt", data.excerpt);
+      if (data.mediaFile) formData.append("thumbnail", data.mediaFile);
+      if (data.emailTemplate) formData.append("emailTemplate", data.emailTemplate);
+      if (data.emailSubject) formData.append("emailSubject", data.emailSubject);
+      if (data.emailPreview) formData.append("emailPreview", data.emailPreview);
+      if (data.seoTitle) formData.append("seoTitle", data.seoTitle);
+      if (data.seoDescription) formData.append("seoDescription", data.seoDescription);
+      if (data.tags && data.tags.length > 0) formData.append("tags", data.tags.join(','));
+      if (data.publishAt) formData.append("publishAt", data.publishAt);
+      if (data.sendImmediately) formData.append("sendImmediately", data.sendImmediately.toString());
+  
       const url = data.id ? `/api/articles/${data.id}` : "/api/articles";
       const method = data.id ? "PATCH" : "POST";
-
+  
       const response = await fetch(url, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+        // Don't set Content-Type header for FormData - let browser set it
+        body: formData,
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || `Failed to ${data.id ? "update" : "create"} article`);
       }
-
+  
       const result = await response.json();
       console.log(`Article ${data.id ? "updated" : "created"}:`, result);
       

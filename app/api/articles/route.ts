@@ -112,57 +112,64 @@ export async function POST(request: Request) {
       );
     }
 
-    // Parse request body for JSON
-    const body = await request.json();
-    const {
-      title,
-      slug,
-      excerpt,
-      content,
-      category,
-      status,
-      thumbnail,
-      emailTemplate,
-      emailSubject,
-      emailPreview,
-      seoTitle,
-      seoDescription,
-      tags,
-      publishAt,
-      sendImmediately
-    } = body;
+    // Parse as FormData for file upload
+    const formData = await request.formData();
 
+    // Extract all fields
+    const title = formData.get("title") as string;
+    const slug = formData.get("slug") as string;
+    const excerpt = formData.get("excerpt") as string;
+    const content = formData.get("content") as string;
+    const category = formData.get("category") as string;
+    const status = formData.get("status") as string;
+    const thumbnail = formData.get("thumbnail") as File;
+    const emailTemplate = formData.get("emailTemplate") as string;
+    const emailSubject = formData.get("emailSubject") as string;
+    const emailPreview = formData.get("emailPreview") as string;
+    const seoTitle = formData.get("seoTitle") as string;
+    const seoDescription = formData.get("seoDescription") as string;
+    const tags = formData.get("tags") as string;
+    const publishAt = formData.get("publishAt") as string;
+    const sendImmediately = formData.get("sendImmediately") as string;
+
+    // Validate required fields
     if (!title || !content || !category || !status) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields: title, content, category, status" },
         { status: 400 }
       );
     }
 
-    // Call the backend API
+    // Create FormData for the backend API
+    const backendFormData = new FormData();
+    
+    // Append all fields
+    backendFormData.append("title", title);
+    backendFormData.append("slug", slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+    backendFormData.append("content", content);
+    backendFormData.append("category", category);
+    backendFormData.append("status", status);
+    
+    // Append optional fields if they exist
+    if (excerpt) backendFormData.append("excerpt", excerpt);
+    if (thumbnail) backendFormData.append("thumbnail", thumbnail);
+    if (emailTemplate) backendFormData.append("emailTemplate", emailTemplate);
+    if (emailSubject) backendFormData.append("emailSubject", emailSubject);
+    if (emailPreview) backendFormData.append("emailPreview", emailPreview);
+    if (seoTitle) backendFormData.append("seoTitle", seoTitle);
+    if (seoDescription) backendFormData.append("seoDescription", seoDescription);
+    if (tags) backendFormData.append("tags", tags);
+    if (publishAt) backendFormData.append("publishAt", publishAt);
+    if (sendImmediately) backendFormData.append("sendImmediately", sendImmediately);
+
+    // Call the backend API with FormData
     const response = await fetch(`${BASE_URL}/admin/articles`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        // Don't set Content-Type - let browser set it with boundary
       },
-      body: JSON.stringify({
-        title,
-        slug,
-        excerpt,
-        content,
-        category,
-        status,
-        thumbnail,
-        emailTemplate,
-        emailSubject,
-        emailPreview,
-        seoTitle,
-        seoDescription,
-        tags,
-        publishAt,
-        sendImmediately
-      }),
+      body: backendFormData,
     });
 
     if (!response.ok) {

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import CardView from "@/components/svg icons/CardView";
 import ListView from "@/components/svg icons/ListView";
 import { Skeleton } from "@/components/ui/skeleton";
+import Image from "next/image";
 
 interface ServiceProvider {
   id: string;
@@ -70,6 +71,19 @@ export default function ServiceProviderTopPerformers() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper functions for avatar handling
+  const getAvatarUrl = (provider: ServiceProvider) => {
+    return provider.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${provider.name}`;
+  };
+
+  const getProviderName = (provider: ServiceProvider) => {
+    return provider.name || 'Unknown Provider';
+  };
+
+  const getUsername = (provider: ServiceProvider) => {
+    return provider.username || 'unknown';
   };
 
   if (loading) {
@@ -135,6 +149,13 @@ export default function ServiceProviderTopPerformers() {
         </div>
         <div className="text-center py-8 text-red-500">
           Error: {error}
+          <Button 
+            onClick={fetchTopProviders} 
+            className="ml-4"
+            variant="outline"
+          >
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -180,14 +201,21 @@ export default function ServiceProviderTopPerformers() {
           {displayProviders.map((provider, index) => (
             <Card key={provider.id || index} className="shadow-sm">
               <CardHeader className="flex flex-row items-center gap-4 p-4">
-                <img
-                  src={provider.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${provider.name}`}
-                  alt={provider.name}
+                <Image
+                  src={getAvatarUrl(provider)}
+                  alt={getProviderName(provider)}
+                  width={40}
+                  height={40}
                   className="w-10 h-10 rounded-full"
+                  onError={(e) => {
+                    // Fallback to dicebear if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://api.dicebear.com/6.x/initials/svg?seed=${getProviderName(provider)}`;
+                  }}
                 />
                 <div>
-                  <div className="font-medium">{provider.name}</div>
-                  <div className="text-sm text-gray-500">@{provider.username}</div>
+                  <div className="font-medium">{getProviderName(provider)}</div>
+                  <div className="text-sm text-gray-500">@{getUsername(provider)}</div>
                   <div className="text-xs text-gray-400">
                     {provider.recentBookings && provider.recentBookings.length > 0 
                       ? `Recent: ${provider.recentBookings[0]}` 
@@ -225,15 +253,21 @@ export default function ServiceProviderTopPerformers() {
                 <TableCell>#{index + 1}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <img
-                      src={provider.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${provider.name}`}
-                      alt={provider.name}
+                    <Image
+                      src={getAvatarUrl(provider)}
+                      alt={getProviderName(provider)}
+                      width={24}
+                      height={24}
                       className="w-6 h-6 rounded-full"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://api.dicebear.com/6.x/initials/svg?seed=${getProviderName(provider)}`;
+                      }}
                     />
-                    {provider.name}
+                    {getProviderName(provider)}
                   </div>
                 </TableCell>
-                <TableCell>@{provider.username}</TableCell>
+                <TableCell>@{getUsername(provider)}</TableCell>
                 <TableCell>{provider.completedBookingsCount || 0}</TableCell>
                 <TableCell>{provider.reviewsCount || 0}</TableCell>
                 <TableCell>

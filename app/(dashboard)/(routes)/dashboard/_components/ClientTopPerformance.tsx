@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import CardView from "@/components/svg icons/CardView";
 import ListView from "@/components/svg icons/ListView";
 import { Skeleton } from "@/components/ui/skeleton";
+import Image from "next/image";
 
 interface Client {
   id: string;
@@ -69,6 +70,19 @@ export default function ClientTopPerformers() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper functions for avatar handling
+  const getAvatarUrl = (client: Client) => {
+    return client.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${client.name}`;
+  };
+
+  const getClientName = (client: Client) => {
+    return client.name || 'Unknown Client';
+  };
+
+  const getUsername = (client: Client) => {
+    return client.username || 'unknown';
   };
 
   if (loading) {
@@ -133,6 +147,13 @@ export default function ClientTopPerformers() {
         </div>
         <div className="text-center py-8 text-red-500">
           Error: {error}
+          <Button 
+            onClick={fetchTopClients} 
+            className="ml-4"
+            variant="outline"
+          >
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -177,14 +198,21 @@ export default function ClientTopPerformers() {
           {displayClients.map((client, index) => (
             <Card key={client.id || index} className="shadow-sm">
               <CardHeader className="flex flex-row items-center gap-4 p-4">
-                <img
-                  src={client.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${client.name}`}
-                  alt={client.name}
+                <Image
+                  src={getAvatarUrl(client)}
+                  alt={getClientName(client)}
+                  width={40}
+                  height={40}
                   className="w-10 h-10 rounded-full"
+                  onError={(e) => {
+                    // Fallback to dicebear if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://api.dicebear.com/6.x/initials/svg?seed=${getClientName(client)}`;
+                  }}
                 />
                 <div>
-                  <div className="font-medium">{client.name}</div>
-                  <div className="text-sm text-gray-500">@{client.username}</div>
+                  <div className="font-medium">{getClientName(client)}</div>
+                  <div className="text-sm text-gray-500">@{getUsername(client)}</div>
                   <div className="text-xs text-gray-400">
                     {client.recentBookings && client.recentBookings.length > 0 
                       ? `Recent: ${client.recentBookings[0]}` 
@@ -222,15 +250,22 @@ export default function ClientTopPerformers() {
                 <TableCell>#{index + 1}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <img
-                      src={client.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${client.name}`}
-                      alt={client.name}
+                    <Image
+                      src={getAvatarUrl(client)}
+                      alt={getClientName(client)}
+                      width={24}
+                      height={24}
                       className="w-6 h-6 rounded-full"
+                      onError={(e) => {
+                        // Fallback to dicebear if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://api.dicebear.com/6.x/initials/svg?seed=${getClientName(client)}`;
+                      }}
                     />
-                    {client.name}
+                    {getClientName(client)}
                   </div>
                 </TableCell>
-                <TableCell>@{client.username}</TableCell>
+                <TableCell>@{getUsername(client)}</TableCell>
                 <TableCell>{client.bookingsCount || 0}</TableCell>
                 <TableCell>{client.reviewsCount || 0}</TableCell>
                 <TableCell>

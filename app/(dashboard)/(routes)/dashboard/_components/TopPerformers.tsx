@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import CardView from "@/components/svg icons/CardView";
 import ListView from "@/components/svg icons/ListView";
 import { Skeleton } from "@/components/ui/skeleton";
+import Image from "next/image";
 
 interface Post {
   id: string;
@@ -101,6 +102,22 @@ export default function TopPerformers() {
   const truncateText = (text: string, maxLength: number = 40) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
+  };
+
+  // Generate avatar URL with fallback
+  const getAvatarUrl = (author: Post['author']) => {
+    if (author?.avatar) return author.avatar;
+    return `https://api.dicebear.com/6.x/initials/svg?seed=${author?.name || 'User'}`;
+  };
+
+  // Get author name with fallback
+  const getAuthorName = (author: Post['author']) => {
+    return author?.name || 'Unknown User';
+  };
+
+  // Get username with fallback
+  const getUsername = (author: Post['author']) => {
+    return author?.username || 'unknown';
   };
 
   if (loading) {
@@ -218,14 +235,21 @@ export default function TopPerformers() {
           {displayPosts.map((post, index) => (
             <Card key={post.id || index} className="shadow-sm">
               <CardHeader className="flex flex-row items-center gap-4 p-4">
-                <img
-                  src={post.author?.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${post.author?.name || 'User'}`}
-                  alt={post.author?.name}
+                <Image
+                  src={getAvatarUrl(post.author)}
+                  alt={getAuthorName(post.author)}
+                  width={40}
+                  height={40}
                   className="w-10 h-10 rounded-full"
+                  onError={(e) => {
+                    // Fallback to dicebear if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://api.dicebear.com/6.x/initials/svg?seed=${getAuthorName(post.author)}`;
+                  }}
                 />
                 <div>
-                  <div className="font-medium">{post.author?.name || 'Unknown User'}</div>
-                  <div className="text-sm text-gray-500">@{post.author?.username || 'unknown'}</div>
+                  <div className="font-medium">{getAuthorName(post.author)}</div>
+                  <div className="text-sm text-gray-500">@{getUsername(post.author)}</div>
                   <div className="text-xs text-gray-400">
                     Engagement: {post.likesCount + post.repostsCount + post.commentsCount}
                   </div>
@@ -265,14 +289,21 @@ export default function TopPerformers() {
                 <TableCell>#{index + 1}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <img
-                      src={post.author?.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${post.author?.name || 'User'}`}
-                      alt={post.author?.name}
+                    <Image
+                      src={getAvatarUrl(post.author)}
+                      alt={getAuthorName(post.author)}
+                      width={24}
+                      height={24}
                       className="w-6 h-6 rounded-full"
+                      onError={(e) => {
+                        // Fallback to dicebear if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://api.dicebear.com/6.x/initials/svg?seed=${getAuthorName(post.author)}`;
+                      }}
                     />
                     <div>
-                      <div className="font-medium">{post.author?.name || 'Unknown User'}</div>
-                      <div className="text-xs text-gray-500">@{post.author?.username || 'unknown'}</div>
+                      <div className="font-medium">{getAuthorName(post.author)}</div>
+                      <div className="text-xs text-gray-500">@{getUsername(post.author)}</div>
                     </div>
                   </div>
                 </TableCell>

@@ -17,6 +17,7 @@ import { Trash, Calendar } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import Image from "next/image";
 
 interface ContentItem {
   id?: string;
@@ -211,6 +212,22 @@ export default function CreateContentModal({
         { value: "Archived", label: "Archived" }
       ];
 
+  // Check if the media is an image
+  const isImageMedia = () => {
+    if (!mediaPreviewUrl) return false;
+    if (mediaFile) {
+      return mediaFile.type.startsWith("image/");
+    }
+    // For existing media URLs, check the file extension
+    return (
+      mediaPreviewUrl.endsWith(".png") || 
+      mediaPreviewUrl.endsWith(".jpeg") || 
+      mediaPreviewUrl.endsWith(".jpg") || 
+      mediaPreviewUrl.endsWith(".gif") ||
+      mediaPreviewUrl.endsWith(".webp")
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogOverlay className="backdrop-blur-xs">
@@ -362,7 +379,7 @@ export default function CreateContentModal({
                             ref={fileInputRef}
                             className="hidden"
                             onChange={handleFileChange}
-                            accept="image/png, image/jpeg, video/mp4, image/gif"
+                            accept="image/png, image/jpeg, video/mp4, image/gif, image/webp"
                           />
                           <Button
                             type="button"
@@ -373,7 +390,7 @@ export default function CreateContentModal({
                             Choose File
                           </Button>
                           <p className="text-sm text-gray-500 mt-2">
-                            Supported formats: PNG, JPEG, MP4, GIF. Max size: 10MB
+                            Supported formats: PNG, JPEG, MP4, GIF, WebP. Max size: 10MB
                           </p>
                         </div>
                       </div>
@@ -418,14 +435,19 @@ export default function CreateContentModal({
                   </Label>
                   <div className="w-full flex-1 border rounded-lg bg-card flex items-center justify-center overflow-hidden">
                     {mediaPreviewUrl ? (
-                      mediaFile?.type.startsWith("image/") || 
-                      mediaPreviewUrl.endsWith(".png") || 
-                      mediaPreviewUrl.endsWith(".jpeg") || 
-                      mediaPreviewUrl.endsWith(".gif") ? (
-                        <img
+                      isImageMedia() ? (
+                        <Image
                           src={mediaPreviewUrl}
                           alt="Media Preview"
+                          width={500}
+                          height={400}
                           className="object-contain w-full h-full"
+                          onError={(e) => {
+                            // Fallback to video if image fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            // You might want to show a video player here if the file is actually a video
+                          }}
                         />
                       ) : (
                         <video

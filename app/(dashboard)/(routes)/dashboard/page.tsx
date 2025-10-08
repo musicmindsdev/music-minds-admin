@@ -3,14 +3,6 @@
 import { JSX, useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 import { FaRegStar } from "react-icons/fa6";
 import { TbCalendarSearch } from "react-icons/tb";
 import { CiExport } from "react-icons/ci";
@@ -34,10 +26,12 @@ import { PiUsersThreeBold } from "react-icons/pi";
 import { RiCheckboxMultipleLine } from "react-icons/ri";
 import { AiOutlineDollar } from "react-icons/ai";
 import { HiOutlineChartBar } from "react-icons/hi2";
+import RevenueGrowthChart from "./_components/RevenueGrowthChart";
+import BookingTrendsChart from "./_components/BookingsTrendChart";
 
 type Stats = {
   icon: JSX.Element;
-  statNum: string | number;
+  statNum: string | number | JSX.Element;
   statTitle: string;
   statDuration: JSX.Element;
   statTrend: JSX.Element;
@@ -52,123 +46,37 @@ interface SwiperStats {
   error: string | null;
 }
 
-const stats: Stats[] = [
-  {
-    icon: <TbUserCheck className="w-11 h-11 text-[#34C759] bg-[#DEFFE7] p-2 rounded-lg" />,
-    statNum: "400K",
-    statTitle: "Active Users",
-    statDuration: (
-      <Select defaultValue="last30days">
-        <SelectTrigger className="text-xs rounded-full">
-          <SelectValue placeholder="Last 30 Days" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="1year">1 Year</SelectItem>
-          <SelectItem value="6months">6 Months</SelectItem>
-          <SelectItem value="3months">3 Months</SelectItem>
-          <SelectItem value="last30days">Last 30 Days</SelectItem>
-          <SelectItem value="last10days">Last 10 Days</SelectItem>
-          <SelectItem value="last24hours">Last 24 Hours</SelectItem>
-        </SelectContent>
-      </Select>
-    ),
-    statTrend: (
-      <div className="flex gap-1 p-1 text-xs items-center text-end text-[#34C759] bg-[#DEFFE7] rounded-lg">
-        <span>18%</span>
-        <FaArrowTrendUp />
-      </div>
-    ),
-  },
-  {
-    icon: <TbUserX className="w-11 h-11 text-[#9F3DF3] bg-[#9747FF1A] p-2 rounded-lg" />,
-    statNum: "80K",
-    statTitle: "Inactive Users",
-    statDuration: (
-      <Select defaultValue="last30days">
-        <SelectTrigger className="text-xs rounded-full">
-          <SelectValue placeholder="Last 30 Days" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="1year">1 Year</SelectItem>
-          <SelectItem value="6months">6 Months</SelectItem>
-          <SelectItem value="3months">3 Months</SelectItem>
-          <SelectItem value="last30days">Last 30 Days</SelectItem>
-          <SelectItem value="last10days">Last 10 Days</SelectItem>
-          <SelectItem value="last24hours">Last 24 Hours</SelectItem>
-        </SelectContent>
-      </Select>
-    ),
-    statTrend: (
-      <div className="flex gap-1 p-1 text-xs items-center text-[#FF3B30] bg-[#FEEAE9] rounded-lg">
-        <span>18%</span>
-        <FaArrowTrendDown />
-      </div>
-    ),
-  },
-  {
-    icon: <TbUserHexagon className="w-11 h-11 text-[#EBBC00] bg-[#FDF3D9] p-2 rounded-lg" />,
-    statNum: "20K",
-    statTitle: "Suspended Users",
-    statDuration: (
-      <Select defaultValue="last30days">
-        <SelectTrigger className="text-xs rounded-full">
-          <SelectValue placeholder="Last 30 Days" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="1year">1 Year</SelectItem>
-          <SelectItem value="6months">6 Months</SelectItem>
-          <SelectItem value="3months">3 Months</SelectItem>
-          <SelectItem value="last30days">Last 30 Days</SelectItem>
-          <SelectItem value="last10days">Last 10 Days</SelectItem>
-          <SelectItem value="last24hours">Last 24 Hours</SelectItem>
-        </SelectContent>
-      </Select>
-    ),
-    statTrend: (
-      <div className="flex gap-1 p-1 text-xs items-center text-[#34C759] bg-[#DEFFE7] rounded-lg">
-        <span>18%</span>
-        <FaArrowTrendUp />
-      </div>
-    ),
-  },
-];
-
-// Mock data for charts and non-Swiper sections
-const bookingTrendsData = [
-  { month: "Jan", bookings: 600 },
-  { month: "Feb", bookings: 500 },
-  { month: "Mar", bookings: 700 },
-  { month: "Apr", bookings: 400 },
-  { month: "May", bookings: 600 },
-  { month: "Jun", bookings: 500 },
-  { month: "Jul", bookings: 650 },
-  { month: "Aug", bookings: 550 },
-  { month: "Sep", bookings: 700 },
-  { month: "Oct", bookings: 600 },
-  { month: "Nov", bookings: 650 },
-  { month: "Dec", bookings: 805 },
-];
-
-const revenueGrowthData = [
-  { month: "Jan", revenue: 500 },
-  { month: "Feb", revenue: 400 },
-  { month: "Mar", revenue: 600 },
-  { month: "Apr", revenue: 350 },
-  { month: "May", revenue: 500 },
-  { month: "Jun", revenue: 450 },
-  { month: "Jul", revenue: 550 },
-  { month: "Aug", revenue: 400 },
-  { month: "Sep", revenue: 600 },
-  { month: "Oct", revenue: 500 },
-  { month: "Nov", revenue: 550 },
-  { month: "Dec", revenue: 231 },
-];
+interface UserStats {
+  active: {
+    count: number;
+    loading: boolean;
+    error: string | null;
+    range: string;
+  };
+  inactive: {
+    count: number;
+    loading: boolean;
+    error: string | null;
+    range: string;
+  };
+  suspended: {
+    count: number;
+    loading: boolean;
+    error: string | null;
+    range: string;
+  };
+}
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("users");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [viewType, setViewType] = useState("post");
 
+  const [userStats, setUserStats] = useState<UserStats>({
+    active: { count: 0, loading: true, error: null, range: "last30days" },
+    inactive: { count: 0, loading: true, error: null, range: "last30days" },
+    suspended: { count: 0, loading: true, error: null, range: "last30days" },
+  });
   const [swiperStats, setSwiperStats] = useState<SwiperStats[]>([
     {
       id: "totalUsers",
@@ -179,7 +87,7 @@ export default function DashboardPage() {
       error: null,
     },
     {
-      id: "totalBookings",
+      id: "successfulBookings",
       icon: <RiCheckboxMultipleLine className="w-11 h-11 p-2 text-[#9B0175] bg-[#FFE6F9] rounded-lg" />,
       statNum: 0,
       statTitle: "Successful Bookings",
@@ -189,9 +97,9 @@ export default function DashboardPage() {
     {
       id: "revenueGenerated",
       icon: <AiOutlineDollar className="w-11 h-11 p-2 text-[#003E9C] bg-[#D4E4FD] rounded-lg" />,
-      statNum: "$3.5M",
+      statNum: 0,
       statTitle: "Revenue Generated",
-      loading: false,
+      loading: true,
       error: null,
     },
     {
@@ -206,7 +114,15 @@ export default function DashboardPage() {
       id: "pendingBookings",
       icon: <TbCalendarSearch className="w-11 h-11 bg-[#FFFCDC] text-[#EBBC00] p-2 rounded-lg" />,
       statNum: 0,
-      statTitle: "Pending",
+      statTitle: "Pending Bookings",
+      loading: true,
+      error: null,
+    },
+    {
+      id: "totalBookings",
+      icon: <RiCheckboxMultipleLine className="w-11 h-11 p-2 text-[#0065FF] bg-[#E6F0FF] rounded-lg" />,
+      statNum: 0,
+      statTitle: "Total Bookings",
       loading: true,
       error: null,
     },
@@ -231,25 +147,44 @@ export default function DashboardPage() {
       setSwiperStats((prev) =>
         prev.map((stat) => ({
           ...stat,
-          loading: stat.id !== "revenueGenerated", // Skip loading for mocked revenue
+          loading: true,
           error: null,
         }))
       );
 
       const apiCalls = [
+        // Total Users
         fetch("/api/overview/users", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         }),
+        // Total Bookings
         fetch("/api/overview/bookings", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         }),
+        // Revenue Generated
+        fetch("/api/overview/revenue?range=all", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }),
+        // Impressions
+        fetch("/api/overview/posts/impressions?range=all", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }),
+        // Pending Bookings
+        fetch("/api/overview/bookings?range=all&status=PENDING", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }),
+        // Total Posts
         fetch("/api/overview/posts", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         }),
-        fetch("/api/overview/posts/impressions?range=all", {
+        // Successful Bookings (COMPLETED)
+        fetch("/api/overview/bookings?range=all&status=COMPLETED", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         }),
@@ -274,36 +209,64 @@ export default function DashboardPage() {
         })
       );
 
+      // Helper function to format currency
+      const formatCurrency = (amount: number) => {
+        if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`;
+        if (amount >= 1_000) return `$${(amount / 1_000).toFixed(1)}K`;
+        return `$${amount}`;
+      };
+
       setSwiperStats((prev) =>
         prev.map((stat) => {
-          if (stat.id === "revenueGenerated") return stat; // Skip mocked revenue
           const indexMap: { [key: string]: number } = {
             totalUsers: 0,
             totalBookings: 1,
-            pendingBookings: 1,
-            totalPosts: 2,
+            revenueGenerated: 2,
             impressions: 3,
+            pendingBookings: 4,
+            totalPosts: 5,
+            successfulBookings: 6,
           };
+
           const result = results[indexMap[stat.id]];
+
           if (result.error) {
             return { ...stat, loading: false, error: result.error };
           }
+
+          let statNum = stat.statNum;
+
+          switch (stat.id) {
+            case "totalUsers":
+              statNum = formatNumber(result.data.total || 0);
+              break;
+            case "totalBookings":
+              statNum = formatNumber(result.data.total || 0);
+              break;
+            case "revenueGenerated":
+              statNum = formatCurrency(result.data.revenue || result.data.totalRevenue || 0);
+              break;
+            case "impressions":
+              statNum = formatNumber(result.data.impressions || 0);
+              break;
+            case "pendingBookings":
+              statNum = formatNumber(result.data.total || 0);
+              break;
+            case "totalPosts":
+              statNum = formatNumber(result.data.total || 0);
+              break;
+            case "successfulBookings":
+              statNum = formatNumber(result.data.total || 0);
+              break;
+            default:
+              break;
+          }
+
           return {
             ...stat,
             loading: false,
             error: null,
-            statNum:
-              stat.id === "totalUsers"
-                ? formatNumber(result.data.total || 0)
-                : stat.id === "totalBookings"
-                ? formatNumber(result.data.total || 0)
-                : stat.id === "pendingBookings"
-                ? formatNumber(result.data.pending || 0)
-                : stat.id === "totalPosts"
-                ? formatNumber(result.data.total || 0)
-                : stat.id === "impressions"
-                ? formatNumber(result.data.impressions || 0)
-                : stat.statNum,
+            statNum,
           };
         })
       );
@@ -311,11 +274,7 @@ export default function DashboardPage() {
       const errorMessage = err instanceof Error ? err.message : "Failed to fetch dashboard stats";
       console.error("Fetch Swiper stats error:", err);
       setSwiperStats((prev) =>
-        prev.map((stat) =>
-          stat.id === "revenueGenerated"
-            ? stat
-            : { ...stat, loading: false, error: errorMessage }
-        )
+        prev.map((stat) => ({ ...stat, loading: false, error: errorMessage }))
       );
       toast.error(errorMessage, {
         position: "top-right",
@@ -336,6 +295,190 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchSwiperStats();
   }, [fetchSwiperStats]);
+
+  const fetchUserStatsByStatus = useCallback(async (statusType: 'active' | 'inactive' | 'suspended') => {
+    try {
+      setUserStats((prev) => ({
+        ...prev,
+        [statusType]: { ...prev[statusType], loading: true, error: null },
+      }));
+
+      const rangeMap: { [key: string]: string } = {
+        "last24hours": "today",
+        "last10days": "last7Days",
+        "last30days": "last30Days",
+        "3months": "last90Days",
+        "6months": "last90Days",
+        "1year": "last365Days",
+      };
+
+      const currentRange = userStats[statusType].range;
+      const apiRange = rangeMap[currentRange] || "last30Days";
+
+      const response = await fetch(`/api/overview/users?range=${apiRange}&status=${statusType}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const data = await response.json();
+      console.log(`${statusType} users:`, data);
+
+      setUserStats((prev) => ({
+        ...prev,
+        [statusType]: {
+          ...prev[statusType],
+          count: data.data?.total || data.total || 0,
+          loading: false,
+          error: response.ok ? null : "Failed to fetch",
+        },
+      }));
+    } catch (err) {
+      console.error(`Error fetching ${statusType} user stats:`, err);
+      const errorMessage = err instanceof Error ? err.message : `Failed to fetch ${statusType} user stats`;
+      setUserStats((prev) => ({
+        ...prev,
+        [statusType]: {
+          ...prev[statusType],
+          count: 0,
+          loading: false,
+          error: errorMessage,
+        },
+      }));
+      toast.error(errorMessage, {
+        position: "top-right",
+        duration: 5000,
+      });
+    }
+  }, [userStats]);
+
+  const handleRangeChange = (statusType: 'active' | 'inactive' | 'suspended', newRange: string) => {
+    setUserStats((prev) => ({
+      ...prev,
+      [statusType]: {
+        ...prev[statusType],
+        range: newRange,
+      },
+    }));
+    // Fetch immediately after range change
+    setTimeout(() => fetchUserStatsByStatus(statusType), 0);
+  };
+
+  useEffect(() => {
+    fetchUserStatsByStatus('active');
+    fetchUserStatsByStatus('inactive');
+    fetchUserStatsByStatus('suspended');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
+  const stats: Stats[] = [
+    {
+      icon: <TbUserCheck className="w-11 h-11 text-[#34C759] bg-[#DEFFE7] p-2 rounded-lg" />,
+      statNum: userStats.active.loading ? (
+        <Skeleton className="h-8 w-20" />
+      ) : userStats.active.error ? (
+        "Error"
+      ) : (
+        formatNumber(userStats.active.count)
+      ),
+      statTitle: "Active Users",
+      statDuration: (
+        <Select
+          value={userStats.active.range}
+          onValueChange={(value) => handleRangeChange('active', value)}
+        >
+          <SelectTrigger className="text-xs rounded-full">
+            <SelectValue placeholder="Last 30 Days" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="1year">1 Year</SelectItem>
+            <SelectItem value="6months">6 Months</SelectItem>
+            <SelectItem value="3months">3 Months</SelectItem>
+            <SelectItem value="last30days">Last 30 Days</SelectItem>
+            <SelectItem value="last10days">Last 10 Days</SelectItem>
+            <SelectItem value="last24hours">Last 24 Hours</SelectItem>
+          </SelectContent>
+        </Select>
+      ),
+      statTrend: (
+        <div className="flex gap-1 p-1 text-xs items-center text-end text-[#34C759] bg-[#DEFFE7] rounded-lg">
+          <span>18%</span>
+          <FaArrowTrendUp />
+        </div>
+      ),
+    },
+    {
+      icon: <TbUserX className="w-11 h-11 text-[#9F3DF3] bg-[#9747FF1A] p-2 rounded-lg" />,
+      statNum: userStats.inactive.loading ? (
+        <Skeleton className="h-8 w-20" />
+      ) : userStats.inactive.error ? (
+        "Error"
+      ) : (
+        formatNumber(userStats.inactive.count)
+      ),
+      statTitle: "Inactive Users",
+      statDuration: (
+        <Select
+          value={userStats.inactive.range}
+          onValueChange={(value) => handleRangeChange('inactive', value)}
+        >
+          <SelectTrigger className="text-xs rounded-full">
+            <SelectValue placeholder="Last 30 Days" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="1year">1 Year</SelectItem>
+            <SelectItem value="6months">6 Months</SelectItem>
+            <SelectItem value="3months">3 Months</SelectItem>
+            <SelectItem value="last30days">Last 30 Days</SelectItem>
+            <SelectItem value="last10days">Last 10 Days</SelectItem>
+            <SelectItem value="last24hours">Last 24 Hours</SelectItem>
+          </SelectContent>
+        </Select>
+      ),
+      statTrend: (
+        <div className="flex gap-1 p-1 text-xs items-center text-[#FF3B30] bg-[#FEEAE9] rounded-lg">
+          <span>18%</span>
+          <FaArrowTrendDown />
+        </div>
+      ),
+    },
+    {
+      icon: <TbUserHexagon className="w-11 h-11 text-[#EBBC00] bg-[#FDF3D9] p-2 rounded-lg" />,
+      statNum: userStats.suspended.loading ? (
+        <Skeleton className="h-8 w-20" />
+      ) : userStats.suspended.error ? (
+        "Error"
+      ) : (
+        formatNumber(userStats.suspended.count)
+      ),
+      statTitle: "Suspended Users",
+      statDuration: (
+        <Select
+          value={userStats.suspended.range}
+          onValueChange={(value) => handleRangeChange('suspended', value)}
+        >
+          <SelectTrigger className="text-xs rounded-full">
+            <SelectValue placeholder="Last 30 Days" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="1year">1 Year</SelectItem>
+            <SelectItem value="6months">6 Months</SelectItem>
+            <SelectItem value="3months">3 Months</SelectItem>
+            <SelectItem value="last30days">Last 30 Days</SelectItem>
+            <SelectItem value="last10days">Last 10 Days</SelectItem>
+            <SelectItem value="last24hours">Last 24 Hours</SelectItem>
+          </SelectContent>
+        </Select>
+      ),
+      statTrend: (
+        <div className="flex gap-1 p-1 text-xs items-center text-[#34C759] bg-[#DEFFE7] rounded-lg">
+          <span>18%</span>
+          <FaArrowTrendUp />
+        </div>
+      ),
+    },
+  ];
+
 
   return (
     <div className="p-6 space-y-6">
@@ -459,114 +602,8 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium">Booking Trends</CardTitle>
-            <select className="text-sm text-muted-foreground border rounded p-1">
-              <option>2023</option>
-              <option>2022</option>
-            </select>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={bookingTrendsData}>
-                  <defs>
-                    <linearGradient id="strokeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#FF00DF" />
-                      <stop offset="50%" stopColor="#5243FE" />
-                      <stop offset="100%" stopColor="#9F3DF3" />
-                    </linearGradient>
-                    <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#9F3DF3" stopOpacity={0.2} />
-                      <stop offset="30%" stopColor="#FF00DF" stopOpacity={0.1} />
-                      <stop offset="100%" stopColor="#5243FE" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fontSize: 12 }}
-                    axisLine={true}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    formatter={(value) => [value, "Bookings"]}
-                    labelStyle={{ color: "#000" }}
-                    itemStyle={{ color: "#5243FE" }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="bookings"
-                    stroke="url(#strokeGradient)"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorBookings)"
-                    activeDot={{ r: 6, fill: "#5243FE", stroke: "#fff", strokeWidth: 2 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium">Revenue Growth</CardTitle>
-            <select className="text-sm text-muted-foreground border rounded p-1">
-              <option>2023</option>
-              <option>2022</option>
-            </select>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueGrowthData}>
-                  <defs>
-                    <linearGradient id="strokeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#FF00DF" />
-                      <stop offset="50%" stopColor="#5243FE" />
-                      <stop offset="100%" stopColor="#9F3DF3" />
-                    </linearGradient>
-                    <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#9F3DF3" stopOpacity={0.2} />
-                      <stop offset="30%" stopColor="#FF00DF" stopOpacity={0.1} />
-                      <stop offset="100%" stopColor="#5243FE" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fontSize: 12 }}
-                    axisLine={true}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    formatter={(value) => [value, "Revenue"]}
-                    labelStyle={{ color: "#000" }}
-                    itemStyle={{ color: "#5243FE" }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="url(#strokeGradient)"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorBookings)"
-                    activeDot={{ r: 6, fill: "#5243FE", stroke: "#fff", strokeWidth: 2 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+      <BookingTrendsChart />
+        <RevenueGrowthChart />
       </div>
 
       <div>
@@ -627,7 +664,7 @@ export default function DashboardPage() {
         <Card className="rounded-none">
           <CardHeader>
             {activeTab === "users" && <UserTable />}
-            {activeTab === "bookings" && <BookingTable bookings={[]} />}
+            {activeTab === "bookings" && <BookingTable />}
             {activeTab === "transactions" && <TransactionTable />}
           </CardHeader>
         </Card>

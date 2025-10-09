@@ -72,6 +72,36 @@ export default function InviteAdminModal({ isOpen, onClose, onSuccess }: InviteA
     return typeof domain === 'object' ? domain.id : domain;
   };
 
+       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getRolesArray = (rolesData: any): Role[] => {
+    if (!rolesData) return [];
+    
+    // If it's already an array
+    if (Array.isArray(rolesData)) {
+      return rolesData;
+    }
+    
+    // If it's an object with a roles property
+    if (rolesData.roles && Array.isArray(rolesData.roles)) {
+      return rolesData.roles;
+    }
+    
+    // If it's an object with data property
+    if (rolesData.data && Array.isArray(rolesData.data)) {
+      return rolesData.data;
+    }
+    
+    // If it's an object that can be converted to array
+    if (typeof rolesData === 'object') {
+      const values = Object.values(rolesData);
+      if (values.length > 0 && Array.isArray(values[0])) {
+        return values[0] as Role[];
+      }
+    }
+    
+    return [];
+  };
+
   // Fetch initial data including roles
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -82,12 +112,22 @@ export default function InviteAdminModal({ isOpen, onClose, onSuccess }: InviteA
         const rolesResponse = await fetch("/api/admin/roles");
         if (rolesResponse.ok) {
           const rolesData = await rolesResponse.json();
-          setRoles(rolesData.roles || []);
-          if (rolesData.roles.length > 0) {
-            setSelectedRoleId(rolesData.roles[0].id);
+          console.log("Roles API response:", rolesData);
+          
+          const rolesArray = getRolesArray(rolesData);
+          console.log("Processed roles array:", rolesArray);
+          
+          setRoles(rolesArray);
+          if (rolesArray.length > 0) {
+            setSelectedRoleId(rolesArray[0].id);
           }
         } else {
-          console.warn("Failed to fetch roles");
+          console.warn("Failed to fetch roles, status:", rolesResponse.status);
+          // Set default roles if API fails
+          setRoles([
+            { id: "admin", name: "Administrator", permissions: ["all"] },
+            { id: "moderator", name: "Moderator", permissions: ["read", "write"] }
+          ]);
         }
 
         // Fetch domains - handle 404 gracefully
@@ -500,16 +540,22 @@ export default function InviteAdminModal({ isOpen, onClose, onSuccess }: InviteA
                     <SelectValue placeholder="Role" />
                   </SelectTrigger>
                   <SelectContent>
-                    {roles.map((role) => (
-                      <SelectItem key={role.id} value={role.id}>
-                        {role.name}
+                    {Array.isArray(roles) && roles.length > 0 ? (
+                      roles.map((role) => (
+                        <SelectItem key={role.id} value={role.id}>
+                          {role.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="admin" disabled>
+                        No roles available
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <Button onClick={handleInvite} disabled={loading}>
+            <Button onClick={handleInvite} disabled={loading || !selectedRoleId}>
               Invite
             </Button>
           </div>

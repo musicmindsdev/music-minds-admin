@@ -46,13 +46,9 @@ export async function GET(request: Request) {
 
     const data = await response.json();
 
-    return NextResponse.json(
-      {
-        message: "Roles fetched successfully",
-        roles: data,
-      },
-      { status: 200 }
-    );
+    // FIX: Return the data directly as array, don't wrap it in "roles" property
+    return NextResponse.json(data, { status: 200 });
+    
   } catch (error) {
     console.error("Fetch roles error:", error);
     return NextResponse.json(
@@ -124,13 +120,8 @@ export async function POST(request: Request) {
 
     const data = await response.json();
 
-    return NextResponse.json(
-      {
-        message: "Role created successfully",
-        role: data,
-      },
-      { status: 201 }
-    );
+    return NextResponse.json(data, { status: 201 });
+    
   } catch (error) {
     console.error("Create role error:", error);
     return NextResponse.json(

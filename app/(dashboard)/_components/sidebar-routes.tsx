@@ -58,6 +58,10 @@ const routes = [
         {
           label: "Announcements",
           href: "/content-management/announcements",
+        },
+        {
+          label: "Settlements",
+          href: "/content-management/settlements",
         }
       ],
     },

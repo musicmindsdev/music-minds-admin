@@ -62,6 +62,10 @@ const routes = [
         {
           label: "Settlements",
           href: "/content-management/settlements",
+        },
+        {
+          label: "Products",
+          href: "/content-management/products",
         }
       ],
     },

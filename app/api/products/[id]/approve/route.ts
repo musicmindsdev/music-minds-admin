@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const BASE_URL = "https://music-minds-backend.onrender.com/api/v1/admin";
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const cookieHeader = request.headers.get("cookie");
     let token = null;
@@ -24,7 +24,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     const body = await request.json();
-    const response = await fetch(`${BASE_URL}/products/${params.id}/approve`, {
+    const { id } = await params;
+    const response = await fetch(`${BASE_URL}/products/${id}/approve`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

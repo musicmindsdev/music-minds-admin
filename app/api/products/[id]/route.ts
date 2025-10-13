@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  request: Request, 
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params;
+    
     const cookieHeader = request.headers.get("cookie");
     let token = null;
     if (cookieHeader) {
@@ -17,7 +22,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const response = await fetch(`https://music-minds-backend.onrender.com/api/v1/products/${params.id}`, {
+    const response = await fetch(`https://music-minds-backend.onrender.com/api/v1/products/${id}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

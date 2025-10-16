@@ -33,22 +33,6 @@ import { PiWarningOctagonFill } from "react-icons/pi";
 import { FaUser } from "react-icons/fa6";
 import ExportModal from "@/components/ExportModal";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface ApiUser {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  roles: Array<{
-    id: string;
-    name: string;
-    permissions: string[];
-  }>;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface User {
   id: string;
   name: string;
@@ -68,35 +52,43 @@ interface UserTableProps {
   headerText?: string;
   onViewDetails?: (user: User) => void;
 }
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mapApiUserToComponentUser = (apiUser: any): User => {
+  console.log("Mapping user:", apiUser); // Add this for debugging
+  
+  // The API returns user objects with name field, not firstName/lastName
+  const userData = apiUser;
 
-const mapApiUserToComponentUser = (apiUser: ApiUser): User => {
-  const isSuspended = apiUser.roles.some(role => 
-    role.name.toLowerCase().includes('blacklist') || 
-    role.name.toLowerCase().includes('suspended')
-  );
-  
-  const status: "Active" | "Suspended" | "Deactivated" = isSuspended ? "Suspended" : "Active";
-  
-  const profileType = apiUser.roles.length > 0 
-    ? apiUser.roles[0].name 
-    : "User";
-  
+  // Determine status based on active field and isShadowBanned
+  const status: "Active" | "Suspended" | "Deactivated" = 
+    userData.isShadowBanned ? "Suspended" : 
+    userData.active ? "Active" : "Deactivated";
+
+  // Get profile type from role field or profileTypes array
+  const profileType = userData.role || 
+    (userData.profileTypes && userData.profileTypes.length > 0 ? "Has Profile Types" : "User");
+
+  // Use lastLoginAt for last activity, fallback to updatedAt
+  const lastActivityDate = userData.lastLoginAt || userData.updatedAt;
+
   return {
-    id: apiUser.id,
-    name: `${apiUser.firstName} ${apiUser.lastName}`,
-    email: apiUser.email,
+    id: userData.id,
+    name: userData.name || userData.username || 'Unknown User',
+    email: userData.email,
     profileType,
     status,
-    verified: true,
-    lastLogin: new Date(apiUser.updatedAt).toLocaleDateString('en-US', {
-      month: '2-digit',
-      day: '2-digit',
-      year: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    }).replace(',', ' • '),
-    image: `https://api.dicebear.com/6.x/initials/svg?seed=${apiUser.firstName} ${apiUser.lastName}`
+    verified: userData.isVerified || userData.isEmailVerified || false,
+    lastLogin: lastActivityDate 
+      ? new Date(lastActivityDate).toLocaleDateString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }).replace(',', ' • ')
+      : 'Never',
+    image: userData.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${userData.name || userData.username || userData.email || 'U'}`
   };
 };
 
@@ -147,34 +139,37 @@ export default function UserTable({
     try {
       setLoading(true);
       setError(null);
-      
+  
+      console.log("Fetching users from API...");
       const response = await fetch(`/api/users?page=${currentPage}&limit=${usersPerPage}`);
-      
+  
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to fetch users');
       }
-      
+  
       const data = await response.json();
-      
-      let usersData: ApiUser[] = [];
+      console.log("API response:", data);
+  
+       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let usersData: any[] = [];
       let totalCount = 0;
-      
-      if (Array.isArray(data)) {
+  
+      if (data.users && Array.isArray(data.users)) {
+        usersData = data.users;
+        totalCount = data.total || data.users.length;
+      } else if (Array.isArray(data)) {
         usersData = data;
         totalCount = data.length;
-      } else if (data && Array.isArray(data.users)) {
-        usersData = data.users;
-        totalCount = data.pagination?.total || data.users.length;
-      } else if (data && Array.isArray(data.data)) {
-        usersData = data.data;
-        totalCount = data.pagination?.total || data.data.length;
       }
-      
+  
+      console.log("Users data to map:", usersData);
       const mappedUsers = usersData.map(mapApiUserToComponentUser);
+      console.log("Mapped users:", mappedUsers);
+      
       setUsers(mappedUsers);
       setTotalUsers(totalCount);
-      
+  
     } catch (err) {
       console.error('Error fetching users:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -265,12 +260,12 @@ export default function UserTable({
         const response = await fetch(`/api/users/${userId}`, {
           method: 'DELETE',
         });
-        
+
         if (!response.ok) {
           throw new Error('Failed to delete user');
         }
       }
-      
+
       setSelectedUsers([]);
       setIsDeleteModalOpen(false);
       fetchUsers();
@@ -288,18 +283,19 @@ export default function UserTable({
     setIsDeleteModalOpen(false);
   };
 
+
   const handleActivate = async () => {
     try {
       for (const userId of selectedUsers) {
         const response = await fetch(`/api/users/${userId}/unblacklist`, {
-          method: 'POST',
+          method: 'PUT',
         });
-        
+
         if (!response.ok) {
           throw new Error('Failed to activate user');
         }
       }
-      
+
       setSelectedUsers([]);
       setIsActivateModalOpen(false);
       fetchUsers();
@@ -308,7 +304,6 @@ export default function UserTable({
       setError('Failed to activate users');
     }
   };
-
   const openActivateModal = () => {
     setIsActivateModalOpen(true);
   };
@@ -321,14 +316,14 @@ export default function UserTable({
     try {
       for (const userId of selectedUsers) {
         const response = await fetch(`/api/users/${userId}/blacklist`, {
-          method: 'POST',
+          method: 'PUT',
         });
-        
+
         if (!response.ok) {
           throw new Error('Failed to suspend user');
         }
       }
-      
+
       setSelectedUsers([]);
       setIsSuspendModalOpen(false);
       fetchUsers();
@@ -337,6 +332,7 @@ export default function UserTable({
       setError('Failed to suspend users');
     }
   };
+
 
   const openSuspendModal = () => {
     setIsSuspendModalOpen(true);
@@ -424,7 +420,7 @@ export default function UserTable({
           )}
         </div>
       </div>
-      
+
       <div className="relative mt-4 flex items-center pb-2">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <input
@@ -452,9 +448,8 @@ export default function UserTable({
               <div className="flex space-x-2">
                 <Button
                   variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Active ? "border border-gray-400 font-medium" : ""
-                  }`}
+                  className={`flex items-center gap-1 rounded-full text-sm ${statusFilter.Active ? "border border-gray-400 font-medium" : ""
+                    }`}
                   onClick={() =>
                     setStatusFilter((prev) => ({
                       ...prev,
@@ -467,9 +462,8 @@ export default function UserTable({
                 </Button>
                 <Button
                   variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Suspended ? "border border-gray-400 font-medium" : ""
-                  }`}
+                  className={`flex items-center gap-1 rounded-full text-sm ${statusFilter.Suspended ? "border border-gray-400 font-medium" : ""
+                    }`}
                   onClick={() =>
                     setStatusFilter((prev) => ({
                       ...prev,
@@ -482,9 +476,8 @@ export default function UserTable({
                 </Button>
                 <Button
                   variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.Deactivated ? "border border-gray-400 font-medium" : ""
-                  }`}
+                  className={`flex items-center gap-1 rounded-full text-sm ${statusFilter.Deactivated ? "border border-gray-400 font-medium" : ""
+                    }`}
                   onClick={() =>
                     setStatusFilter((prev) => ({
                       ...prev,
@@ -555,7 +548,7 @@ export default function UserTable({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      
+
       {selectedUsers.length > 0 && (
         <div className="flex justify-end space-x-2 mt-2 p-4">
           <Button variant="outline" size="sm" onClick={openDeleteModal} className="text-red-600">
@@ -572,7 +565,7 @@ export default function UserTable({
           </Button>
         </div>
       )}
-      
+
       {filteredUsers.length === 0 ? (
         <div className="text-center py-12 mt-4">
           <div className="flex flex-col items-center justify-center">
@@ -646,22 +639,20 @@ export default function UserTable({
                   <TableCell>{user.profileType}</TableCell>
                   <TableCell>
                     <span
-                      className={`flex items-center justify-center gap-1 rounded-full ${
-                        user.status === "Active"
+                      className={`flex items-center justify-center gap-1 rounded-full ${user.status === "Active"
                           ? "bg-green-100 text-green-600"
                           : user.status === "Suspended"
-                          ? "bg-yellow-100 text-yellow-600"
-                          : "bg-gray-100 text-gray-600"
-                      }`}
+                            ? "bg-yellow-100 text-yellow-600"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
                     >
                       <span
-                        className={`h-2 w-2 rounded-full ${
-                          user.status === "Active"
+                        className={`h-2 w-2 rounded-full ${user.status === "Active"
                             ? "bg-green-500"
                             : user.status === "Suspended"
-                            ? "bg-yellow-500"
-                            : "bg-gray-500"
-                        }`}
+                              ? "bg-yellow-500"
+                              : "bg-gray-500"
+                          }`}
                       />
                       {user.status}
                     </span>
@@ -701,14 +692,14 @@ export default function UserTable({
                           <UserRoundX className="h-4 w-4 mr-2 text-red-600" />
                           Delete User
                         </DropdownMenuItem>
-                        </DropdownMenuContent>
+                      </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-          
+
           {showPagination && (
             <div className="flex justify-between items-center mt-4">
               <div className="flex space-x-2">
@@ -783,7 +774,7 @@ export default function UserTable({
           )}
         </>
       )}
-      
+
       <Modal
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
@@ -797,7 +788,7 @@ export default function UserTable({
         confirmButtonColor="#EF4444"
         onConfirm={handleDelete}
       />
-      
+
       <Modal
         isOpen={isActivateModalOpen}
         onClose={closeActivateModal}
@@ -811,7 +802,7 @@ export default function UserTable({
         confirmButtonColor="#00A424"
         onConfirm={handleActivate}
       />
-      
+
       <Modal
         isOpen={isSuspendModalOpen}
         onClose={closeSuspendModal}
@@ -825,7 +816,7 @@ export default function UserTable({
         confirmButtonColor="#5243FE"
         onConfirm={handleSuspend}
       />
-      
+
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}

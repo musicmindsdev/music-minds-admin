@@ -69,26 +69,26 @@ interface Review {
   createdAt: string;
 }
 
-const mapApiUserToComponentUser = (apiUser: ApiUser): User => {
-  const isSuspended = apiUser.roles.some(role => 
-    role.name.toLowerCase().includes('blacklist') || 
-    role.name.toLowerCase().includes('suspended')
-  );
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mapApiUserToComponentUser = (apiUser: any): User => {
+  const userData = apiUser.user || apiUser.data || apiUser;
+  
+  const isSuspended = userData.isShadowBanned || 
+    userData.role?.toLowerCase().includes('disabled') ||
+    false;
   
   const status: "Active" | "Suspended" | "Deactivated" = isSuspended ? "Suspended" : "Active";
   
-  const profileType = apiUser.roles.length > 0 
-    ? apiUser.roles[0].name 
-    : "User";
+  const profileType = userData.role || "User";
   
   return {
-    id: apiUser.id,
-    name: `${apiUser.firstName} ${apiUser.lastName}`,
-    email: apiUser.email,
+    id: userData.id,
+    name: userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'Unknown User',
+    email: userData.email,
     profileType,
     status,
-    verified: true,
-    lastLogin: new Date(apiUser.updatedAt).toLocaleDateString('en-US', {
+    verified: userData.isVerified || false,
+    lastLogin: new Date(userData.updatedAt || userData.createdAt).toLocaleDateString('en-US', {
       month: '2-digit',
       day: '2-digit',
       year: '2-digit',
@@ -96,7 +96,7 @@ const mapApiUserToComponentUser = (apiUser: ApiUser): User => {
       minute: '2-digit',
       hour12: true
     }).replace(',', ' • '),
-    image: `https://api.dicebear.com/6.x/initials/svg?seed=${apiUser.firstName} ${apiUser.lastName}`
+    image: userData.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${userData.name || userData.email}`
   };
 };
 
@@ -438,7 +438,6 @@ export default function UserDetailsView({ user: initialUser, onClose }: UserDeta
         <div className="p-6 shadow bg-card">
           {activeTab === "Bookings" ? (
             <BookingTable
-              bookings={userBookings}
               showCheckboxes={false}
               showPagination={true}
               showExportButton={false}

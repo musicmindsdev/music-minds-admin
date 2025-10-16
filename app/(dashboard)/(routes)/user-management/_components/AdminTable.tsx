@@ -42,7 +42,7 @@ interface AdminTeamMember {
   dateInvited: string;
   dateInviteAccepted: string;
   lastLogin: string;
-  status: "Online" | "Pending";
+  status: "Active" | "Inactive";
   image?: string;
   permissions: string[];
   passwordCreated: string;
@@ -84,10 +84,16 @@ export default function AdminTable({
         ...(searchQuery && { search: searchQuery }),
       }).toString();
 
+      console.log("=== FETCHING ADMINS ===");
+      console.log("API URL:", `/api/admin?${query}`);
+
       const response = await fetch(`/api/admin?${query}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
+
+      console.log("Response status:", response.status);
+      console.log("Response ok:", response.ok);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -96,63 +102,86 @@ export default function AdminTable({
         );
       }
 
-      const { admins: apiAdmins } = await response.json();
+      const data = await response.json();
+      
+      // ADD DEBUG LOGGING HERE
+      console.log("=== API RESPONSE DATA ===");
+      console.log("Full response:", data);
+      console.log("Admins array:", data.admins);
+      console.log("Admins count:", data.admins?.length);
+      if (data.admins && data.admins.length > 0) {
+        console.log("First admin sample:", data.admins[0]);
+      }
 
-      // Transform API response to match component interface
-      const mappedAdmins: AdminTeamMember[] = Array.isArray(apiAdmins)
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        apiAdmins.map((admin: any) => ({
-            id: admin.id || "N/A",
-            name: `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || 'N/A',
-            email: admin.email || 'N/A',
-            role: admin.roles?.[0]?.name || 'N/A',
-            inviteSent: admin.createdAt 
-              ? new Date(admin.createdAt).toLocaleDateString('en-US', { 
-                  weekday: 'short', 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric' 
-                })
-              : 'N/A',
-            dateInvited: admin.createdAt
-              ? new Date(admin.createdAt).toLocaleTimeString('en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })
-              : 'N/A',
-            dateInviteAccepted: admin.updatedAt && admin.updatedAt !== admin.createdAt
-              ? new Date(admin.updatedAt).toLocaleDateString('en-US', { 
-                  weekday: 'short', 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric' 
-                })
-              : 'N/A',
-            lastLogin: 'N/A',
-            status: 'Online', // Default to Online as API doesn't provide status
-            image: `https://api.dicebear.com/6.x/initials/svg?seed=${encodeURIComponent(admin.firstName || admin.email || 'A')}`,
-            permissions: admin.roles?.[0]?.permissions || ['N/A'],
-            passwordCreated: admin.createdAt 
-              ? new Date(admin.createdAt).toLocaleDateString('en-US', { 
-                  weekday: 'short', 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric' 
-                })
-              : 'N/A',
-            lastChanged: admin.updatedAt && admin.updatedAt !== admin.createdAt
-              ? new Date(admin.updatedAt).toLocaleDateString('en-US', { 
-                  weekday: 'short', 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric' 
-                })
-              : 'N/A',
-          }))
+      const mappedAdmins: AdminTeamMember[] = Array.isArray(data.admins)
+       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? data.admins.map((admin: any) => {
+            console.log("Processing admin:", admin);
+            
+            return {
+              id: admin.id || "N/A",
+              name: admin.name || admin.username || `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || 'N/A',
+              email: admin.email || 'N/A',
+              role: admin.role || admin.roles?.[0]?.name || 'N/A',
+              inviteSent: admin.createdAt 
+                ? new Date(admin.createdAt).toLocaleDateString('en-US', { 
+                    weekday: 'short', 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })
+                : 'N/A',
+              dateInvited: admin.createdAt
+                ? new Date(admin.createdAt).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : 'N/A',
+              dateInviteAccepted: admin.lastLoginAt || (admin.updatedAt && admin.updatedAt !== admin.createdAt)
+                ? new Date(admin.lastLoginAt || admin.updatedAt).toLocaleDateString('en-US', { 
+                    weekday: 'short', 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })
+                : 'N/A',
+              lastLogin: admin.lastLoginAt 
+                ? new Date(admin.lastLoginAt).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : 'Never logged in',
+              // CORRECTED: Use active field for status
+              status: admin.active ? "Active" : "Inactive",
+              image: admin.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${encodeURIComponent(admin.name || admin.username || admin.email || 'A')}`,
+              permissions: admin.roles?.[0]?.permissions || [],
+              passwordCreated: admin.createdAt 
+                ? new Date(admin.createdAt).toLocaleDateString('en-US', { 
+                    weekday: 'short', 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })
+                : 'N/A',
+              lastChanged: admin.updatedAt
+                ? new Date(admin.updatedAt).toLocaleDateString('en-US', { 
+                    weekday: 'short', 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })
+                : 'N/A',
+            };
+          })
         : [];
 
+      console.log("Mapped admins:", mappedAdmins);
       setMembers(mappedAdmins);
-      toast.success("Admin team members loaded successfully.");
+      
+      toast.success(`Loaded ${mappedAdmins.length} admin(s) successfully.`);
     } catch (err) {
       console.error("Error fetching admins:", err);
       toast.error(
@@ -166,8 +195,21 @@ export default function AdminTable({
   }, [searchQuery]);
 
   useEffect(() => {
+    console.log("=== COMPONENT MOUNTED ===");
+    console.log("Current members:", members);
+    console.log("Current members count:", members.length);
+    
     fetchMembers();
   }, [fetchMembers]);
+
+  // Add state logging
+  useEffect(() => {
+    console.log("=== STATE UPDATED ===");
+    console.log("Members:", members);
+    console.log("Members count:", members.length);
+    console.log("Filtered members:", filteredMembers);
+    console.log("Filtered count:", filteredMembers.length);
+  }, [members, searchQuery]);
 
   const filteredMembers = members.filter(
     (member) =>
@@ -371,6 +413,7 @@ export default function AdminTable({
           )}
         </div>
       </div>
+      
       <div className="relative mt-4 flex items-center pb-2">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <input
@@ -380,6 +423,12 @@ export default function AdminTable({
           className="pl-8 p-2 border rounded-lg w-full bg-background"
         />
       </div>
+
+      {/* Debug info - remove in production */}
+      <div className="text-xs text-gray-500 mb-2">
+        Showing {filteredMembers.length} of {members.length} total admins
+      </div>
+
       {selectedMembers.length > 0 && (
         <div className="flex justify-end space-x-2 mt-2 p-4">
           <Button
@@ -394,14 +443,19 @@ export default function AdminTable({
           </Button>
         </div>
       )}
+      
       {loading ? (
         <div className="flex justify-center items-center py-4">
           <RotateCw className="animate-spin h-6 w-6 text-blue-600" />
+          <span className="ml-2">Loading admins...</span>
         </div>
       ) : filteredMembers.length === 0 ? (
-        <div className="text-center py-4 text-gray-500">
+        <div className="text-center py-8 text-gray-500">
           <Image src={Pending} alt="No members found" className="mx-auto mb-2" />
           <p>No admin team members found.</p>
+          {searchQuery && (
+            <p className="text-sm mt-2">Try adjusting your search</p>
+          )}
         </div>
       ) : (
         <Table>
@@ -421,6 +475,7 @@ export default function AdminTable({
               <TableHead>Role</TableHead>
               <TableHead>Invite Sent</TableHead>
               <TableHead>Last Login</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -442,13 +497,40 @@ export default function AdminTable({
                       <AvatarImage src={member.image} alt={member.name} />
                       <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    {member.name}
+                    <div>
+                      <div className="font-medium">{member.name}</div>
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell>{member.email}</TableCell>
-                <TableHead>{member.role}</TableHead>
-                <TableCell>{member.inviteSent}</TableCell>
+                <TableCell>
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    member.role === 'SUPERADMIN' 
+                      ? 'bg-purple-100 text-purple-800'
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {member.role}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm">
+                    <div>{member.inviteSent}</div>
+                    <div className="text-xs text-gray-500">at {member.dateInvited}</div>
+                  </div>
+                </TableCell>
                 <TableCell>{member.lastLogin}</TableCell>
+                <TableCell>
+                  <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+                    member.status === 'Active' 
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    <span className={`h-2 w-2 rounded-full ${
+                      member.status === 'Active' ? 'bg-green-500' : 'bg-red-500'
+                    }`} />
+                    {member.status}
+                  </span>
+                </TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -457,7 +539,7 @@ export default function AdminTable({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {member.status === "Pending" ? (
+                      {member.status === "Inactive" ? (
                         <>
                           <DropdownMenuItem onClick={() => handleResendInvite(member.id)}>
                             <Send className="h-4 w-4 mr-2" />
@@ -498,6 +580,7 @@ export default function AdminTable({
           </TableBody>
         </Table>
       )}
+      
       <Modal
         isOpen={isRemoveModalOpen}
         onClose={closeRemoveModal}
@@ -511,6 +594,7 @@ export default function AdminTable({
         confirmButtonColor="#EF4444"
         onConfirm={handleRemove}
       />
+      
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
@@ -521,8 +605,8 @@ export default function AdminTable({
         ]}
         defaultTab="members"
         statusFilters={[
-          { label: "Online", value: "Online" },
-          { label: "Pending", value: "Pending" },
+          { label: "Active", value: "Active" },
+          { label: "Inactive", value: "Inactive" },
         ]}
         fieldOptions={[
           { label: "Name", value: "Name" },
@@ -539,10 +623,12 @@ export default function AdminTable({
         ]}
         onExport={handleExport}
       />
+      
       <InviteAdminModal
         isOpen={isInviteAdminModalOpen}
         onClose={() => setIsInviteAdminModalOpen(false)}
       />
+      
       {isModalOpen && (
         <div
           className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50"
@@ -561,6 +647,7 @@ export default function AdminTable({
           </div>
         </div>
       )}
+      
       <ChangeRoleModal
         isOpen={isChangeRoleModalOpen}
         onClose={() => setIsChangeRoleModalOpen(false)}

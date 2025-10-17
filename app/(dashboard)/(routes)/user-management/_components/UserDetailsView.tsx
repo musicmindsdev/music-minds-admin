@@ -42,6 +42,8 @@ interface User {
   verified: boolean;
   lastLogin: string;
   image: string;
+  followers: number;
+  following: number;
 }
 
 interface UserDetailsViewProps {
@@ -69,18 +71,18 @@ interface Review {
   createdAt: string;
 }
 
- // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mapApiUserToComponentUser = (apiUser: any): User => {
   const userData = apiUser.user || apiUser.data || apiUser;
-  
-  const isSuspended = userData.isShadowBanned || 
+
+  const isSuspended = userData.isShadowBanned ||
     userData.role?.toLowerCase().includes('disabled') ||
     false;
-  
+
   const status: "Active" | "Suspended" | "Deactivated" = isSuspended ? "Suspended" : "Active";
-  
+
   const profileType = userData.role || "User";
-  
+
   return {
     id: userData.id,
     name: userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'Unknown User',
@@ -96,7 +98,9 @@ const mapApiUserToComponentUser = (apiUser: any): User => {
       minute: '2-digit',
       hour12: true
     }).replace(',', ' • '),
-    image: userData.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${userData.name || userData.email}`
+    image: userData.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${userData.name || userData.email}`,
+    followers: userData.followers || 0,
+    following: userData.following || 0
   };
 };
 
@@ -153,8 +157,8 @@ export default function UserDetailsView({ user: initialUser, onClose }: UserDeta
   }, [initialUser, user?.id, fetchUserDetails]);
 
   // Mock data for bookings and reviews (replace with actual API calls)
-  const userBookings: Booking[] = []; 
-  const userReviews: Review[] = []; 
+  const userBookings: Booking[] = [];
+  const userReviews: Review[] = [];
 
   const totalBookings = userBookings.length;
   const totalSpent = userBookings.reduce((sum, booking: Booking) => {
@@ -361,11 +365,11 @@ export default function UserDetailsView({ user: initialUser, onClose }: UserDeta
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <p className="text-xs">Total Followers</p>
-                  <p className="font-medium">126,980</p>
+                  <p className="font-medium">{user.followers?.toLocaleString() || '0'}</p>
                 </div>
                 <div>
                   <p className="text-xs">Total Following</p>
-                  <p className="font-medium">1,589</p>
+                  <p className="font-medium">{user.following?.toLocaleString() || '0'}</p>
                 </div>
                 <div>
                   <p className="text-xs">Date Joined</p>
@@ -380,11 +384,10 @@ export default function UserDetailsView({ user: initialUser, onClose }: UserDeta
                 <div>
                   <p className="text-xs">User Status</p>
                   <p className="flex items-center gap-1 font-medium text-xs">
-                    <span className={`h-2 w-2 rounded-full ${
-                      user.status === "Active" ? "bg-green-500" :
-                      user.status === "Suspended" ? "bg-yellow-500" :
-                      "bg-gray-500"
-                    }`} />
+                    <span className={`h-2 w-2 rounded-full ${user.status === "Active" ? "bg-green-500" :
+                        user.status === "Suspended" ? "bg-yellow-500" :
+                          "bg-gray-500"
+                      }`} />
                     {user.status}
                   </p>
                 </div>

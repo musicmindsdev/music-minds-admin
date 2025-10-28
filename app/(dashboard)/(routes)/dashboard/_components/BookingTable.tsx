@@ -1,3 +1,4 @@
+// components/BookingTable.tsx
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -26,9 +27,8 @@ import { CiExport } from "react-icons/ci";
 import ExportModal from "@/components/ExportModal";
 import { usePathname, useRouter } from "next/navigation";
 import BookingDetailsModal from "../../content-management/_components/BookingDetailsModal";
-import { Skeleton } from "@/components/ui/skeleton";
 
-// Define interfaces for API response data
+// Interfaces (unchanged)
 interface ApiUser {
   id: string;
   firstName: string;
@@ -81,7 +81,6 @@ interface ApiBooking {
   reviews: ApiReview[];
 }
 
-// Define the Booking interface for the frontend
 export interface Booking {
   id: string;
   scheduledDate: string;
@@ -100,33 +99,25 @@ export interface Booking {
   createdAt: string;
   updatedAt: string;
   lastLogin: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    country: string;
-    city: string;
-    address: string;
-    reviews: ApiReview[];
-    user: ApiUser;
+  date: string;
+  startTime: string;
+  endTime: string;
+  country: string;
+  city: string;
+  address: string;
+  reviews: ApiReview[];
+  user: ApiUser;
 }
 
-// Helper function to convert API booking to component booking
+// Helper function (unchanged)
 const mapApiBookingToComponentBooking = (apiBooking: ApiBooking): Booking => {
-  // Extract client information from user object
   const clientName = apiBooking.user 
     ? `${apiBooking.user.firstName || ''} ${apiBooking.user.lastName || ''}`.trim() 
     : "Unknown Client";
-  
   const clientEmail = apiBooking.user?.email || "No email";
-
-  // For provider information - you might need to adjust this based on your actual API
   const providerName = "Provider Name";
   const providerEmail = "provider@example.com";
-
-  // Format dates properly using the actual API fields
   const scheduledDate = apiBooking.date ? new Date(apiBooking.date).toLocaleDateString() : "Not scheduled";
-  
-  // Format time range using startTime and endTime
   const formatTime = (timeString: string) => {
     return timeString ? new Date(timeString).toLocaleTimeString([], { 
       hour: '2-digit', 
@@ -134,14 +125,11 @@ const mapApiBookingToComponentBooking = (apiBooking: ApiBooking): Booking => {
       hour12: true 
     }) : "";
   };
-  
   const startTimeFormatted = formatTime(apiBooking.startTime);
   const endTimeFormatted = formatTime(apiBooking.endTime);
   const scheduledTime = startTimeFormatted && endTimeFormatted 
     ? `${startTimeFormatted} - ${endTimeFormatted}`
     : "Not scheduled";
-
-  // Format location using address, city, and country
   const location = [apiBooking.address, apiBooking.city, apiBooking.country]
     .filter(Boolean)
     .join(", ") || "Not specified";
@@ -171,29 +159,21 @@ const mapApiBookingToComponentBooking = (apiBooking: ApiBooking): Booking => {
     }) : "Unknown",
     createdAt: apiBooking.createdAt,
     updatedAt: apiBooking.updatedAt,
-      date: apiBooking.date,
-      startTime: apiBooking.startTime,
-      endTime: apiBooking.endTime,
-      country: apiBooking.country,
-      city: apiBooking.city,
-      address: apiBooking.address,
-      reviews: apiBooking.reviews || [],
-      user: apiBooking.user
+    date: apiBooking.date,
+    startTime: apiBooking.startTime,
+    endTime: apiBooking.endTime,
+    country: apiBooking.country,
+    city: apiBooking.city,
+    address: apiBooking.address,
+    reviews: apiBooking.reviews || [],
+    user: apiBooking.user
   };
 };
 
 interface BookingTableProps {
-  bookings?: Booking[];
   showCheckboxes?: boolean;
   showPagination?: boolean;
   showExportButton?: boolean;
-  onExport?: (data: {
-    statusFilter: Record<string, boolean>;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => void;
   headerText?: string;
 }
 
@@ -201,7 +181,6 @@ export default function BookingTable({
   showCheckboxes = false,
   showPagination = false,
   showExportButton = false,
-  onExport,
   headerText = "BOOKINGS MANAGEMENT",
 }: BookingTableProps) {
   const [statusFilter, setStatusFilter] = useState({
@@ -219,75 +198,52 @@ export default function BookingTable({
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
   const [totalBookings, setTotalBookings] = useState(0);
 
   const bookingsPerPage = 10;
   const pathname = usePathname();
   const router = useRouter();
 
-  // Fetch bookings from API
   const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Build query parameters
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: bookingsPerPage.toString(),
       });
-  
-      // Add status filter if any is selected
       const activeStatusFilters = Object.entries(statusFilter)
         .filter(([, isActive]) => isActive)
         .map(([status]) => status);
-      
       if (activeStatusFilters.length > 0) {
         params.append('status', activeStatusFilters.join(','));
       }
-  
-      // Add date filters if provided
       if (dateRangeFrom) {
         params.append('fromDate', new Date(dateRangeFrom).toISOString());
       }
       if (dateRangeTo) {
         params.append('toDate', new Date(dateRangeTo).toISOString());
       }
-  
       const response = await fetch(`/api/bookings?${params}`);
-      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to fetch bookings');
       }
-      
       const responseData = await response.json();
-      console.log("Raw API Response:", responseData);
-      
-      // Handle the response structure
       let bookingsData: ApiBooking[] = [];
       let totalCount = 0;
-      
       if (responseData.data && Array.isArray(responseData.data)) {
         bookingsData = responseData.data;
         totalCount = responseData.meta?.total || responseData.data.length;
-        console.log("First booking sample:", bookingsData[0]);
       } else if (Array.isArray(responseData)) {
         bookingsData = responseData;
         totalCount = responseData.length;
       }
-      
-      // Map API bookings to component bookings
-      const mappedBookings = bookingsData.map((booking) => {
-        const mappedBooking = mapApiBookingToComponentBooking(booking);
-        console.log("Mapped booking:", mappedBooking);
-        return mappedBooking;
-      });
+      const mappedBookings = bookingsData.map(mapApiBookingToComponentBooking);
       setBookings(mappedBookings);
       setTotalBookings(totalCount);
-      
     } catch (err) {
       console.error('Error fetching bookings:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -308,11 +264,9 @@ export default function BookingTable({
       booking.clientEmail.toLowerCase().includes(query) ||
       booking.providerName.toLowerCase().includes(query) ||
       booking.serviceOffered.toLowerCase().includes(query);
-
     const statusMatch =
       Object.values(statusFilter).every((val) => !val) ||
       statusFilter[booking.status as keyof typeof statusFilter];
-
     let dateMatch = true;
     if (dateRangeFrom || dateRangeTo) {
       const bookingDate = new Date(booking.updatedAt);
@@ -327,7 +281,6 @@ export default function BookingTable({
         if (bookingDate > toDate) dateMatch = false;
       }
     }
-
     return searchMatch && statusMatch && dateMatch;
   });
 
@@ -352,7 +305,6 @@ export default function BookingTable({
   };
 
   const handleViewDetails = (booking: Booking) => {
-    console.log("Selected booking for modal:", booking);
     setSelectedBooking(booking);
     setIsDetailsModalOpen(true);
   };
@@ -373,66 +325,25 @@ export default function BookingTable({
     }
   };
 
-  const handleExport = (data: {
-    statusFilter: Record<string, boolean>;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => {
-    onExport?.(data);
-    console.log("Exporting booking data:", data);
+  // Field mapping for export
+  const fieldMap: Record<string, string> = {
+    "Booking ID": "id",
+    "Client Name": "name",
+    "Client Email": "email",
+    "Provider Name": "providerName",
+    "Provider Email": "providerEmail",
+    "Service Offered": "serviceOffered",
+    "Scheduled Date": "scheduledDate",
+    "Scheduled Time": "scheduledTime",
+    "Location": "location",
+    "Total Amount": "totalAmount",
+    "Payment Amount": "paymentAmount",
+    "Platform Fee": "platformFee",
+    "Transaction Id": "transactionId",
+    "Status": "status",
+    "Created At": "createdAt",
+    "Last Updated": "lastLogin",
   };
-
-  if (loading) {
-    return (
-      <div className="w-full">
-        <div className="flex justify-between items-center mb-4">
-          <p className="font-light text-sm">{headerText}</p>
-          <div className="flex space-x-2">
-            {pathname !== "/content-management" && pathname !== "/user-management" && (
-              <Button variant="link" className="text-blue-600 hover:text-blue-800" onClick={handleViewAll}>
-                View all Bookings
-              </Button>
-            )}
-            {showExportButton && (
-              <Button className="text-white flex items-center space-x-2" onClick={() => setIsExportModalOpen(true)}>
-                <CiExport className="mr-2" />
-                <span className="hidden md:inline">Export Data</span>
-              </Button>
-            )}
-          </div>
-        </div>
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-12 w-full" />
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="w-full">
-        <div className="flex justify-between items-center mb-4">
-          <p className="font-light text-sm">{headerText}</p>
-        </div>
-        <div className="text-center py-8 text-red-500">
-          Error: {error}
-          <Button 
-            onClick={fetchBookings} 
-            className="ml-4"
-            variant="outline"
-          >
-            Try Again
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -755,24 +666,33 @@ export default function BookingTable({
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        title="Export Data"
+        title="Export Bookings"
+        data={filteredBookings}
+        fieldOptions={[
+          { label: "Booking ID", value: "Booking ID" },
+          { label: "Client Name", value: "Client Name" },
+          { label: "Client Email", value: "Client Email" },
+          { label: "Provider Name", value: "Provider Name" },
+          { label: "Provider Email", value: "Provider Email" },
+          { label: "Service Offered", value: "Service Offered" },
+          { label: "Scheduled Date", value: "Scheduled Date" },
+          { label: "Scheduled Time", value: "Scheduled Time" },
+          { label: "Location", value: "Location" },
+          { label: "Total Amount", value: "Total Amount" },
+          { label: "Payment Amount", value: "Payment Amount" },
+          { label: "Platform Fee", value: "Platform Fee" },
+          { label: "Transaction Id", value: "Transaction Id" },
+          { label: "Status", value: "Status" },
+          { label: "Created At", value: "Created At" },
+          { label: "Last Updated", value: "Last Updated" },
+        ]}
+        fieldMap={fieldMap}
         statusFilters={[
           { label: "Confirmed", value: "Confirmed" },
           { label: "Pending", value: "Pending" },
           { label: "Cancelled", value: "Cancelled" },
           { label: "Completed", value: "Completed" },
         ]}
-        roleFilters={[]}
-        fieldOptions={[
-          { label: "Booking ID", value: "Booking ID" },
-          { label: "Client Email", value: "Client Email" },
-          { label: "Provider Name", value: "Provider Name" },
-          { label: "Service Offered", value: "Service Offered" },
-          { label: "Total Amount", value: "Total Amount" },
-          { label: "Status", value: "Status" },
-          { label: "Last Updated", value: "Last Updated" },
-        ]}
-        onExport={handleExport}
       />
       
       {isDetailsModalOpen && (

@@ -33,6 +33,7 @@ import { PiWarningOctagonFill } from "react-icons/pi";
 import { FaUser } from "react-icons/fa6";
 import ExportModal from "@/components/ExportModal";
 import { Skeleton } from "@/components/ui/skeleton";
+
 interface User {
   id: string;
   name: string;
@@ -52,23 +53,20 @@ interface UserTableProps {
   headerText?: string;
   onViewDetails?: (user: User) => void;
 }
- // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mapApiUserToComponentUser = (apiUser: any): User => {
-  console.log("Mapping user:", apiUser); // Add this for debugging
+  console.log("Mapping user:", apiUser);
   
-  // The API returns user objects with name field, not firstName/lastName
   const userData = apiUser;
 
-  // Determine status based on active field and isShadowBanned
   const status: "Active" | "Suspended" | "Deactivated" = 
     userData.isShadowBanned ? "Suspended" : 
     userData.active ? "Active" : "Deactivated";
 
-  // Get profile type from role field or profileTypes array
   const profileType = userData.role || 
     (userData.profileTypes && userData.profileTypes.length > 0 ? "Has Profile Types" : "User");
 
-  // Use lastLoginAt for last activity, fallback to updatedAt
   const lastActivityDate = userData.lastLoginAt || userData.updatedAt;
 
   return {
@@ -151,7 +149,7 @@ export default function UserTable({
       const data = await response.json();
       console.log("API response:", data);
   
-       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let usersData: any[] = [];
       let totalCount = 0;
   
@@ -256,33 +254,48 @@ export default function UserTable({
 
   const handleDelete = async () => {
     try {
+      console.log("Starting deletion for users:", selectedUsers);
+      
       for (const userId of selectedUsers) {
+        console.log(`Deleting user ${userId}...`);
+        
         const response = await fetch(`/api/users/${userId}`, {
           method: 'DELETE',
         });
-
+  
+        console.log(`Response for ${userId}:`, response.status, response.statusText);
+  
         if (!response.ok) {
-          throw new Error('Failed to delete user');
+          const errorText = await response.text();
+          console.error(`Error details for ${userId}:`, errorText);
+          throw new Error(`Failed to delete user: ${response.status} ${response.statusText}`);
         }
+  
+        const result = await response.json();
+        console.log(`Success for ${userId}:`, result);
       }
-
+  
       setSelectedUsers([]);
       setIsDeleteModalOpen(false);
       fetchUsers();
+      
     } catch (err) {
-      console.error('Error deleting users:', err);
-      setError('Failed to delete users');
+      console.error('Delete error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete users');
     }
   };
 
-  const openDeleteModal = () => {
+  // FIXED: Functions to open modals with specific user
+  const openDeleteModal = (userId?: string) => {
+    if (userId) {
+      setSelectedUsers([userId]);
+    }
     setIsDeleteModalOpen(true);
   };
 
   const closeDeleteModal = () => {
     setIsDeleteModalOpen(false);
   };
-
 
   const handleActivate = async () => {
     try {
@@ -304,7 +317,11 @@ export default function UserTable({
       setError('Failed to activate users');
     }
   };
-  const openActivateModal = () => {
+
+  const openActivateModal = (userId?: string) => {
+    if (userId) {
+      setSelectedUsers([userId]);
+    }
     setIsActivateModalOpen(true);
   };
 
@@ -333,8 +350,10 @@ export default function UserTable({
     }
   };
 
-
-  const openSuspendModal = () => {
+  const openSuspendModal = (userId?: string) => {
+    if (userId) {
+      setSelectedUsers([userId]);
+    }
     setIsSuspendModalOpen(true);
   };
 
@@ -417,7 +436,7 @@ export default function UserTable({
               <CiExport className="mr-2" />
               <span className="hidden md:inline">Export Data</span>
             </Button>
-          )}
+            )}
         </div>
       </div>
 
@@ -551,15 +570,15 @@ export default function UserTable({
 
       {selectedUsers.length > 0 && (
         <div className="flex justify-end space-x-2 mt-2 p-4">
-          <Button variant="outline" size="sm" onClick={openDeleteModal} className="text-red-600">
+          <Button variant="outline" size="sm" onClick={() => openDeleteModal()} className="text-red-600">
             <UserRoundX className="h-4 w-4 mr-2 text-red-600" />
             Delete
           </Button>
-          <Button variant="outline" size="sm" onClick={openActivateModal}>
+          <Button variant="outline" size="sm" onClick={() => openActivateModal()}>
             <CheckCircle className="h-4 w-4 mr-2" />
             Activate
           </Button>
-          <Button variant="outline" size="sm" onClick={openSuspendModal}>
+          <Button variant="outline" size="sm" onClick={() => openSuspendModal()}>
             <CircleSlash className="h-4 w-4 mr-2" />
             Suspend
           </Button>
@@ -678,17 +697,17 @@ export default function UserTable({
                           View Details
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={openSuspendModal}>
+                        <DropdownMenuItem onClick={() => openSuspendModal(user.id)}>
                           <CircleSlash className="h-4 w-4 mr-2" />
                           Suspend User
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={openActivateModal}>
+                        <DropdownMenuItem onClick={() => openActivateModal(user.id)}>
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Activate User
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600" onClick={openDeleteModal}>
+                        <DropdownMenuItem className="text-red-600" onClick={() => openDeleteModal(user.id)}>
                           <UserRoundX className="h-4 w-4 mr-2 text-red-600" />
                           Delete User
                         </DropdownMenuItem>

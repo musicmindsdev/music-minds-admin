@@ -1,10 +1,11 @@
+// /api/users/[id]/blacklist/route.ts
 import { NextResponse } from "next/server";
 
 const BASE_URL = "https://music-minds-backend.onrender.com/api/v1";
 
 export async function PUT(
   request: Request,
-  { params }: { params: { userId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     console.log("=== BLACKLIST USER API CALL STARTED ===");
@@ -37,11 +38,11 @@ export async function PUT(
       );
     }
 
-    const { userId } = params;
-    console.log("User ID to blacklist:", userId);
+    const { id } = params;
+    console.log("User ID to blacklist:", id);
 
     // CORRECTED: Use the correct blacklist endpoint
-    const backendUrl = `${BASE_URL}/admin/users/${userId}/blacklist`;
+    const backendUrl = `${BASE_URL}/admin/users/${id}/blacklist`;
     
     console.log("=== BACKEND API CALL DETAILS ===");
     console.log("Full URL:", backendUrl);

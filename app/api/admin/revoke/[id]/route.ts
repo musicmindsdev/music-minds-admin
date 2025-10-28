@@ -4,7 +4,7 @@ const BASE_URL = process.env.BACKEND_URL || "https://music-minds-backend.onrende
 
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ userId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieHeader = request.headers.get("cookie");
@@ -27,9 +27,9 @@ export async function DELETE(
     }
 
     // Await the params since they're now a Promise
-    const { userId } = await params;
+    const { id } = await params;
 
-    const response = await fetch(`${BASE_URL}/revoke/${userId}`, {
+    const response = await fetch(`${BASE_URL}/revoke/${id}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",

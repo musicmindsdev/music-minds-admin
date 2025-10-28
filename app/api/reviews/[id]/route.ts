@@ -4,11 +4,11 @@ const BASE_URL = "https://music-minds-backend.onrender.com/api/v1/admin/content"
 
 export async function DELETE(
   request: Request, 
-  { params }: { params: Promise<{ reviewId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Await the params since they're now a Promise
-    const { reviewId } = await params;
+    const { id } = await params;
 
     const cookieHeader = request.headers.get("cookie");
     let token = null;
@@ -30,14 +30,14 @@ export async function DELETE(
       );
     }
 
-    if (!reviewId) {
+    if (!id) {
       return NextResponse.json(
         { error: "Review ID is required" },
         { status: 400 }
       );
     }
 
-    const response = await fetch(`${BASE_URL}/reviews/${reviewId}`, {
+    const response = await fetch(`${BASE_URL}/reviews/${id}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",

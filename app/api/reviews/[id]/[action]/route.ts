@@ -4,13 +4,13 @@ const BASE_URL = "https://music-minds-backend.onrender.com/api/v1/admin/content"
 
 export async function POST(
   request: Request, 
-  { params }: { params: Promise<{ reviewId: string; action: string }> }
+  { params }: { params: Promise<{ id: string; action: string }> }
 ) {
   try {
     // Await the params since they're now a Promise
-    const { reviewId, action } = await params;
+    const { id, action } = await params;
     
-    if (!reviewId || !["approve", "reject"].includes(action)) {
+    if (!id || !["approve", "reject"].includes(action)) {
       return NextResponse.json(
         { error: "Invalid review ID or action" },
         { status: 400 }
@@ -37,7 +37,7 @@ export async function POST(
     }
 
     // Assume backend uses PATCH with a status body
-    const response = await fetch(`${BASE_URL}/reviews/${reviewId}`, {
+    const response = await fetch(`${BASE_URL}/reviews/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

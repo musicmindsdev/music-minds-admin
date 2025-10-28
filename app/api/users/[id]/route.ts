@@ -1,11 +1,11 @@
-// app/api/users/[userId]/route.ts
+// app/api/users/[Id]/route.ts
 import { NextResponse } from "next/server";
 
 const BASE_URL = "https://music-minds-backend.onrender.com/api/v1";
 
 export async function GET(
   request: Request,
-  { params }: { params: { userId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const cookieHeader = request.headers.get("cookie");
@@ -28,11 +28,11 @@ export async function GET(
       );
     }
 
-    const { userId } = params;
+    const { id } = params;
 
     // CORRECTED: Use /admin/users/{id} endpoint
     const response = await fetch(
-      `${BASE_URL}/admin/users/${userId}`,
+      `${BASE_URL}/admin/users/${id}`,
       {
         method: "GET",
         headers: {
@@ -63,9 +63,11 @@ export async function GET(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { userId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
+    console.log("=== DELETE USER API CALLED ===");
+    
     const cookieHeader = request.headers.get("cookie");
     let token = null;
     
@@ -76,7 +78,7 @@ export async function DELETE(
         return acc;
       }, {} as Record<string, string>);
       
-      token = cookies.accessToken || null;
+      token = cookies.accessToken;
     }
     
     if (!token) {
@@ -86,23 +88,28 @@ export async function DELETE(
       );
     }
 
-    const { userId } = params;
-
-    // CORRECTED: Use /admin/users/{id} endpoint
-    const response = await fetch(
-      `${BASE_URL}/admin/users/${userId}`,
-      {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
-      }
-    );
+    const { id } = params;
+    const backendUrl = `${BASE_URL}/admin/users/${id}`;
+    
+    console.log("Calling backend:", backendUrl);
+    const response = await fetch(backendUrl, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+    });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { message: errorText };
+      }
+      
       return NextResponse.json(
-        { error: errorData.message || "Failed to delete user" },
+        { error: errorData.message || `Backend returned ${response.status}` },
         { status: response.status }
       );
     }
@@ -110,7 +117,7 @@ export async function DELETE(
     const data = await response.json();
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
-    console.error("User delete error:", error);
+    console.error("Error in delete:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

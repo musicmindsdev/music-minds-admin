@@ -1,4 +1,4 @@
-import {  NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 const BASE_URL = process.env.BACKEND_URL || "https://music-minds-backend.onrender.com/api/v1/admin";
 
@@ -24,16 +24,22 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const page = searchParams.get("page") || "1";
-    const limit = searchParams.get("limit") || "10";
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
 
-    const response = await fetch(`${BASE_URL}/domains?page=${page}&limit=${limit}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const validPage = isNaN(page) ? 1 : page;
+    const validLimit = isNaN(limit) ? 10 : limit;
+
+    const response = await fetch(
+      `${BASE_URL}/domains?page=${validPage}&limit=${validLimit}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({
@@ -48,14 +54,19 @@ export async function GET(request: Request) {
       );
     }
 
-    const data = await response.json();
+    const backendData = await response.json();
+    console.log("Backend response structure:", backendData);
+
+    // FIX: Extract domains from data.data instead of data.domains
+    const domains = Array.isArray(backendData.data) ? backendData.data : [];
+    const meta = backendData.meta || {};
 
     return NextResponse.json(
       {
         message: "Domains fetched successfully",
-        domains: data.domains || data || [],
-        total: data.total || data.length || 0,
-        pages: data.pages || Math.ceil((data.total || data.length || 0) / parseInt(limit)),
+        domains: domains, // Now correctly pointing to data.data
+        total: meta.total || domains.length,
+        pages: meta.totalPages || Math.ceil((meta.total || domains.length) / validLimit),
       },
       { status: 200 }
     );

@@ -28,6 +28,9 @@ export async function DELETE(
 
     // Await the params since they're now a Promise
     const { id } = await params;
+    
+    console.log("🔄 Deleting domain with ID:", id);
+    console.log("🔗 Backend URL:", `${BASE_URL}/domains/${id}`);
 
     const response = await fetch(`${BASE_URL}/domains/${id}`, {
       method: "DELETE",
@@ -37,10 +40,18 @@ export async function DELETE(
       },
     });
 
+    console.log("📊 Backend response status:", response.status);
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({
-        message: "Failed to parse backend error response",
-      }));
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { message: `HTTP ${response.status}: ${response.statusText}` };
+      }
+      
+      console.error("❌ Backend delete error:", errorData);
+      
       return NextResponse.json(
         {
           error: errorData.message || "Failed to delete domain",
@@ -50,12 +61,22 @@ export async function DELETE(
       );
     }
 
+    // Check if backend returns any content
+    let responseData;
+    try {
+      responseData = await response.json();
+    } catch {
+      responseData = { message: "Domain deleted successfully" };
+    }
+
+    console.log("✅ Domain deleted successfully");
+
     return NextResponse.json(
-      { message: "Domain deleted successfully" },
+      responseData,
       { status: 200 }
     );
   } catch (error) {
-    console.error("Delete domain error:", error);
+    console.error("💥 Delete domain error:", error);
     return NextResponse.json(
       {
         error: "Internal server error",

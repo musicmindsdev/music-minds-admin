@@ -12,10 +12,17 @@ import { toast } from "sonner";
 // Domain interface based on your API structure
 interface Domain {
   id: string;
-  name: string;
-  status: 'allowed' | 'blocked';
+  domain: string;
+  roleId: string;
   createdAt: string;
-  updatedAt: string;
+  createdById: string;
+  role: {
+    id: string;
+    name: string;
+    description: string;
+    permissions: string[];
+  };
+  status: 'allowed' | 'blocked';
 }
 
 interface Role {
@@ -42,39 +49,91 @@ export default function EmailDomainTab() {
       try {
         setLoading(true);
         
+        console.log("🔄 Starting to fetch roles...");
+        
         // Fetch roles first - exactly like InviteAdminModal
         const rolesResponse = await fetch("/api/admin/roles");
+        console.log("📊 Roles response status:", rolesResponse.status);
+        
         if (rolesResponse.ok) {
           const rolesData = await rolesResponse.json();
+          console.log("✅ Roles data received:", rolesData);
           setRoles(rolesData.roles || []);
-          if (rolesData.roles.length > 0) {
+          if (rolesData.roles && rolesData.roles.length > 0) {
             setSelectedRoleId(rolesData.roles[0].id);
+            console.log("🎯 Selected role ID:", rolesData.roles[0].id);
           }
         } else {
-          console.warn("Failed to fetch roles");
+          console.warn("❌ Failed to fetch roles, status:", rolesResponse.status);
+          const errorText = await rolesResponse.text();
+          console.warn("❌ Roles error response:", errorText);
         }
 
+        console.log("🔄 Starting to fetch domains...");
+        
         // Then fetch domains
         const response = await fetch("/api/admin/domains");
+        console.log("📊 Domains response status:", response.status);
+        console.log("📊 Domains response ok:", response.ok);
         
         if (!response.ok) {
+          let errorText;
+          try {
+            errorText = await response.text();
+          } catch (e) {
+            console.log(e)
+            errorText = "Could not read error response";
+          }
+          
+          console.error("❌ Domains fetch failed:", {
+            status: response.status,
+            statusText: response.statusText,
+            url: response.url,
+            error: errorText
+          });
+          
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
+        console.log("✅ Domains API response:", data);
         
-        // Ensure domains is always an array
-        const domainsArray = Array.isArray(data.domains) ? data.domains : 
-                            Array.isArray(data) ? data : [];
+        // Map the backend data to our Domain interface
+        const domainsArray = Array.isArray(data.domains) ? data.domains.map((domain: Domain) => ({
+          ...domain,
+          // Map the domain field to name for display
+          name: domain.domain,
+          // Derive status from role name
+          status: domain.role && domain.role.name === 'BLACKLIST' ? 'blocked' : 'allowed'
+        })) : [];
         
+        console.log("✅ Mapped domains array:", domainsArray);
         setDomains(domainsArray);
+        
       } catch (error) {
-        console.error("Failed to fetch initial data:", error);
-        toast.error("Failed to fetch domains");
+        console.error("💥 Failed to fetch initial data:", error);
+        
+        if (error instanceof Error) {
+          if (error.message.includes('401')) {
+            toast.error("Authentication failed - please login again");
+          } else if (error.message.includes('403')) {
+            toast.error("Access denied - insufficient permissions");
+          } else if (error.message.includes('404')) {
+            toast.error("Domains API endpoint not found");
+          } else if (error.message.includes('500')) {
+            toast.error("Server error - please try again later");
+          } else {
+            toast.error("Failed to fetch domains: " + error.message);
+          }
+        } else {
+          toast.error("Failed to fetch domains");
+        }
+        
         // Set empty array on error to prevent crashes
         setDomains([]);
       } finally {
         setLoading(false);
+        console.log("🏁 Loading complete");
       }
     };
 
@@ -90,7 +149,7 @@ export default function EmailDomainTab() {
     }
 
     // Check if domain already exists (with safety check)
-    const existingDomain = Array.isArray(domains) ? domains.find(d => d.name === trimmedDomain) : null;
+    const existingDomain = Array.isArray(domains) ? domains.find(d => d.domain === trimmedDomain) : null;
     if (existingDomain) {
       toast.error("Domain already exists");
       return;
@@ -104,12 +163,14 @@ export default function EmailDomainTab() {
         throw new Error("No role selected or available");
       }
 
+      console.log("🔄 Adding domain:", { domain: trimmedDomain, roleId: roleIdToUse });
+
       const response = await fetch("/api/admin/domains", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           domain: trimmedDomain, 
-          roleId: roleIdToUse // Using the same pattern as InviteAdminModal
+          roleId: roleIdToUse
         }),
       });
 
@@ -121,10 +182,18 @@ export default function EmailDomainTab() {
       const responseData = await response.json();
       const newDomainEntry = responseData.domain || {
         id: Date.now().toString(),
+        domain: trimmedDomain,
         name: trimmedDomain,
+        roleId: roleIdToUse,
+        role: {
+          id: roleIdToUse,
+          name: isAllowed ? 'MODERATOR' : 'BLACKLIST',
+          description: '',
+          permissions: []
+        },
         status: isAllowed ? 'allowed' : 'blocked',
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdById: "current-user"
       };
       
       // Add the new domain to the state (with safety check)
@@ -159,19 +228,19 @@ export default function EmailDomainTab() {
   };
 
   const handleEditDomain = (domain: Domain) => {
-    console.log(`Editing ${domain.name}, status: ${domain.status}`);
+    console.log(`Editing ${domain.domain}, status: ${domain.status}`);
     // You can implement edit functionality here
     // For now, just log the action
     toast.info("Edit functionality coming soon");
   };
 
-  const DomainList = ({ domains: domainList}: { domains: Domain[], type: 'allowed' | 'blocked' }) => (
+  const DomainList = ({ domains: domainList }: { domains: Domain[], type: 'allowed' | 'blocked' }) => (
     <div className="space-y-2">
       {domainList.map((domain) => (
         <div key={domain.id} className="flex items-center justify-between">
           <p className="text-sm flex items-center">
             <Link className="w-4 h-4 text-gray-500 mr-2" />
-            {domain.name}
+            {domain.domain}
           </p>
           <div className="space-x-2 flex gap-2">
             <a
@@ -189,7 +258,7 @@ export default function EmailDomainTab() {
               className="text-red-600 text-sm flex items-center"
               onClick={(e) => {
                 e.preventDefault();
-                handleDeleteDomain(domain.id, domain.name);
+                handleDeleteDomain(domain.id, domain.domain);
               }}
             >
               Delete <HiOutlineTrash className="ml-1" />
@@ -257,8 +326,8 @@ export default function EmailDomainTab() {
         onClose={() => setIsModalOpen(false)}
         onAddDomain={handleAddDomain}
         existingDomains={{ 
-          allowed: allowedDomains.map(d => d.name), 
-          blocked: blockedDomains.map(d => d.name) 
+          allowed: allowedDomains.map(d => d.domain), 
+          blocked: blockedDomains.map(d => d.domain) 
         }}
       />
     </Card>

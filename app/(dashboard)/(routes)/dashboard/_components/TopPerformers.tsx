@@ -13,8 +13,57 @@ import CardView from "@/components/svg icons/CardView";
 import ListView from "@/components/svg icons/ListView";
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
+import { Heart, Repeat2, MessageCircle } from "lucide-react";
 
 interface Post {
+  id: string;
+  content: string;
+  createdAt: string;
+  likes: Array<{
+    id: string;
+    userId: string;
+    postId: string;
+    createdAt: string;
+  }>;
+  reposts: Array<{
+    id: string;
+    userId: string;
+    postId: string;
+    createdAt: string;
+  }>;
+  comments: Array<{
+    id: string;
+    authorId: string;
+    postId: string;
+    content: string;
+    parentId: string | null;
+    isEdited: boolean;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  media: Array<{
+    id: string;
+    postId: string;
+    url: string;
+    type: string;
+    width: number;
+    height: number;
+    duration: number | null;
+    size: number;
+    format: string;
+    thumbnail: string | null;
+    aspectRatio: number;
+    createdAt: string;
+  }>;
+  author: {
+    id: string;
+    username: string;
+    name: string;
+    avatar: string;
+  };
+}
+
+interface ProcessedPost {
   id: string;
   content: string;
   createdAt: string;
@@ -32,7 +81,7 @@ interface Post {
 
 export default function TopPerformers() {
   const [isCardView, setIsCardView] = useState(false);
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<ProcessedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,43 +89,58 @@ export default function TopPerformers() {
     fetchTopPosts();
   }, []);
 
+  // Process the raw API data to calculate counts
+  const processPostsData = (rawPosts: Post[]): ProcessedPost[] => {
+    return rawPosts.map(post => ({
+      id: post.id,
+      content: post.content,
+      createdAt: post.createdAt,
+      likesCount: post.likes?.length || 0,
+      repostsCount: post.reposts?.length || 0,
+      commentsCount: post.comments?.length || 0,
+      author: post.author,
+      media: post.media?.map(mediaItem => mediaItem.url) || []
+    }));
+  };
+
   const fetchTopPosts = async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await fetch('/api/statistics/posts?limit=10');
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to fetch top posts');
       }
-      
+
       const data = await response.json();
-      
+
       // Debug: Log the API response to see its structure
       console.log('API Response:', data);
-      
-      // Handle different possible response structures
-      let postsData: Post[] = [];
-      
-      if (Array.isArray(data)) {
-        // If the response is directly an array
-        postsData = data;
-      } else if (data && Array.isArray(data.posts)) {
-        // If the response has a posts property that is an array
-        postsData = data.posts;
-      } else if (data && Array.isArray(data.data)) {
-        // If the response has a data property that is an array
-        postsData = data.data;
-      } else if (data && data.data && Array.isArray(data.data.posts)) {
-        // If the response has data.posts that is an array
-        postsData = data.data.posts;
+
+      // Handle the nested response structure
+      let rawPosts: Post[] = [];
+
+      if (data.posts && data.posts.data && Array.isArray(data.posts.data)) {
+        // Structure: { posts: { data: [...] } }
+        rawPosts = data.posts.data;
+      } else if (data.posts && Array.isArray(data.posts)) {
+        // Structure: { posts: [...] }
+        rawPosts = data.posts;
+      } else if (Array.isArray(data)) {
+        // Structure: [...]
+        rawPosts = data;
+      } else if (data.data && Array.isArray(data.data)) {
+        // Structure: { data: [...] }
+        rawPosts = data.data;
       }
-      
-      // Ensure we always have an array, even if empty
-      setPosts(Array.isArray(postsData) ? postsData : []);
-      
+
+      // Process the posts to calculate counts
+      const processedPosts = processPostsData(rawPosts);
+      setPosts(processedPosts);
+
     } catch (err) {
       console.error('Error fetching top posts:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -105,18 +169,18 @@ export default function TopPerformers() {
   };
 
   // Generate avatar URL with fallback
-  const getAvatarUrl = (author: Post['author']) => {
+  const getAvatarUrl = (author: ProcessedPost['author']) => {
     if (author?.avatar) return author.avatar;
     return `https://api.dicebear.com/6.x/initials/svg?seed=${author?.name || 'User'}`;
   };
 
   // Get author name with fallback
-  const getAuthorName = (author: Post['author']) => {
+  const getAuthorName = (author: ProcessedPost['author']) => {
     return author?.name || 'Unknown User';
   };
 
   // Get username with fallback
-  const getUsername = (author: Post['author']) => {
+  const getUsername = (author: ProcessedPost['author']) => {
     return author?.username || 'unknown';
   };
 
@@ -183,8 +247,8 @@ export default function TopPerformers() {
         </div>
         <div className="text-center py-8 text-red-500">
           Error: {error}
-          <Button 
-            onClick={fetchTopPosts} 
+          <Button
+            onClick={fetchTopPosts}
             className="ml-4"
             variant="outline"
           >
@@ -194,9 +258,6 @@ export default function TopPerformers() {
       </div>
     );
   }
-
-  // Ensure posts is always an array before mapping
-  const displayPosts = Array.isArray(posts) ? posts : [];
 
   return (
     <div className="w-full">
@@ -225,14 +286,14 @@ export default function TopPerformers() {
           </Button>
         </div>
       </div>
-      
-      {displayPosts.length === 0 ? (
+
+      {posts.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
           No post data available
         </div>
       ) : isCardView ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {displayPosts.map((post, index) => (
+          {posts.map((post, index) => (
             <Card key={post.id || index} className="shadow-sm">
               <CardHeader className="flex flex-row items-center gap-4 p-4">
                 <Image
@@ -259,9 +320,9 @@ export default function TopPerformers() {
               <CardContent className="p-4 pt-0">
                 <p className="text-sm text-gray-700 mb-2">{post.content}</p>
                 <div className="flex gap-4 text-xs text-gray-500">
-                  <span>❤️ {post.likesCount}</span>
-                  <span>🔄 {post.repostsCount}</span>
-                  <span>💬 {post.commentsCount}</span>
+                  <span className="flex items-center gap-2"><Heart className="w-4 h-4"/> {post.likesCount}</span>
+                  <span className="flex items-center gap-2"><Repeat2 className="w-4 h-4"/> {post.repostsCount}</span>
+                  <span className="flex items-center gap-2"><MessageCircle className="w-4 h-4"/> {post.commentsCount}</span>
                 </div>
                 <div className="text-xs text-gray-500 mt-2">
                   Posted: {formatDate(post.createdAt)}
@@ -284,7 +345,7 @@ export default function TopPerformers() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {displayPosts.map((post, index) => (
+            {posts.map((post, index) => (
               <TableRow key={post.id || index}>
                 <TableCell>#{index + 1}</TableCell>
                 <TableCell>

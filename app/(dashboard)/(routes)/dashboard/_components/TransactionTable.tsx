@@ -33,25 +33,39 @@ import TransactionDetailModal from "../../content-management/_components/Transac
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // Define interfaces for API response data
-interface ApiTransaction {
+interface RawTransaction {
   id: string;
-  bookingId?: string;
-  clientName?: string;
-  providerName?: string;
-  serviceOffered?: string;
-  totalAmount?: string | number;
-  status?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  image?: string;
+  bookingId: string | null;
+  type: string;
+  amount: number;
+  serviceFee: number;
+  netAmount: number;
+  currency: string;
+  status: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  processedAt: string | null;
   payer?: {
-    name?: string;
-    image?: string;
-  };
+    id: string;
+    name: string;
+    username: string;
+    avatar: string | null;
+  } | null;
   payee?: {
-    name?: string;
-    image?: string;
-  };
+    id: string;
+    name: string;
+    username: string;
+    avatar: string | null;
+  } | null;
+  booking?: {
+    id: string;
+    title: string;
+    description: string;
+    service?: {
+      name: string;
+    };
+  } | null;
 }
 
 export interface Transaction {
@@ -67,17 +81,35 @@ export interface Transaction {
 }
 
 // Helper function to map API transaction to component transaction
-const mapApiTransactionToComponentTransaction = (apiTransaction: ApiTransaction): Transaction => {
+const mapApiTransactionToComponentTransaction = (apiTransaction: RawTransaction): Transaction => {
+  // Determine status mapping
+  let status: "Completed" | "Pending" | "Failed" = "Pending";
+  if (apiTransaction.status === "COMPLETED") status = "Completed";
+  else if (apiTransaction.status === "FAILED" || apiTransaction.status === "CANCELLED") status = "Failed";
+
+  // Get client name (payer)
+  const clientName = apiTransaction.payer?.name || "Unknown Client";
+  
+  // Get provider name (payee)
+  const providerName = apiTransaction.payee?.name || "Unknown Provider";
+  
+  // Get service offered
+  const serviceOffered = apiTransaction.booking?.title || 
+                        apiTransaction.description || 
+                        apiTransaction.type?.replace(/_/g, ' ') || 
+                        "Unknown Service";
+
+  // Get avatar image
+  const image = apiTransaction.payer?.avatar || apiTransaction.payee?.avatar || "/placeholder-avatar.jpg";
+
   return {
     id: apiTransaction.id,
     bookingId: apiTransaction.bookingId || "N/A",
-    clientName: apiTransaction.payer?.name || apiTransaction.clientName || "Unknown Client",
-    providerName: apiTransaction.payee?.name || apiTransaction.providerName || "Unknown Provider",
-    serviceOffered: apiTransaction.serviceOffered || "Unknown Service",
-    totalAmount: apiTransaction.totalAmount
-      ? `$${parseFloat(apiTransaction.totalAmount.toString()).toFixed(2)}`
-      : "$0.00",
-    status: (apiTransaction.status as "Completed" | "Pending" | "Failed") || "Pending",
+    clientName,
+    providerName,
+    serviceOffered,
+    totalAmount: `$${apiTransaction.amount?.toFixed(2) || "0.00"}`,
+    status,
     lastLogin: apiTransaction.updatedAt
       ? new Date(apiTransaction.updatedAt).toLocaleDateString("en-US", {
           month: "short",
@@ -88,7 +120,7 @@ const mapApiTransactionToComponentTransaction = (apiTransaction: ApiTransaction)
           hour12: true,
         })
       : "Unknown",
-    image: apiTransaction.payer?.image || apiTransaction.image || "/placeholder-avatar.jpg",
+    image,
   };
 };
 
@@ -151,16 +183,22 @@ export default function TransactionTable({
 
       const activeStatusFilters = Object.entries(statusFilter)
         .filter(([, isActive]) => isActive)
-        .map(([status]) => status);
+        .map(([status]) => {
+          // Map frontend status to backend status
+          if (status === "Completed") return "COMPLETED";
+          if (status === "Failed") return "FAILED";
+          return "PENDING";
+        });
+      
       if (activeStatusFilters.length > 0) {
         params.append("status", activeStatusFilters.join(","));
       }
 
       if (dateRangeFrom) {
-        params.append("fromDate", new Date(dateRangeFrom).toISOString());
+        params.append("dateFrom", new Date(dateRangeFrom).toISOString());
       }
       if (dateRangeTo) {
-        params.append("toDate", new Date(dateRangeTo).toISOString());
+        params.append("dateTo", new Date(dateRangeTo).toISOString());
       }
 
       const response = await fetch(`/api/transactions?${params}`, {
@@ -177,16 +215,44 @@ export default function TransactionTable({
       }
 
       const responseData = await response.json();
-      const transactionsData = Array.isArray(responseData.transactions)
-        ? responseData.transactions
-        : [];
-      const mappedTransactions = transactionsData.map(mapApiTransactionToComponentTransaction);
+      
+      console.log('API Response:', responseData);
+      
+      // Handle the nested response structure correctly
+      let rawTransactions: RawTransaction[] = [];
+      
+      if (responseData.transactions && responseData.transactions.data && Array.isArray(responseData.transactions.data)) {
+        // Structure: { transactions: { data: [...] } }
+        rawTransactions = responseData.transactions.data;
+      } else if (responseData.transactions && Array.isArray(responseData.transactions)) {
+        // Structure: { transactions: [...] }
+        rawTransactions = responseData.transactions;
+      } else if (Array.isArray(responseData)) {
+        // Structure: [...]
+        rawTransactions = responseData;
+      } else if (responseData.data && Array.isArray(responseData.data)) {
+        // Structure: { data: [...] }
+        rawTransactions = responseData.data;
+      }
+      
+      console.log('Raw transactions data:', rawTransactions);
+
+      const mappedTransactions = rawTransactions.map(mapApiTransactionToComponentTransaction);
       setTransactions(mappedTransactions);
-      setTotalTransactions(responseData.pagination?.total || transactionsData.length);
+      
+      // Set total transactions from pagination meta if available
+      if (responseData.transactions?.meta?.total) {
+        setTotalTransactions(responseData.transactions.meta.total);
+      } else if (responseData.pagination?.total) {
+        setTotalTransactions(responseData.pagination.total);
+      } else {
+        setTotalTransactions(mappedTransactions.length);
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred";
       setError(errorMessage);
       setTransactions([]);
+      setTotalTransactions(0);
     } finally {
       setLoading(false);
     }
@@ -263,32 +329,72 @@ export default function TransactionTable({
   };
 
   const handleViewDetails = async (transaction: Transaction) => {
+    console.log('Opening details for transaction:', transaction);
+    
+    // Immediately set the transaction and open modal
+    setSelectedTransaction(transaction);
+    setIsDetailsModalOpen(true);
+  
+    // Then try to fetch additional details in background
     try {
-      // Fetch detailed transaction data from the new endpoint
       const response = await fetch(`/api/transactions/${transaction.id}`, {
         credentials: "include",
       });
-
+  
       if (response.ok) {
         const responseData = await response.json();
-        const detailedTransaction = responseData.transaction;
+        console.log('Detailed transaction data:', responseData);
         
-        // Merge the detailed data with the existing transaction data
-        const enhancedTransaction = {
-          ...transaction,
-          ...mapApiTransactionToComponentTransaction(detailedTransaction),
-        };
-        setSelectedTransaction(enhancedTransaction);
+        // Properly check if we have detailed transaction data
+        const detailedTransaction = responseData.transaction || responseData.data;
+        
+        // Check if detailedTransaction exists and has data
+        if (detailedTransaction && typeof detailedTransaction === 'object' && Object.keys(detailedTransaction).length > 0) {
+          const enhancedTransaction: Transaction = {
+            id: detailedTransaction.id || transaction.id,
+            bookingId: detailedTransaction.bookingId || transaction.bookingId,
+            clientName: detailedTransaction.payer?.name || 
+                       transaction.clientName,
+            providerName: detailedTransaction.payee?.name || 
+                         transaction.providerName,
+            serviceOffered: detailedTransaction.booking?.title || 
+                           detailedTransaction.description || 
+                           transaction.serviceOffered,
+            totalAmount: detailedTransaction.amount ? 
+                        `$${detailedTransaction.amount.toFixed(2)}` : 
+                        transaction.totalAmount,
+                        status: detailedTransaction.status === "COMPLETED"
+                        ? "Completed"
+                        : detailedTransaction.status === "PENDING"
+                        ? "Pending"
+                        : "Failed",                      
+            lastLogin: detailedTransaction.updatedAt ? 
+                      new Date(detailedTransaction.updatedAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      }) : 
+                      transaction.lastLogin,
+            image: detailedTransaction.payer?.avatar || 
+                  detailedTransaction.payee?.avatar || 
+                  transaction.image || 
+                  "/placeholder-avatar.jpg",
+          };
+          // Update the transaction with enhanced data
+          setSelectedTransaction(enhancedTransaction);
+        } else {
+          console.log('No detailed transaction data found, using basic data');
+        }
       } else {
-        // If detailed fetch fails, use the basic transaction data
-        setSelectedTransaction(transaction);
+        console.log('Failed to fetch detailed transaction data, using basic data');
       }
     } catch (err) {
-      // If any error occurs, use the basic transaction data
-      setSelectedTransaction(transaction);
-      console.log(err)
+      console.error('Error fetching transaction details:', err);
+      // Keep the original transaction data if fetch fails
     }
-    setIsDetailsModalOpen(true);
   };
 
   const handleProcessPayout = async () => {

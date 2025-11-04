@@ -151,48 +151,48 @@ export default function DashboardPage() {
           error: null,
         }))
       );
-
+  
       const apiCalls = [
-        // Total Users
+        // Total Users (index 0)
         fetch("/api/overview/users", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         }),
-        // Total Bookings
+        // Total Bookings (index 1)
         fetch("/api/overview/bookings", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         }),
-        // Revenue Generated
+        // Revenue Generated (index 2)
         fetch("/api/overview/revenue?range=all", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         }),
-        // Impressions
+        // Impressions (index 3)
         fetch("/api/overview/posts/impressions?range=all", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         }),
-        // Pending Bookings
+        // Pending Bookings (index 4)
         fetch("/api/overview/bookings?range=all&status=PENDING", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         }),
-        // Total Posts
+        // Total Posts (index 5)
         fetch("/api/overview/posts", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         }),
-        // Successful Bookings (COMPLETED)
+        // Successful Bookings (COMPLETED) (index 6)
         fetch("/api/overview/bookings?range=all&status=COMPLETED", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         }),
       ];
-
+  
       const responses = await Promise.all(apiCalls);
       console.log("Swiper API response statuses:", responses.map((r) => r.status));
-
+  
       const results = await Promise.all(
         responses.map(async (response, index) => {
           if (!response.ok) {
@@ -203,19 +203,20 @@ export default function DashboardPage() {
             console.error(`Error for API ${index}:`, errorData);
             return { error: errorMessage };
           }
-          const data = await response.json();
-          console.log(`Response data for API ${index}:`, data);
-          return { data: data.data || data };
+          const jsonData = await response.json();
+          console.log(`Response data for API ${index}:`, jsonData);
+          // Extract the actual data from the nested response structure
+          return { data: jsonData.data };
         })
       );
-
+  
       // Helper function to format currency
       const formatCurrency = (amount: number) => {
         if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`;
         if (amount >= 1_000) return `$${(amount / 1_000).toFixed(1)}K`;
         return `$${amount}`;
       };
-
+  
       setSwiperStats((prev) =>
         prev.map((stat) => {
           const indexMap: { [key: string]: number } = {
@@ -227,41 +228,45 @@ export default function DashboardPage() {
             totalPosts: 5,
             successfulBookings: 6,
           };
-
+  
           const result = results[indexMap[stat.id]];
-
+  
           if (result.error) {
             return { ...stat, loading: false, error: result.error };
           }
-
+  
           let statNum = stat.statNum;
-
+  
+          // Handle the case where result.data can be a direct number or an object
           switch (stat.id) {
             case "totalUsers":
-              statNum = formatNumber(result.data.total || 0);
+              statNum = formatNumber(typeof result.data === 'number' ? result.data : 0);
               break;
             case "totalBookings":
-              statNum = formatNumber(result.data.total || 0);
+              statNum = formatNumber(typeof result.data === 'number' ? result.data : 0);
               break;
             case "revenueGenerated":
-              statNum = formatCurrency(result.data.revenue || result.data.totalRevenue || 0);
+              const revenueAmount = typeof result.data === 'number' ? result.data : (result.data?.revenue || result.data?.totalRevenue || 0);
+              statNum = formatCurrency(revenueAmount);
               break;
             case "impressions":
-              statNum = formatNumber(result.data.impressions || 0);
+              // Impressions has structure: { current: 0, prev: 0, changePercentage: 0 }
+              const impressionsCount = result.data?.current || 0;
+              statNum = formatNumber(impressionsCount);
               break;
             case "pendingBookings":
-              statNum = formatNumber(result.data.total || 0);
+              statNum = formatNumber(typeof result.data === 'number' ? result.data : 0);
               break;
             case "totalPosts":
-              statNum = formatNumber(result.data.total || 0);
+              statNum = formatNumber(typeof result.data === 'number' ? result.data : 0);
               break;
             case "successfulBookings":
-              statNum = formatNumber(result.data.total || 0);
+              statNum = formatNumber(typeof result.data === 'number' ? result.data : 0);
               break;
             default:
               break;
           }
-
+  
           return {
             ...stat,
             loading: false,
@@ -302,34 +307,43 @@ export default function DashboardPage() {
         ...prev,
         [statusType]: { ...prev[statusType], loading: true, error: null },
       }));
-
+  
+      // Convert UI ranges to API ranges
       const rangeMap: { [key: string]: string } = {
-        "last24hours": "today",
-        "last10days": "last7Days",
-        "last30days": "last30Days",
+        last24hours: "today",
+        last10days: "last7Days",
+        last30days: "last30Days",
         "3months": "last90Days",
         "6months": "last90Days",
         "1year": "last365Days",
       };
-
+  
       const currentRange = userStats[statusType].range;
       const apiRange = rangeMap[currentRange] || "last30Days";
-
-      const response = await fetch(`/api/overview/users?range=${apiRange}&status=${statusType}`, {
+  
+      // ✅ Correct API URL based on docs
+      const response = await fetch(`/api/overview/users/stats?range=${apiRange}&status=${statusType}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
-
+  
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${statusType} users: ${response.status}`);
+      }
+  
       const data = await response.json();
-      console.log(`${statusType} users:`, data);
-
+      console.log(`${statusType} users response:`, data);
+  
+      // Handle response safely
+      const count = data?.data?.current ?? 0;
+  
       setUserStats((prev) => ({
         ...prev,
         [statusType]: {
           ...prev[statusType],
-          count: data.data?.total || data.total || 0,
+          count,
           loading: false,
-          error: response.ok ? null : "Failed to fetch",
+          error: null,
         },
       }));
     } catch (err) {
@@ -350,6 +364,7 @@ export default function DashboardPage() {
       });
     }
   }, [userStats]);
+  
 
   const handleRangeChange = (statusType: 'active' | 'inactive' | 'suspended', newRange: string) => {
     setUserStats((prev) => ({
@@ -545,8 +560,8 @@ export default function DashboardPage() {
           <Card className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {[
               swiperStats[4], // pendingBookings
-              swiperStats[1], // totalBookings
-              swiperStats[5], // totalPosts
+              swiperStats[5], // totalBookings
+              swiperStats[6], // totalPosts
               swiperStats[3], // impressions
             ].map((stat) => (
               <div key={stat.id}>

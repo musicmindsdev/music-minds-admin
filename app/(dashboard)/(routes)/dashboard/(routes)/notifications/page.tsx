@@ -51,7 +51,7 @@ export default function NotificationsPage() {
   const [totalNotifications, setTotalNotifications] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const notificationsPerPage = 5;
+  const notificationsPerPage = 10;
   const router = useRouter();
 
   const getUserId = () => {
@@ -109,18 +109,26 @@ export default function NotificationsPage() {
         throw new Error(errorData.error || "Failed to fetch notifications");
       }
 
-      const { notifications: apiNotifications, total, pages } = await response.json();
-      const mappedNotifications: Notification[] = Array.isArray(apiNotifications)
-        ?   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        apiNotifications.map((n: any) => ({
-            id: n.id,
-            type: n.type,
-            message: n.message,
-            timestamp: n.timestamp || new Date().toISOString(),
-            read: n.read || false,
-            actions: n.actions || [{ label: "View", variant: "default" }],
-          }))
-        : [];
+      const responseData = await response.json();
+      const apiNotifications = responseData.notifications?.data || [];
+      const total = responseData.notifications?.meta?.total || apiNotifications.length;
+      const pages = responseData.notifications?.meta?.totalPages || 1;
+      
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedNotifications: Notification[] = apiNotifications.map((n: any) => ({
+        id: n.id,
+        type: n.type,
+        message: n.message,
+        timestamp: n.createdAt || new Date().toISOString(),
+        read: n.read || false,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        actions: n.actions?.map((a: any) => ({
+          label: a.label,
+          variant: "default",
+          href: a.route
+        })) || [{ label: "View", variant: "default" }],
+      }));
+      
 
       setNotifications(mappedNotifications);
       setTotalNotifications(total || mappedNotifications.length);

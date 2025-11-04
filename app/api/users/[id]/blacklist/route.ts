@@ -5,7 +5,7 @@ const BASE_URL = "https://music-minds-backend.onrender.com/api/v1";
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     console.log("=== BLACKLIST USER API CALL STARTED ===");
@@ -38,7 +38,7 @@ export async function PUT(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     console.log("User ID to blacklist:", id);
 
     // CORRECTED: Use the correct blacklist endpoint

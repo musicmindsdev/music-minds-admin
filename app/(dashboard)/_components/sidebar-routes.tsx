@@ -72,7 +72,7 @@ const routes = [
     {
       image: "/message-text.svg",
       label: "Support Management",
-      href: "/support-management",
+      href: "/support-management/broadcast",
       links: [
         {
           label: "Broadcast Messages",

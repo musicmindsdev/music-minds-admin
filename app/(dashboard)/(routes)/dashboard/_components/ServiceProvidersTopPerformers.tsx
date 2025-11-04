@@ -14,6 +14,28 @@ import ListView from "@/components/svg icons/ListView";
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 
+interface RawProvider {
+  id: string;
+  username: string;
+  name: string;
+  avatar: string | null;
+  email: string;
+  _count: {
+    bookingInvitation: number;
+    review: number;
+  };
+  bookingInvitation: Array<{
+    id: string;
+    booking: {
+      id: string;
+      title: string;
+      description: string;
+      status: string;
+      createdAt: string;
+    };
+  }>;
+}
+
 interface ServiceProvider {
   id: string;
   username: string;
@@ -34,6 +56,23 @@ export default function ServiceProviderTopPerformers() {
     fetchTopProviders();
   }, []);
 
+  // Process the raw API data to match our frontend interface
+  const processProvidersData = (rawProviders: RawProvider[]): ServiceProvider[] => {
+    return rawProviders.map(provider => ({
+      id: provider.id,
+      username: provider.username,
+      name: provider.name,
+      avatar: provider.avatar || '',
+      completedBookingsCount: provider._count?.bookingInvitation || 0,
+      reviewsCount: provider._count?.review || 0,
+      recentBookings: provider.bookingInvitation 
+        ? provider.bookingInvitation
+            .slice(0, 3)
+            .map(invitation => invitation.booking.title)
+        : []
+    }));
+  };
+
   const fetchTopProviders = async () => {
     try {
       setLoading(true);
@@ -50,20 +89,28 @@ export default function ServiceProviderTopPerformers() {
       
       console.log('API Response:', data);
       
-      let providersData: ServiceProvider[] = [];
+      let rawProviders: RawProvider[] = [];
       
-      if (Array.isArray(data)) {
-        providersData = data;
-      } else if (data && Array.isArray(data.providers)) {
-        providersData = data.providers;
-      } else if (data && Array.isArray(data.data)) {
-        providersData = data.data;
-      } else if (data && data.data && Array.isArray(data.data.providers)) {
-        providersData = data.data.providers;
+      // Handle the nested response structure correctly
+      if (data.providers && data.providers.data && Array.isArray(data.providers.data)) {
+        // Structure: { providers: { data: [...] } }
+        rawProviders = data.providers.data;
+      } else if (data.providers && Array.isArray(data.providers)) {
+        // Structure: { providers: [...] }
+        rawProviders = data.providers;
+      } else if (data.data && Array.isArray(data.data)) {
+        // Structure: { data: [...] }
+        rawProviders = data.data;
+      } else if (Array.isArray(data)) {
+        // Structure: [...]
+        rawProviders = data;
       }
       
-
-      setProviders(Array.isArray(providersData) ? providersData : []);
+      console.log('Raw providers data:', rawProviders);
+      
+      // Process the raw data to match our frontend interface
+      const processedProviders = processProvidersData(rawProviders);
+      setProviders(processedProviders);
       
     } catch (err) {
       console.error('Error fetching top providers:', err);
@@ -75,11 +122,12 @@ export default function ServiceProviderTopPerformers() {
 
   // Helper functions for avatar handling
   const getAvatarUrl = (provider: ServiceProvider) => {
-    return provider.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${provider.name}`;
+    const cleanName = provider.name?.trim() || 'Unknown Provider';
+    return provider.avatar || `https://api.dicebear.com/6.x/initials/png?seed=${encodeURIComponent(cleanName)}`;
   };
 
   const getProviderName = (provider: ServiceProvider) => {
-    return provider.name || 'Unknown Provider';
+    return provider.name?.trim() || 'Unknown Provider';
   };
 
   const getUsername = (provider: ServiceProvider) => {
@@ -161,7 +209,6 @@ export default function ServiceProviderTopPerformers() {
     );
   }
 
-  // Ensure providers is always an array before mapping
   const displayProviders = Array.isArray(providers) ? providers : [];
 
   return (
@@ -208,29 +255,29 @@ export default function ServiceProviderTopPerformers() {
                   height={40}
                   className="w-10 h-10 rounded-full"
                   onError={(e) => {
-                    // Fallback to dicebear if image fails to load
                     const target = e.target as HTMLImageElement;
-                    target.src = `https://api.dicebear.com/6.x/initials/svg?seed=${getProviderName(provider)}`;
+                    const cleanName = getProviderName(provider);
+                    target.src = `https://api.dicebear.com/6.x/initials/png?seed=${encodeURIComponent(cleanName)}`;
                   }}
                 />
                 <div>
                   <div className="font-medium">{getProviderName(provider)}</div>
                   <div className="text-sm text-gray-500">@{getUsername(provider)}</div>
                   <div className="text-xs text-gray-400">
-                    {provider.recentBookings && provider.recentBookings.length > 0 
-                      ? `Recent: ${provider.recentBookings[0]}` 
-                      : 'No recent bookings'}
+                    Bookings: {provider.completedBookingsCount}
                   </div>
                 </div>
                 <div className="ml-auto text-sm text-gray-500">#{index + 1}</div>
               </CardHeader>
               <CardContent className="p-4 pt-0">
-                <div className="text-sm text-gray-700">
-                  Completed Bookings: {provider.completedBookingsCount || 0}
+                <div className="text-sm text-gray-700 mb-2">
+                  Reviews: {provider.reviewsCount}
                 </div>
-                <div className="text-sm text-gray-700">
-                  Reviews: {provider.reviewsCount || 0}
-                </div>
+                {provider.recentBookings.length > 0 && (
+                  <div className="text-xs text-gray-500">
+                    Recent: {provider.recentBookings[0]}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -261,17 +308,18 @@ export default function ServiceProviderTopPerformers() {
                       className="w-6 h-6 rounded-full"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
-                        target.src = `https://api.dicebear.com/6.x/initials/svg?seed=${getProviderName(provider)}`;
+                        const cleanName = getProviderName(provider);
+                        target.src = `https://api.dicebear.com/6.x/initials/png?seed=${encodeURIComponent(cleanName)}`;
                       }}
                     />
                     {getProviderName(provider)}
                   </div>
                 </TableCell>
                 <TableCell>@{getUsername(provider)}</TableCell>
-                <TableCell>{provider.completedBookingsCount || 0}</TableCell>
-                <TableCell>{provider.reviewsCount || 0}</TableCell>
+                <TableCell>{provider.completedBookingsCount}</TableCell>
+                <TableCell>{provider.reviewsCount}</TableCell>
                 <TableCell>
-                  {provider.recentBookings && provider.recentBookings.length > 0 
+                  {provider.recentBookings.length > 0 
                     ? provider.recentBookings[0] 
                     : 'None'}
                 </TableCell>

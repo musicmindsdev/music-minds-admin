@@ -325,25 +325,6 @@ export default function BookingTable({
     }
   };
 
-  // Field mapping for export
-  const fieldMap: Record<string, string> = {
-    "Booking ID": "id",
-    "Client Name": "name",
-    "Client Email": "email",
-    "Provider Name": "providerName",
-    "Provider Email": "providerEmail",
-    "Service Offered": "serviceOffered",
-    "Scheduled Date": "scheduledDate",
-    "Scheduled Time": "scheduledTime",
-    "Location": "location",
-    "Total Amount": "totalAmount",
-    "Payment Amount": "paymentAmount",
-    "Platform Fee": "platformFee",
-    "Transaction Id": "transactionId",
-    "Status": "status",
-    "Created At": "createdAt",
-    "Last Updated": "lastLogin",
-  };
 
   return (
     <>
@@ -667,7 +648,6 @@ export default function BookingTable({
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Bookings"
-        data={filteredBookings}
         fieldOptions={[
           { label: "Booking ID", value: "Booking ID" },
           { label: "Client Name", value: "Client Name" },
@@ -686,13 +666,10 @@ export default function BookingTable({
           { label: "Created At", value: "Created At" },
           { label: "Last Updated", value: "Last Updated" },
         ]}
-        fieldMap={fieldMap}
-        statusFilters={[
-          { label: "Confirmed", value: "Confirmed" },
-          { label: "Pending", value: "Pending" },
-          { label: "Cancelled", value: "Cancelled" },
-          { label: "Completed", value: "Completed" },
-        ]}
+        onExport={(selectedFields) => {
+          console.log("Exporting data with fields:", selectedFields);
+          // Add your export logic here
+        }}
       />
       
       {isDetailsModalOpen && (

@@ -43,6 +43,8 @@ interface User {
   verified: boolean;
   lastLogin: string;
   image: string;
+  followers: number;   
+  following: number; 
 }
 
 interface UserTableProps {
@@ -86,7 +88,9 @@ const mapApiUserToComponentUser = (apiUser: any): User => {
           hour12: true
         }).replace(',', ' • ')
       : 'Never',
-    image: userData.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${userData.name || userData.username || userData.email || 'U'}`
+    image: userData.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${userData.name || userData.username || userData.email || 'U'}`,
+    followers: userData.followers || 0,
+    following: userData.following || 0,
   };
 };
 

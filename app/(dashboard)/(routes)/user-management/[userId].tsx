@@ -32,6 +32,8 @@ interface User {
   verified: boolean;
   lastLogin: string;
   image: string;
+  followers: number;
+  following: number;
 }
 
 export default function UserDetailsPage() {
@@ -92,7 +94,9 @@ export default function UserDetailsPage() {
           minute: '2-digit',
           hour12: true
         }).replace(',', ' • '),
-        image: `https://api.dicebear.com/6.x/initials/svg?seed=${userData.firstName} ${userData.lastName}`
+        image: `https://api.dicebear.com/6.x/initials/svg?seed=${userData.firstName} ${userData.lastName}`,
+        followers: 0,  
+        following: 0
       };
       
       setUser(mappedUser);

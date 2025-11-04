@@ -15,6 +15,8 @@ interface User {
   verified: boolean;
   lastLogin: string;
   image: string;
+  followers: number;
+  following: number;
 }
 
 export default function UserManagementPage() {

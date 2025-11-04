@@ -14,6 +14,25 @@ import ListView from "@/components/svg icons/ListView";
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 
+interface RawClient {
+  id: string;
+  username: string;
+  name: string;
+  avatar: string | null;
+  email: string;
+  _count: {
+    booking: number;
+    review: number;
+  };
+  booking: Array<{
+    id: string;
+    title: string;
+    description: string;
+    status: string;
+    createdAt: string;
+  }>;
+}
+
 interface Client {
   id: string;
   username: string;
@@ -34,6 +53,21 @@ export default function ClientTopPerformers() {
     fetchTopClients();
   }, []);
 
+  // Process the raw API data to match our frontend interface
+  const processClientsData = (rawClients: RawClient[]): Client[] => {
+    return rawClients.map(client => ({
+      id: client.id,
+      username: client.username,
+      name: client.name,
+      avatar: client.avatar || '',
+      bookingsCount: client._count?.booking || 0,
+      reviewsCount: client._count?.review || 0,
+      recentBookings: client.booking 
+        ? client.booking.slice(0, 3).map(booking => booking.title)
+        : []
+    }));
+  };
+
   const fetchTopClients = async () => {
     try {
       setLoading(true);
@@ -50,19 +84,28 @@ export default function ClientTopPerformers() {
       
       console.log('API Response:', data);
       
-      let clientsData: Client[] = [];
+      let rawClients: RawClient[] = [];
       
-      if (Array.isArray(data)) {
-        clientsData = data;
-      } else if (data && Array.isArray(data.clients)) {
-        clientsData = data.clients;
-      } else if (data && Array.isArray(data.data)) {
-        clientsData = data.data;
-      } else if (data && data.data && Array.isArray(data.data.clients)) {
-        clientsData = data.data.clients;
+      // Handle the nested response structure correctly
+      if (data.clients && data.clients.data && Array.isArray(data.clients.data)) {
+        // Structure: { clients: { data: [...] } }
+        rawClients = data.clients.data;
+      } else if (data.clients && Array.isArray(data.clients)) {
+        // Structure: { clients: [...] }
+        rawClients = data.clients;
+      } else if (data.data && Array.isArray(data.data)) {
+        // Structure: { data: [...] }
+        rawClients = data.data;
+      } else if (Array.isArray(data)) {
+        // Structure: [...]
+        rawClients = data;
       }
       
-      setClients(Array.isArray(clientsData) ? clientsData : []);
+      console.log('Raw clients data:', rawClients);
+      
+      // Process the raw data to match our frontend interface
+      const processedClients = processClientsData(rawClients);
+      setClients(processedClients);
       
     } catch (err) {
       console.error('Error fetching top clients:', err);
@@ -214,20 +257,20 @@ export default function ClientTopPerformers() {
                   <div className="font-medium">{getClientName(client)}</div>
                   <div className="text-sm text-gray-500">@{getUsername(client)}</div>
                   <div className="text-xs text-gray-400">
-                    {client.recentBookings && client.recentBookings.length > 0 
-                      ? `Recent: ${client.recentBookings[0]}` 
-                      : 'No recent bookings'}
+                    Bookings: {client.bookingsCount}
                   </div>
                 </div>
                 <div className="ml-auto text-sm text-gray-500">#{index + 1}</div>
               </CardHeader>
               <CardContent className="p-4 pt-0">
-                <div className="text-sm text-gray-700">
-                  Bookings: {client.bookingsCount || 0}
+                <div className="text-sm text-gray-700 mb-2">
+                  Reviews: {client.reviewsCount}
                 </div>
-                <div className="text-sm text-gray-700">
-                  Reviews: {client.reviewsCount || 0}
-                </div>
+                {client.recentBookings.length > 0 && (
+                  <div className="text-xs text-gray-500">
+                    Recent: {client.recentBookings[0]}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -266,10 +309,10 @@ export default function ClientTopPerformers() {
                   </div>
                 </TableCell>
                 <TableCell>@{getUsername(client)}</TableCell>
-                <TableCell>{client.bookingsCount || 0}</TableCell>
-                <TableCell>{client.reviewsCount || 0}</TableCell>
+                <TableCell>{client.bookingsCount}</TableCell>
+                <TableCell>{client.reviewsCount}</TableCell>
                 <TableCell>
-                  {client.recentBookings && client.recentBookings.length > 0 
+                  {client.recentBookings.length > 0 
                     ? client.recentBookings[0] 
                     : 'None'}
                 </TableCell>

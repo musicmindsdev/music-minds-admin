@@ -24,7 +24,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +40,8 @@ import { PiEye } from "react-icons/pi";
 import Modal from "@/components/Modal";
 import Slash from "@/components/svg icons/slash";
 import Tick from "@/components/svg icons/tick";
+import Pending from "@/public/pending.png";
+import Loading from "@/components/Loading";
 
 interface KYC {
   id: string;
@@ -221,7 +222,6 @@ export default function KYCTable({
       toast.error(err instanceof Error ? err.message : "An error occurred while approving KYC");
     }
   };
-  
 
   const handleDecline = async (kycId: string, rejectionReason?: string) => {
     try {
@@ -296,28 +296,6 @@ export default function KYCTable({
       setCurrentPage(page);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-12 w-full" />
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-8 text-red-500">
-        <p>{error}</p>
-        <Button variant="outline" className="mt-4" onClick={fetchKYC}>
-          Retry
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -408,6 +386,7 @@ export default function KYCTable({
             size="sm"
             className="text-green-600"
             onClick={() => selectedKYC.forEach((id) => handleApprove(id))}
+            disabled={loading}
           >
             <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
             Approve
@@ -417,46 +396,63 @@ export default function KYCTable({
             size="sm"
             className="text-red-600"
             onClick={() => selectedKYC.forEach((id) => handleDecline(id))}
+            disabled={loading}
           >
             <XCircle className="h-4 w-4 mr-2 text-red-600" />
             Reject
           </Button>
         </div>
       )}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {showCheckboxes && (
-              <TableHead>
-                <Checkbox
-                  checked={selectedKYC.length === kycData.length && kycData.length > 0}
-                  onCheckedChange={handleSelectAll}
-                />
-              </TableHead>
-            )}
-            <TableHead>User ID</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>KYC Status</TableHead>
-            <TableHead>Submitted Date</TableHead>
-            <TableHead>Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {kycData.length === 0 ? (
+
+      {loading ? (
+        <div className="flex justify-center items-center py-4">
+          <Loading />
+        </div>
+      ) : error ? (
+        <div className="text-center py-8 text-red-500">
+          <p>{error}</p>
+          <Button variant="outline" className="mt-4" onClick={fetchKYC}>
+            Retry
+          </Button>
+        </div>
+      ) : kycData.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <Image src={Pending} alt="No KYC submissions found" className="mx-auto mb-2" />
+          <p>No KYC submissions found.</p>
+          {searchQuery && (
+            <p className="text-sm mt-2">Try adjusting your search</p>
+          )}
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={showCheckboxes ? 6 : 5} className="text-center">
-                No KYC submissions available
-              </TableCell>
+              {showCheckboxes && (
+                <TableHead>
+                  <Checkbox
+                    checked={selectedKYC.length === kycData.length && kycData.length > 0}
+                    onCheckedChange={handleSelectAll}
+                    disabled={loading}
+                  />
+                </TableHead>
+              )}
+              <TableHead>User ID</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>KYC Status</TableHead>
+              <TableHead>Submitted Date</TableHead>
+              <TableHead>Action</TableHead>
             </TableRow>
-          ) : (
-            kycData.map((kyc) => (
+          </TableHeader>
+          <TableBody>
+            {kycData.map((kyc) => (
               <TableRow key={kyc.id}>
                 {showCheckboxes && (
                   <TableCell>
                     <Checkbox
                       checked={selectedKYC.includes(kyc.id)}
                       onCheckedChange={(checked) => handleSelectKYC(kyc.id, checked as boolean)}
+                      disabled={loading}
                     />
                   </TableCell>
                 )}
@@ -497,7 +493,9 @@ export default function KYCTable({
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost"><EllipsisVertical /></Button>
+                      <Button variant="ghost" disabled={loading}>
+                        <EllipsisVertical />
+                      </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => handleViewDetails(kyc.id)}>
@@ -520,11 +518,12 @@ export default function KYCTable({
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-      {showPagination && (
+            ))}
+          </TableBody>
+        </Table>
+      )}
+
+      {showPagination && kycData.length > 0 && (
         <div className="flex justify-between items-center mt-4">
           <div className="flex space-x-2">
             <Button
@@ -576,6 +575,7 @@ export default function KYCTable({
           </div>
         </div>
       )}
+
       <Modal
         isOpen={isDeclineModalOpen}
         onClose={closeDeclineModal}

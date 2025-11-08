@@ -24,7 +24,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
+import Loading from "@/components/Loading";
+import Pending from "@/public/pending.png";
+import Image from "next/image";
 
 // Types
 interface User {
@@ -297,23 +299,22 @@ export default function SettlementsTable({
     REJECTED: "bg-red-100 text-red-600",
   };
 
+  // Loading state - using your custom Loading component
   if (loading) {
     return (
-      <div className="space-y-2">
-        <Skeleton className="h-12 w-full" />
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
+      <div className="flex justify-center items-center py-8">
+        <Loading />
       </div>
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="text-center py-8 text-red-500">
         <p>{error}</p>
         <Button variant="outline" className="mt-4" onClick={fetchSettlements}>
-          Retry
+          Try Again
         </Button>
       </div>
     );
@@ -425,177 +426,182 @@ export default function SettlementsTable({
         </div>
       )}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {showCheckboxes && (
-              <TableHead>
-                <Checkbox
-                  checked={selectedSettlements.length === settlementsData.length && settlementsData.length > 0}
-                  onCheckedChange={handleSelectAll}
-                />
-              </TableHead>
-            )}
-            <TableHead>Settlement ID</TableHead>
-            <TableHead>User</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Net Amount</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Requested Date</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {settlementsData.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={showCheckboxes ? 8 : 7} className="text-center">
-                No settlements available
-              </TableCell>
-            </TableRow>
-          ) : (
-            settlementsData.map((settlement) => (
-              <TableRow key={settlement.id}>
-                {showCheckboxes && (
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedSettlements.includes(settlement.id)}
-                      onCheckedChange={(checked) => handleSelectSettlement(settlement.id, checked as boolean)}
-                    />
-                  </TableCell>
-                )}
-                <TableCell className="font-medium">{settlement.id}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Avatar>
-                      <AvatarImage src={settlement.user?.avatar} alt={settlement.user?.username} />
-                      <AvatarFallback>{settlement.user?.username?.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{settlement.user?.username}</p>
-                      <p className="text-sm text-gray-500">{settlement.user?.email}</p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <p className="font-medium">
-                      {settlement.currency} {settlement.amount.toFixed(2)}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Fee: {settlement.currency} {settlement.serviceFee.toFixed(2)}
-                    </p>
-                  </div>
-                </TableCell>
-                <TableCell className="font-semibold text-green-600">
-                  {settlement.currency} {settlement.netAmount.toFixed(2)}
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${statusColors[settlement.status]}`}
-                  >
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        settlement.status === "COMPLETED"
-                          ? "bg-green-500"
-                          : settlement.status === "PENDING" || settlement.status === "APPROVED" || settlement.status === "PROCESSING"
-                          ? "bg-yellow-500"
-                          : "bg-red-500"
-                      }`}
-                    />
-                    {settlement.status}
-                  </span>
-                </TableCell>
-                <TableCell>{new Date(settlement.requestedAt).toLocaleDateString()}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost"><EllipsisVertical /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {settlement.status === "PENDING" && (
-                        <>
-                          <DropdownMenuItem onClick={() => handleProcessSettlement(settlement.id, "APPROVED")}>
-                            <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                            Approve
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleProcessSettlement(settlement.id, "REJECTED")} className="text-red-600">
-                            <XCircle className="h-4 w-4 mr-2 text-red-600" />
-                            Reject
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      {settlement.status === "APPROVED" && (
-                        <DropdownMenuItem onClick={() => handleProcessSettlement(settlement.id, "PROCESSING")}>
-                          <CheckCircle className="h-4 w-4 mr-2 text-blue-600" />
-                          Mark as Processing
-                        </DropdownMenuItem>
-                      )}
-                      {settlement.status === "PROCESSING" && (
-                        <DropdownMenuItem onClick={() => handleProcessSettlement(settlement.id, "COMPLETED")}>
-                          <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                          Mark as Completed
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))
+      {/* Empty state - using the same pattern as other tables */}
+      {settlementsData.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <Image src={Pending} alt="No settlements found" className="mx-auto mb-2" />
+          <p>No settlements found.</p>
+          {searchQuery && (
+            <p className="text-sm mt-2">Try adjusting your search</p>
           )}
-        </TableBody>
-      </Table>
-
-      {showPagination && (
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <IoIosArrowBack />
-            </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
-                size="sm"
-                onClick={() => goToPage(page)}
-              >
-                {page}
-              </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <IoIosArrowForward />
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <p className="text-sm">
-              Showing {Math.min((currentPage - 1) * settlementsPerPage + 1, totalSettlements)} -{" "}
-              {Math.min(currentPage * settlementsPerPage, totalSettlements)} of {totalSettlements}
-            </p>
-            <div className="flex items-center space-x-2">
-              <p className="text-sm">Go to page</p>
-              <Input
-                type="number"
-                min={1}
-                max={totalPages}
-                value={currentPage}
-                onChange={(e) => goToPage(Number(e.target.value))}
-                className="w-16"
-              />
-              <Button className="text-white" size="sm" onClick={() => goToPage(currentPage)}>
-                Go
-              </Button>
-            </div>
-          </div>
         </div>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {showCheckboxes && (
+                  <TableHead>
+                    <Checkbox
+                      checked={selectedSettlements.length === settlementsData.length && settlementsData.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                )}
+                <TableHead>Settlement ID</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Net Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Requested Date</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {settlementsData.map((settlement) => (
+                <TableRow key={settlement.id}>
+                  {showCheckboxes && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedSettlements.includes(settlement.id)}
+                        onCheckedChange={(checked) => handleSelectSettlement(settlement.id, checked as boolean)}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell className="font-medium">{settlement.id}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar>
+                        <AvatarImage src={settlement.user?.avatar} alt={settlement.user?.username} />
+                        <AvatarFallback>{settlement.user?.username?.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{settlement.user?.username}</p>
+                        <p className="text-sm text-gray-500">{settlement.user?.email}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium">
+                        {settlement.currency} {settlement.amount.toFixed(2)}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Fee: {settlement.currency} {settlement.serviceFee.toFixed(2)}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-semibold text-green-600">
+                    {settlement.currency} {settlement.netAmount.toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${statusColors[settlement.status]}`}
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          settlement.status === "COMPLETED"
+                            ? "bg-green-500"
+                            : settlement.status === "PENDING" || settlement.status === "APPROVED" || settlement.status === "PROCESSING"
+                            ? "bg-yellow-500"
+                            : "bg-red-500"
+                        }`}
+                      />
+                      {settlement.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>{new Date(settlement.requestedAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost"><EllipsisVertical /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {settlement.status === "PENDING" && (
+                          <>
+                            <DropdownMenuItem onClick={() => handleProcessSettlement(settlement.id, "APPROVED")}>
+                              <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                              Approve
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleProcessSettlement(settlement.id, "REJECTED")} className="text-red-600">
+                              <XCircle className="h-4 w-4 mr-2 text-red-600" />
+                              Reject
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        {settlement.status === "APPROVED" && (
+                          <DropdownMenuItem onClick={() => handleProcessSettlement(settlement.id, "PROCESSING")}>
+                            <CheckCircle className="h-4 w-4 mr-2 text-blue-600" />
+                            Mark as Processing
+                          </DropdownMenuItem>
+                        )}
+                        {settlement.status === "PROCESSING" && (
+                          <DropdownMenuItem onClick={() => handleProcessSettlement(settlement.id, "COMPLETED")}>
+                            <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                            Mark as Completed
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {showPagination && (
+            <div className="flex justify-between items-center mt-4">
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <IoIosArrowBack />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => goToPage(page)}
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <IoIosArrowForward />
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm">
+                  Showing {Math.min((currentPage - 1) * settlementsPerPage + 1, totalSettlements)} -{" "}
+                  {Math.min(currentPage * settlementsPerPage, totalSettlements)} of {totalSettlements}
+                </p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm">Go to page</p>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={currentPage}
+                    onChange={(e) => goToPage(Number(e.target.value))}
+                    className="w-16"
+                  />
+                  <Button className="text-white" size="sm" onClick={() => goToPage(currentPage)}>
+                    Go
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </>
   );

@@ -25,7 +25,6 @@ import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { CiExport } from "react-icons/ci";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ExportModal from "@/components/ExportModal";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -34,6 +33,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import Loading from "@/components/Loading";
+import Pending from "@/public/pending.png";
+import Image from "next/image";
 
 type AuditLogEntry = {
   id: string;
@@ -252,6 +254,33 @@ export default function AuditLogsTable({
     pageButtons.push("...");
   }
 
+  // Loading state - using your custom Loading component
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Loading />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="text-center py-8 text-red-500">
+        <p>{error}</p>
+        {error.includes("log in") ? (
+          <Button asChild variant="outline" className="mt-4">
+            <a href="/login">Log In</a>
+          </Button>
+        ) : (
+          <Button variant="outline" className="mt-4" onClick={fetchAuditLogs}>
+            Try Again
+          </Button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="flex justify-between items-center mb-4">
@@ -342,185 +371,150 @@ export default function AuditLogsTable({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {error ? (
-        <div className="flex flex-col items-center py-4">
-          <p className="text-red-500 text-sm">{error}</p>
-          {error.includes("log in") ? (
-            <Button asChild variant="outline" size="sm" className="mt-2">
-              <a href="/login">Log In</a>
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              onClick={fetchAuditLogs}
-            >
-              Retry
-            </Button>
+
+      {/* Empty state - using the same pattern as other tables */}
+      {logs.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <Image src={Pending} alt="No audit logs found" className="mx-auto mb-2" />
+          <p>No audit logs found.</p>
+          {searchQuery && (
+            <p className="text-sm mt-2">Try adjusting your search</p>
           )}
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {showCheckboxes && (
-                <TableHead>
-                  <Checkbox
-                    checked={selectedLogs.length === logs.length && logs.length > 0}
-                    onCheckedChange={handleSelectAll}
-                  />
-                </TableHead>
-              )}
-              <TableHead>Log ID</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading
-              ? Array.from({ length: logsPerPage }).map((_, index) => (
-                  <TableRow key={index}>
-                    {showCheckboxes && (
-                      <TableCell>
-                        <Skeleton className="h-4 w-4" />
-                      </TableCell>
-                    )}
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {showCheckboxes && (
+                  <TableHead>
+                    <Checkbox
+                      checked={selectedLogs.length === logs.length && logs.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                )}
+                <TableHead>Log ID</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Timestamp</TableHead>
+                <TableHead>Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {logs.map((log) => (
+                <TableRow key={log.id}>
+                  {showCheckboxes && (
                     <TableCell>
-                      <Skeleton className="h-4 w-24" />
+                      <Checkbox
+                        checked={selectedLogs.includes(log.id)}
+                        onCheckedChange={(checked) => handleSelectLog(log.id, checked as boolean)}
+                      />
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-32" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                        <Skeleton className="h-4 w-48" />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-32" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-8" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              : logs.map((log) => (
-                  <TableRow key={log.id}>
-                    {showCheckboxes && (
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedLogs.includes(log.id)}
-                          onCheckedChange={(checked) => handleSelectLog(log.id, checked as boolean)}
-                        />
-                      </TableCell>
-                    )}
-                    <TableCell>{log.id}</TableCell>
-                    <TableCell>{log.action}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        {log.user ? (
-                          <>
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={log.user.image || undefined} alt={log.user.name} />
-                              <AvatarFallback>{log.user.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span>{log.user.name}</span>
-                          </>
-                        ) : (
-                          <span>Unknown User</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{log.user?.role || log.role || "N/A"}</TableCell>
-                    <TableCell>{log.time}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <EllipsisVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleViewDetails(log)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                  )}
+                  <TableCell>{log.id}</TableCell>
+                  <TableCell>{log.action}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      {log.user ? (
+                        <>
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={log.user.image || undefined} alt={log.user.name} />
+                            <AvatarFallback>{log.user.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <span>{log.user.name}</span>
+                        </>
+                      ) : (
+                        <span>Unknown User</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>{log.user?.role || log.role || "N/A"}</TableCell>
+                  <TableCell>{log.time}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <EllipsisVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleViewDetails(log)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {showPagination && (
+            <div className="flex justify-between items-center mt-4">
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="border-gray-300 hover:bg-gray-100"
+                >
+                  <IoIosArrowBack />
+                </Button>
+                {pageButtons.map((page, index) => (
+                  <Button
+                    key={index}
+                    variant={page === currentPage ? "default" : page === "..." ? "ghost" : "outline"}
+                    size="sm"
+                    onClick={() => typeof page === "number" && goToPage(page)}
+                    className={`border-gray-300 hover:bg-gray-100 ${page === "..." ? "cursor-default" : ""}`}
+                    disabled={page === "..."}
+                  >
+                    {page}
+                  </Button>
                 ))}
-          </TableBody>
-        </Table>
-      )}
-      {showPagination && !error && (
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="border-gray-300 hover:bg-gray-100"
-            >
-              <IoIosArrowBack />
-            </Button>
-            {pageButtons.map((page, index) => (
-              <Button
-                key={index}
-                variant={page === currentPage ? "default" : page === "..." ? "ghost" : "outline"}
-                size="sm"
-                onClick={() => typeof page === "number" && goToPage(page)}
-                className={`border-gray-300 hover:bg-gray-100 ${page === "..." ? "cursor-default" : ""}`}
-                disabled={page === "..."}
-              >
-                {page}
-              </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="border-gray-300 hover:bg-gray-100"
-            >
-              <IoIosArrowForward />
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <p className="text-sm">
-              Showing {(currentPage - 1) * logsPerPage + 1} -{" "}
-              {Math.min(currentPage * logsPerPage, totalLogs)} of {totalLogs}
-            </p>
-            <div className="flex items-center space-x-2">
-              <p className="text-sm">Go to page:</p>
-              <Input
-                type="number"
-                min={1}
-                max={totalPages}
-                value={currentPage}
-                onChange={(e) => goToPage(Number(e.target.value))}
-                className="w-16 p-1 border border-gray-300 rounded"
-              />
-              <Button
-                className="rounded px-2 py-1"
-                size="sm"
-                onClick={() => goToPage(currentPage)}
-              >
-                Go
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="border-gray-300 hover:bg-gray-100"
+                >
+                  <IoIosArrowForward />
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm">
+                  Showing {(currentPage - 1) * logsPerPage + 1} -{" "}
+                  {Math.min(currentPage * logsPerPage, totalLogs)} of {totalLogs}
+                </p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm">Go to page:</p>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={currentPage}
+                    onChange={(e) => goToPage(Number(e.target.value))}
+                    className="w-16 p-1 border border-gray-300 rounded"
+                  />
+                  <Button
+                    className="rounded px-2 py-1"
+                    size="sm"
+                    onClick={() => goToPage(currentPage)}
+                  >
+                    Go
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
+
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
@@ -536,6 +530,7 @@ export default function AuditLogsTable({
         ]}
         onExport={handleExport}
       />
+
       <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
         <DialogContent>
           <DialogHeader>
@@ -553,12 +548,8 @@ export default function AuditLogsTable({
                   <p><strong>Details:</strong> {JSON.stringify(selectedLog.details, null, 2)}</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="h-4 w-64" />
-                  <Skeleton className="h-4 w-72" />
-                  <Skeleton className="h-4 w-56" />
-                  <Skeleton className="h-4 w-80" />
+                <div className="flex justify-center items-center py-4">
+                  <Loading />
                 </div>
               )}
             </DialogDescription>

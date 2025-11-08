@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Search, EllipsisVertical, RotateCw, Send, Ban } from "lucide-react";
+import { Search, EllipsisVertical, Send, Ban } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import AdminDetailsModal from "./AdminDetailsModal";
 import InviteAdminModal from "@/components/invite-admin-modal";
 import ChangeRoleModal from "./ChangeRoleModal";
+import Loading from "@/components/Loading";
 
 interface AdminTeamMember {
   id: string;
@@ -446,8 +447,7 @@ export default function AdminTable({
       
       {loading ? (
         <div className="flex justify-center items-center py-4">
-          <RotateCw className="animate-spin h-6 w-6 text-blue-600" />
-          <span className="ml-2">Loading admins...</span>
+         <Loading/>
         </div>
       ) : filteredMembers.length === 0 ? (
         <div className="text-center py-8 text-gray-500">

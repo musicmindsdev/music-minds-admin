@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -25,9 +24,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import ProductDetailsModal from "./ProductDetailsModal";
+import Loading from "@/components/Loading";
+import Pending from "@/public/pending.png";
+import Image from "next/image";
 
 interface ProductTableItem {
   id: string;
@@ -324,23 +325,22 @@ export default function ProductsTable({
     OTHER: "bg-gray-100 text-gray-600",
   };
 
+  // Loading state - using your custom Loading component
   if (loading) {
     return (
-      <div className="space-y-2">
-        <Skeleton className="h-12 w-full" />
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
+      <div className="flex justify-center items-center py-8">
+        <Loading />
       </div>
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="text-center py-8 text-red-500">
         <p>{error}</p>
         <Button variant="outline" className="mt-4" onClick={fetchProducts}>
-          Retry
+          Try Again
         </Button>
       </div>
     );
@@ -539,180 +539,185 @@ export default function ProductsTable({
         </div>
       )}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {showCheckboxes && (
-              <TableHead>
-                <Checkbox
-                  checked={selectedProducts.length === productsData.length && productsData.length > 0}
-                  onCheckedChange={handleSelectAll}
-                />
-              </TableHead>
-            )}
-            <TableHead>Product</TableHead>
-            <TableHead>Price</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Sales</TableHead>
-            <TableHead>Rating</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created Date</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {productsData.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={showCheckboxes ? 9 : 8} className="text-center">
-                No products available
-              </TableCell>
-            </TableRow>
-          ) : (
-            productsData.map((product) => (
-              <TableRow key={product.id}>
-                {showCheckboxes && (
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedProducts.includes(product.id)}
-                      onCheckedChange={(checked) => handleSelectProduct(product.id, checked as boolean)}
-                    />
-                  </TableCell>
-                )}
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Avatar>
-                      <AvatarImage src="/placeholder-product.jpg" alt={product.name} />
-                      <AvatarFallback>{product.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{product.name}</p>
-                      <p className="text-sm text-gray-500 line-clamp-1">{product.description}</p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="font-semibold">
-                  {product.currency} {product.price.toFixed(2)}
-                </TableCell>
-                <TableCell>
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs ${typeColors[product.type]}`}>
-                    {product.type}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <p className="font-medium">{product.sales}</p>
-                    <p className="text-sm text-gray-500">
-                      {product.currency} {product.revenue.toFixed(2)}
-                    </p>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <p className="font-medium">{product.rating}/5.0</p>
-                    <p className="text-sm text-gray-500">{product.reviewCount} reviews</p>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${statusColors[product.status]}`}
-                  >
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        product.status === "APPROVED"
-                          ? "bg-green-500"
-                          : product.status === "PENDING"
-                          ? "bg-yellow-500"
-                          : product.status === "REJECTED"
-                          ? "bg-red-500"
-                          : "bg-gray-500"
-                      }`}
-                    />
-                    {product.status}
-                  </span>
-                </TableCell>
-                <TableCell>{new Date(product.createdAt).toLocaleDateString()}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost"><EllipsisVertical /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleViewDetails(product)}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </DropdownMenuItem>
-                      {product.status === "PENDING" && (
-                        <>
-                          <DropdownMenuItem onClick={() => handleApproveProduct(product.id)}>
-                            <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                            Approve
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleRejectProduct(product.id)} className="text-red-600">
-                            <XCircle className="h-4 w-4 mr-2 text-red-600" />
-                            Reject
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))
+      {/* Empty state - using the same pattern as other tables */}
+      {productsData.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <Image src={Pending} alt="No products found" className="mx-auto mb-2" />
+          <p>No products found.</p>
+          {searchQuery && (
+            <p className="text-sm mt-2">Try adjusting your search</p>
           )}
-        </TableBody>
-      </Table>
-
-      {showPagination && (
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <IoIosArrowBack />
-            </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
-                size="sm"
-                onClick={() => goToPage(page)}
-              >
-                {page}
-              </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <IoIosArrowForward />
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <p className="text-sm">
-              Showing {Math.min((currentPage - 1) * productsPerPage + 1, totalProducts)} -{" "}
-              {Math.min(currentPage * productsPerPage, totalProducts)} of {totalProducts}
-            </p>
-            <div className="flex items-center space-x-2">
-              <p className="text-sm">Go to page</p>
-              <Input
-                type="number"
-                min={1}
-                max={totalPages}
-                value={currentPage}
-                onChange={(e) => goToPage(Number(e.target.value))}
-                className="w-16"
-              />
-              <Button className="text-white" size="sm" onClick={() => goToPage(currentPage)}>
-                Go
-              </Button>
-            </div>
-          </div>
         </div>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {showCheckboxes && (
+                  <TableHead>
+                    <Checkbox
+                      checked={selectedProducts.length === productsData.length && productsData.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                )}
+                <TableHead>Product</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Sales</TableHead>
+                <TableHead>Rating</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created Date</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {productsData.map((product) => (
+                <TableRow key={product.id}>
+                  {showCheckboxes && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedProducts.includes(product.id)}
+                        onCheckedChange={(checked) => handleSelectProduct(product.id, checked as boolean)}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar>
+                        <AvatarImage src="/placeholder-product.jpg" alt={product.name} />
+                        <AvatarFallback>{product.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{product.name}</p>
+                        <p className="text-sm text-gray-500 line-clamp-1">{product.description}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-semibold">
+                    {product.currency} {product.price.toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs ${typeColors[product.type]}`}>
+                      {product.type}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium">{product.sales}</p>
+                      <p className="text-sm text-gray-500">
+                        {product.currency} {product.revenue.toFixed(2)}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium">{product.rating}/5.0</p>
+                      <p className="text-sm text-gray-500">{product.reviewCount} reviews</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${statusColors[product.status]}`}
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          product.status === "APPROVED"
+                            ? "bg-green-500"
+                            : product.status === "PENDING"
+                            ? "bg-yellow-500"
+                            : product.status === "REJECTED"
+                            ? "bg-red-500"
+                            : "bg-gray-500"
+                        }`}
+                      />
+                      {product.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>{new Date(product.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost"><EllipsisVertical /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleViewDetails(product)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                        {product.status === "PENDING" && (
+                          <>
+                            <DropdownMenuItem onClick={() => handleApproveProduct(product.id)}>
+                              <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                              Approve
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleRejectProduct(product.id)} className="text-red-600">
+                              <XCircle className="h-4 w-4 mr-2 text-red-600" />
+                              Reject
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {showPagination && (
+            <div className="flex justify-between items-center mt-4">
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <IoIosArrowBack />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => goToPage(page)}
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <IoIosArrowForward />
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm">
+                  Showing {Math.min((currentPage - 1) * productsPerPage + 1, totalProducts)} -{" "}
+                  {Math.min(currentPage * productsPerPage, totalProducts)} of {totalProducts}
+                </p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm">Go to page</p>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={currentPage}
+                    onChange={(e) => goToPage(Number(e.target.value))}
+                    className="w-16"
+                  />
+                  <Button className="text-white" size="sm" onClick={() => goToPage(currentPage)}>
+                    Go
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <ProductDetailsModal

@@ -32,7 +32,9 @@ import { FaTrash } from "react-icons/fa";
 import { PiWarningOctagonFill } from "react-icons/pi";
 import { FaUser } from "react-icons/fa6";
 import ExportModal from "@/components/ExportModal";
-import { Skeleton } from "@/components/ui/skeleton";
+import Pending from "@/public/pending.png";
+import Loading from "@/components/Loading";
+import Image from "next/image";
 
 interface User {
   id: string;
@@ -289,7 +291,6 @@ export default function UserTable({
     }
   };
 
-  // FIXED: Functions to open modals with specific user
   const openDeleteModal = (userId?: string) => {
     if (userId) {
       setSelectedUsers([userId]);
@@ -381,49 +382,6 @@ export default function UserTable({
       onViewDetails(user);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="w-full">
-        <div className="flex justify-between items-center mb-4">
-          <p className="font-light text-sm">{headerText}</p>
-          <div className="flex space-x-2">
-            {pathname !== "/user-management" && (
-              <Button variant="link" className="text-blue-600 hover:text-blue-800" onClick={handleViewAll}>
-                View all Users
-              </Button>
-            )}
-            {showExportButton && (
-              <Button className="text-white flex items-center space-x-2" onClick={() => setIsExportModalOpen(true)}>
-                <CiExport className="mr-2" />
-                <span className="hidden md:inline">Export Data</span>
-              </Button>
-            )}
-          </div>
-        </div>
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-12 w-full" />
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="w-full">
-        <div className="flex justify-between items-center mb-4">
-          <p className="font-light text-sm">{headerText}</p>
-        </div>
-        <div className="text-center py-8 text-red-500">
-          Error: {error}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full">
@@ -571,48 +529,41 @@ export default function UserTable({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-
       {selectedUsers.length > 0 && (
         <div className="flex justify-end space-x-2 mt-2 p-4">
-          <Button variant="outline" size="sm" onClick={() => openDeleteModal()} className="text-red-600">
+          <Button variant="outline" size="sm" onClick={() => openDeleteModal()} className="text-red-600" disabled={loading}>
             <UserRoundX className="h-4 w-4 mr-2 text-red-600" />
             Delete
           </Button>
-          <Button variant="outline" size="sm" onClick={() => openActivateModal()}>
+          <Button variant="outline" size="sm" onClick={() => openActivateModal()} disabled={loading}>
             <CheckCircle className="h-4 w-4 mr-2" />
             Activate
           </Button>
-          <Button variant="outline" size="sm" onClick={() => openSuspendModal()}>
+          <Button variant="outline" size="sm" onClick={() => openSuspendModal()} disabled={loading}>
             <CircleSlash className="h-4 w-4 mr-2" />
             Suspend
           </Button>
         </div>
       )}
 
-      {filteredUsers.length === 0 ? (
-        <div className="text-center py-12 mt-4">
-          <div className="flex flex-col items-center justify-center">
-            <p className="text-gray-500 mb-4">
-              {searchQuery || Object.values(statusFilter).some(val => val) || profileTypeFilter !== "all" || dateRangeFrom || dateRangeTo || verificationFilter !== "all"
-                ? "Try adjusting your search or filters to find what you're looking for."
-                : "No user data available yet."}
-            </p>
-            {(searchQuery || Object.values(statusFilter).some(val => val) || profileTypeFilter !== "all" || dateRangeFrom || dateRangeTo || verificationFilter !== "all") && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchQuery("");
-                  setStatusFilter({ Active: false, Suspended: false, Deactivated: false });
-                  setProfileTypeFilter("all");
-                  setDateRangeFrom("");
-                  setDateRangeTo("");
-                  setVerificationFilter("all");
-                }}
-              >
-                Clear all filters
-              </Button>
-            )}
-          </div>
+      {loading ? (
+        <div className="flex justify-center items-center py-4">
+          <Loading />
+        </div>
+      ) : error ? (
+        <div className="text-center py-8 text-red-500">
+          <p>Error: {error}</p>
+          <Button variant="outline" className="mt-4" onClick={fetchUsers}>
+            Retry
+          </Button>
+        </div>
+      ) : filteredUsers.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <Image src={Pending} alt="No users found" className="mx-auto mb-2" />
+          <p>No users found.</p>
+          {searchQuery && (
+            <p className="text-sm mt-2">Try adjusting your search</p>
+          )}
         </div>
       ) : (
         <>
@@ -624,6 +575,7 @@ export default function UserTable({
                     <Checkbox
                       checked={selectedUsers.length === paginatedUsers.length && paginatedUsers.length > 0}
                       onCheckedChange={handleSelectAll}
+                      disabled={loading}
                     />
                   </TableHead>
                 )}
@@ -645,6 +597,7 @@ export default function UserTable({
                       <Checkbox
                         checked={selectedUsers.includes(user.id)}
                         onCheckedChange={(checked) => handleSelectUser(user.id, checked as boolean)}
+                        disabled={loading}
                       />
                     </TableCell>
                   )}
@@ -693,7 +646,7 @@ export default function UserTable({
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost"><EllipsisVertical /></Button>
+                        <Button variant="ghost" disabled={loading}><EllipsisVertical /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleViewDetails(user)}>
@@ -723,7 +676,7 @@ export default function UserTable({
             </TableBody>
           </Table>
 
-          {showPagination && (
+          {showPagination && paginatedUsers.length > 0 && (
             <div className="flex justify-between items-center mt-4">
               <div className="flex space-x-2">
                 <Button

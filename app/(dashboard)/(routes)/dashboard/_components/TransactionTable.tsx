@@ -28,9 +28,11 @@ import { BiRotateLeft } from "react-icons/bi";
 import Modal from "@/components/Modal";
 import ExportModal from "@/components/ExportModal";
 import { usePathname, useRouter } from "next/navigation";
-import { Skeleton } from "@/components/ui/skeleton";
 import TransactionDetailModal from "../../content-management/_components/TransactionDetailModal";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Loading from "@/components/Loading";
+import Pending from "@/public/pending.png";
+import Image from "next/image";
 
 // Define interfaces for API response data
 interface RawTransaction {
@@ -476,6 +478,7 @@ export default function TransactionTable({
     console.log("Exporting transaction data:", data);
   };
 
+  // Loading state - using your custom Loading component
   if (loading) {
     return (
       <div className="w-full">
@@ -502,17 +505,14 @@ export default function TransactionTable({
             )}
           </div>
         </div>
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-12 w-full" />
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
+        <div className="flex justify-center items-center py-8">
+          <Loading />
         </div>
       </div>
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="w-full">
@@ -531,8 +531,8 @@ export default function TransactionTable({
           </div>
         </div>
         <div className="text-center py-8 text-red-500">
-          Error: {error}
-          <Button onClick={fetchTransactions} className="ml-4" variant="outline">
+          <p>{error}</p>
+          <Button variant="outline" className="mt-4" onClick={fetchTransactions}>
             Try Again
           </Button>
         </div>
@@ -565,6 +565,7 @@ export default function TransactionTable({
           )}
         </div>
       </div>
+      
       <div className="relative mt-4 flex items-center pb-2">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <input
@@ -688,185 +689,189 @@ export default function TransactionTable({
         </div>
       )}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {showCheckboxes && (
-              <TableHead>
-                <Checkbox
-                  checked={
-                    selectedTransactions.length === paginatedTransactions.length &&
-                    paginatedTransactions.length > 0
-                  }
-                  onCheckedChange={handleSelectAll}
-                />
-              </TableHead>
-            )}
-            <TableHead>Transaction ID</TableHead>
-            <TableHead>Booking ID</TableHead>
-            <TableHead>Client Name</TableHead>
-            <TableHead>Provider Name</TableHead>
-            <TableHead>Service Offered</TableHead>
-            <TableHead>Total Amount</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Last Updated</TableHead>
-            <TableHead>Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {paginatedTransactions.map((transaction) => (
-            <TableRow key={transaction.id}>
-              {showCheckboxes && (
-                <TableCell>
-                  <Checkbox
-                    checked={selectedTransactions.includes(transaction.id)}
-                    onCheckedChange={(checked) =>
-                      handleSelectTransaction(transaction.id, checked as boolean)
-                    }
-                  />
-                </TableCell>
-              )}
-              <TableCell>{transaction.id}</TableCell>
-              <TableCell>{transaction.bookingId}</TableCell>
-              <TableCell className="flex items-center gap-1">
-                <Avatar>
-                  <AvatarImage src={transaction.image} alt={transaction.clientName} />
-                  <AvatarFallback>{transaction.clientName.charAt(0)}</AvatarFallback>
-                </Avatar>
-                {transaction.clientName}
-              </TableCell>
-              <TableCell>{transaction.providerName}</TableCell>
-              <TableCell>{transaction.serviceOffered}</TableCell>
-              <TableCell>{transaction.totalAmount}</TableCell>
-              <TableCell>
-                <span
-                  className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 text-xs ${
-                    transaction.status === "Completed"
-                      ? "bg-green-100 text-green-600"
-                      : transaction.status === "Pending"
-                      ? "bg-yellow-100 text-yellow-600"
-                      : "bg-red-100 text-red-600"
-                  }`}
-                >
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      transaction.status === "Completed"
-                        ? "bg-green-500"
-                        : transaction.status === "Pending"
-                        ? "bg-yellow-500"
-                        : "bg-red-500"
-                    }`}
-                  />
-                  {transaction.status}
-                </span>
-              </TableCell>
-              <TableCell>{transaction.lastLogin}</TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost">
-                      <EllipsisVertical />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleViewDetails(transaction)}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={openProcessPayoutModal}>
-                      <TbCashBanknote className="h-4 w-4 mr-2" />
-                      Process Payout
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={openRetryPaymentModal}>
-                      <BiRotateLeft className="h-4 w-4 mr-2" />
-                      Retry Payment
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-          {paginatedTransactions.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={showCheckboxes ? 10 : 9} className="text-center text-sm text-gray-500">
-                {searchQuery || Object.values(statusFilter).some((val) => val) || dateRangeFrom || dateRangeTo
-                  ? "Try adjusting your search or filters to find what you're looking for."
-                  : "No transaction data available yet."}
-              </TableCell>
-            </TableRow>
+      {/* Empty state - using the same pattern as admin table */}
+      {filteredTransactions.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <Image src={Pending} alt="No transactions found" className="mx-auto mb-2" />
+          <p>No transactions found.</p>
+          {searchQuery && (
+            <p className="text-sm mt-2">Try adjusting your search</p>
           )}
-        </TableBody>
-      </Table>
-
-      {showPagination && (
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              <IoIosArrowBack />
-            </Button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let page;
-              if (totalPages <= 5) {
-                page = i + 1;
-              } else if (currentPage <= 3) {
-                page = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                page = totalPages - 4 + i;
-              } else {
-                page = currentPage - 2 + i;
-              }
-              return (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </Button>
-              );
-            })}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-            >
-              <IoIosArrowForward />
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <p className="text-sm">
-              Showing {startIndex + 1} - {Math.min(startIndex + transactionsPerPage, totalTransactions)} of {totalTransactions}
-            </p>
-            <div className="flex items-center space-x-2">
-              <p className="text-sm">Go to page</p>
-              <Input
-                type="number"
-                min={1}
-                max={totalPages}
-                value={currentPage}
-                onChange={(e) => {
-                  const page = Number(e.target.value);
-                  if (page >= 1 && page <= totalPages) {
-                    setCurrentPage(page);
-                  }
-                }}
-                className="w-16"
-              />
-              <Button className="text-white" size="sm" onClick={() => setCurrentPage(currentPage)}>
-                Go
-              </Button>
-            </div>
-          </div>
         </div>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {showCheckboxes && (
+                  <TableHead>
+                    <Checkbox
+                      checked={
+                        selectedTransactions.length === paginatedTransactions.length &&
+                        paginatedTransactions.length > 0
+                      }
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                )}
+                <TableHead>Transaction ID</TableHead>
+                <TableHead>Booking ID</TableHead>
+                <TableHead>Client Name</TableHead>
+                <TableHead>Provider Name</TableHead>
+                <TableHead>Service Offered</TableHead>
+                <TableHead>Total Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Last Updated</TableHead>
+                <TableHead>Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedTransactions.map((transaction) => (
+                <TableRow key={transaction.id}>
+                  {showCheckboxes && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedTransactions.includes(transaction.id)}
+                        onCheckedChange={(checked) =>
+                          handleSelectTransaction(transaction.id, checked as boolean)
+                        }
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell>{transaction.id}</TableCell>
+                  <TableCell>{transaction.bookingId}</TableCell>
+                  <TableCell className="flex items-center gap-1">
+                    <Avatar>
+                      <AvatarImage src={transaction.image} alt={transaction.clientName} />
+                      <AvatarFallback>{transaction.clientName.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    {transaction.clientName}
+                  </TableCell>
+                  <TableCell>{transaction.providerName}</TableCell>
+                  <TableCell>{transaction.serviceOffered}</TableCell>
+                  <TableCell>{transaction.totalAmount}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 text-xs ${
+                        transaction.status === "Completed"
+                          ? "bg-green-100 text-green-600"
+                          : transaction.status === "Pending"
+                          ? "bg-yellow-100 text-yellow-600"
+                          : "bg-red-100 text-red-600"
+                      }`}
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          transaction.status === "Completed"
+                            ? "bg-green-500"
+                            : transaction.status === "Pending"
+                            ? "bg-yellow-500"
+                            : "bg-red-500"
+                        }`}
+                      />
+                      {transaction.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>{transaction.lastLogin}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost">
+                          <EllipsisVertical />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleViewDetails(transaction)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={openProcessPayoutModal}>
+                          <TbCashBanknote className="h-4 w-4 mr-2" />
+                          Process Payout
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={openRetryPaymentModal}>
+                          <BiRotateLeft className="h-4 w-4 mr-2" />
+                          Retry Payment
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {showPagination && (
+            <div className="flex justify-between items-center mt-4">
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  <IoIosArrowBack />
+                </Button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let page;
+                  if (totalPages <= 5) {
+                    page = i + 1;
+                  } else if (currentPage <= 3) {
+                    page = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    page = totalPages - 4 + i;
+                  } else {
+                    page = currentPage - 2 + i;
+                  }
+                  return (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </Button>
+                  );
+                })}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  <IoIosArrowForward />
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm">
+                  Showing {startIndex + 1} - {Math.min(startIndex + transactionsPerPage, totalTransactions)} of {totalTransactions}
+                </p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm">Go to page</p>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={currentPage}
+                    onChange={(e) => {
+                      const page = Number(e.target.value);
+                      if (page >= 1 && page <= totalPages) {
+                        setCurrentPage(page);
+                      }
+                    }}
+                    className="w-16"
+                  />
+                  <Button className="text-white" size="sm" onClick={() => setCurrentPage(currentPage)}>
+                    Go
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <Modal

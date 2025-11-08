@@ -28,7 +28,9 @@ import { HiOutlineGlobeAlt } from "react-icons/hi2";
 import { TbEdit } from "react-icons/tb";
 import Modal from "@/components/Modal";
 import { FaTrash } from "react-icons/fa";
-import { Skeleton } from "@/components/ui/skeleton";
+import Loading from "@/components/Loading";
+import Pending from "@/public/pending.png";
+import Image from "next/image";
 
 // What the API returns
 interface ApiArticle {
@@ -97,7 +99,7 @@ export default function ArticlesTable({
   const [totalPages, setTotalPages] = useState(1);
   const [totalArticles, setTotalArticles] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [dateRangeFrom, setDateRangeFrom] = useState("");
   const [dateRangeTo, setDateRangeTo] = useState("");
   const articlesPerPage = 10;
@@ -384,13 +386,23 @@ const fetchArticles = useCallback(async () => {
     });
   };
 
+  // Loading state - using your custom Loading component
   if (loading) {
     return (
-      <div className="space-y-2">
-        <Skeleton className="h-12 w-full" />
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
+      <div className="flex justify-center items-center py-8">
+        <Loading />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="text-center py-8 text-red-500">
+        <p>{error}</p>
+        <Button variant="outline" className="mt-4" onClick={fetchArticles}>
+          Try Again
+        </Button>
       </div>
     );
   }
@@ -482,178 +494,183 @@ const fetchArticles = useCallback(async () => {
         </div>
       )}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {showCheckboxes && (
-              <TableHead>
-                <Checkbox
-                  checked={selectedArticles.length === articles.length && articles.length > 0}
-                  onCheckedChange={handleSelectAll}
-                />
-              </TableHead>
-            )}
-            <TableHead>Article ID</TableHead>
-            <TableHead>Title</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Published Date</TableHead>
-            <TableHead>Created By</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {articles.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={showCheckboxes ? 8 : 7} className="text-center">
-                No articles available
-              </TableCell>
-            </TableRow>
-          ) : (
-            articles.map((article) => (
-              <TableRow key={article.id}>
-                {showCheckboxes && (
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedArticles.includes(article.id)}
-                      onCheckedChange={(checked) => handleSelectArticle(article.id, checked as boolean)}
-                    />
-                  </TableCell>
-                )}
-                <TableCell>{article.id}</TableCell>
-                <TableCell>{truncateText(article.title, 20)}</TableCell>
-                <TableCell>{article.category}</TableCell>
-                <TableCell>
-                  <span className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${getStatusColor(article.status)}`}>
-                    <span className={`h-2 w-2 rounded-full ${getStatusDotColor(article.status)}`} />
-                    {article.status === "PUBLISHED" ? "Published" :
-                      article.status === "DRAFT" ? "Draft" :
-                        article.status === "ARCHIVED" ? "Archived" :
-                          article.status === "SCHEDULED" ? "Scheduled" : article.status}
-                    {article.publishAt && article.status === "SCHEDULED" && (
-                      <Clock className="h-3 w-3 ml-1" />
-                    )}
-                  </span>
-                  {article.publishAt && article.status === "SCHEDULED" && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      Scheduled for: {formatDate(article.publishAt)}
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell>{formatDate(article.publishedDate)}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Avatar>
-                      <AvatarFallback>{article.createdBy.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    {truncateText(article.createdBy, 15)}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost"><EllipsisVertical /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit?.(article)}>
-                        <TbEdit className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      
-                      {article.status === "DRAFT" && (
-                        <>
-                          <DropdownMenuItem onClick={() => handlePublish(article.id)}>
-                            <HiOutlineGlobeAlt className="h-4 w-4 mr-2" />
-                            Publish
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onSchedule?.(article)}>
-                            <Clock className="h-4 w-4 mr-2" />
-                            Schedule
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      
-                      {article.status === "PUBLISHED" && (
-                        <DropdownMenuItem onClick={() => handleUnpublish(article.id)}>
-                          <HiOutlineGlobeAlt className="h-4 w-4 mr-2" />
-                          Unpublish
-                        </DropdownMenuItem>
-                      )}
-                      
-                      {article.status !== "ARCHIVED" && (
-                        <DropdownMenuItem onClick={() => handleArchive(article.id)}>
-                          <CiBookmarkMinus className="h-4 w-4 mr-2" />
-                          Archive
-                        </DropdownMenuItem>
-                      )}
-                      
-                      <DropdownMenuItem onClick={() => {
-                        setSelectedArticles([article.id]);
-                        openDeleteModal();
-                      }} className="text-[#FF3B30]">
-                        <Trash2 className="h-4 w-4 mr-2 text-[#FF3B30]" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))
+      {/* Empty state - using the same pattern as other tables */}
+      {articles.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <Image src={Pending} alt="No articles found" className="mx-auto mb-2" />
+          <p>No articles found.</p>
+          {searchQuery && (
+            <p className="text-sm mt-2">Try adjusting your search</p>
           )}
-        </TableBody>
-      </Table>
-
-      {showPagination && (
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <IoIosArrowBack />
-            </Button>
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
-                size="sm"
-                onClick={() => goToPage(page)}
-              >
-                {page}
-              </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <IoIosArrowForward />
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <p className="text-sm">
-              Showing {Math.min((currentPage - 1) * articlesPerPage + 1, totalArticles)} -{" "}
-              {Math.min(currentPage * articlesPerPage, totalArticles)} of {totalArticles}
-            </p>
-            <div className="flex items-center space-x-2">
-              <p className="text-sm">Go to page</p>
-              <Input
-                type="number"
-                min="1"
-                max={totalPages}
-                value={currentPage}
-                onChange={(e) => goToPage(Number(e.target.value))}
-                className="w-16"
-              />
-              <Button className="text-white" size="sm" onClick={() => goToPage(currentPage)}>
-                Go
-              </Button>
-            </div>
-          </div>
         </div>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {showCheckboxes && (
+                  <TableHead>
+                    <Checkbox
+                      checked={selectedArticles.length === articles.length && articles.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                )}
+                <TableHead>Article ID</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Published Date</TableHead>
+                <TableHead>Created By</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {articles.map((article) => (
+                <TableRow key={article.id}>
+                  {showCheckboxes && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedArticles.includes(article.id)}
+                        onCheckedChange={(checked) => handleSelectArticle(article.id, checked as boolean)}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell>{article.id}</TableCell>
+                  <TableCell>{truncateText(article.title, 20)}</TableCell>
+                  <TableCell>{article.category}</TableCell>
+                  <TableCell>
+                    <span className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${getStatusColor(article.status)}`}>
+                      <span className={`h-2 w-2 rounded-full ${getStatusDotColor(article.status)}`} />
+                      {article.status === "PUBLISHED" ? "Published" :
+                        article.status === "DRAFT" ? "Draft" :
+                          article.status === "ARCHIVED" ? "Archived" :
+                            article.status === "SCHEDULED" ? "Scheduled" : article.status}
+                      {article.publishAt && article.status === "SCHEDULED" && (
+                        <Clock className="h-3 w-3 ml-1" />
+                      )}
+                    </span>
+                    {article.publishAt && article.status === "SCHEDULED" && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Scheduled for: {formatDate(article.publishAt)}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>{formatDate(article.publishedDate)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar>
+                        <AvatarFallback>{article.createdBy.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      {truncateText(article.createdBy, 15)}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost"><EllipsisVertical /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEdit?.(article)}>
+                          <TbEdit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        
+                        {article.status === "DRAFT" && (
+                          <>
+                            <DropdownMenuItem onClick={() => handlePublish(article.id)}>
+                              <HiOutlineGlobeAlt className="h-4 w-4 mr-2" />
+                              Publish
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onSchedule?.(article)}>
+                              <Clock className="h-4 w-4 mr-2" />
+                              Schedule
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        
+                        {article.status === "PUBLISHED" && (
+                          <DropdownMenuItem onClick={() => handleUnpublish(article.id)}>
+                            <HiOutlineGlobeAlt className="h-4 w-4 mr-2" />
+                            Unpublish
+                          </DropdownMenuItem>
+                        )}
+                        
+                        {article.status !== "ARCHIVED" && (
+                          <DropdownMenuItem onClick={() => handleArchive(article.id)}>
+                            <CiBookmarkMinus className="h-4 w-4 mr-2" />
+                            Archive
+                          </DropdownMenuItem>
+                        )}
+                        
+                        <DropdownMenuItem onClick={() => {
+                          setSelectedArticles([article.id]);
+                          openDeleteModal();
+                        }} className="text-[#FF3B30]">
+                          <Trash2 className="h-4 w-4 mr-2 text-[#FF3B30]" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {showPagination && (
+            <div className="flex justify-between items-center mt-4">
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <IoIosArrowBack />
+                </Button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => goToPage(page)}
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <IoIosArrowForward />
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm">
+                  Showing {Math.min((currentPage - 1) * articlesPerPage + 1, totalArticles)} -{" "}
+                  {Math.min(currentPage * articlesPerPage, totalArticles)} of {totalArticles}
+                </p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm">Go to page</p>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={totalPages}
+                    value={currentPage}
+                    onChange={(e) => goToPage(Number(e.target.value))}
+                    className="w-16"
+                  />
+                  <Button className="text-white" size="sm" onClick={() => goToPage(currentPage)}>
+                    Go
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <Modal

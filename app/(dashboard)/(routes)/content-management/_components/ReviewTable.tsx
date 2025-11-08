@@ -25,8 +25,10 @@ import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ReviewDetailsModal from "./ReviewDetailsModal";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import Loading from "@/components/Loading";
+import Pending from "@/public/pending.png";
+import Image from "next/image";
 
 // Raw API response type
 interface ApiReview {
@@ -235,17 +237,16 @@ export default function ReviewTable({
     setIsModalOpen(true);
   };
 
+  // Loading state - using your custom Loading component
   if (loading) {
     return (
-      <div className="space-y-2">
-        <Skeleton className="h-12 w-full" />
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
+      <div className="flex justify-center items-center py-8">
+        <Loading />
       </div>
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="text-center py-8 text-red-500">
@@ -390,6 +391,7 @@ export default function ReviewTable({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
       {selectedReviews.length > 0 && (
         <div className="flex justify-end space-x-2 mt-2 p-4">
           <Button variant="outline" size="sm" className="text-green-600" disabled>
@@ -402,157 +404,165 @@ export default function ReviewTable({
           </Button>
         </div>
       )}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {showCheckboxes && (
-              <TableHead>
-                <Checkbox
-                  checked={selectedReviews.length === reviews.length && reviews.length > 0}
-                  onCheckedChange={handleSelectAll}
-                />
-              </TableHead>
-            )}
-            <TableHead>Review ID</TableHead>
-            <TableHead>Provider Name</TableHead>
-            <TableHead>Service Offered</TableHead>
-            <TableHead>Rating</TableHead>
-            <TableHead>Comment</TableHead>
-            <TableHead>Flagged</TableHead>
-            <TableHead>Date & Time</TableHead>
-            <TableHead>Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {reviews.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={showCheckboxes ? 9 : 8} className="text-center">
-                No reviews available
-              </TableCell>
-            </TableRow>
-          ) : (
-            reviews.map((review) => (
-              <TableRow key={review.id}>
-                {showCheckboxes && (
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedReviews.includes(review.id)}
-                      onCheckedChange={(checked) => handleSelectReview(review.id, checked as boolean)}
-                    />
-                  </TableCell>
-                )}
-                <TableCell>{review.id}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Avatar>
-                      <AvatarImage src="/placeholder-avatar.jpg" alt={review.userName} />
-                      <AvatarFallback>{review.userName.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    {review.userName}
-                  </div>
-                </TableCell>
-                <TableCell>{review.serviceOffered}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <span>{review.rating.toFixed(1)}/5.0</span>
-                    <Star className="h-4 w-4 text-[#0065FF] fill-[#0065FF]" />
-                  </div>
-                </TableCell>
-                <TableCell>{truncateText(review.reviewText, 20)}</TableCell>
-                <TableCell>
-                  <span
-                    className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${
-                      review.flagged === "Yes"
-                        ? "bg-red-100 text-red-600"
-                        : "bg-green-100 text-green-600"
-                    }`}
-                  >
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        review.flagged === "Yes" ? "bg-red-500" : "bg-green-500"
-                      }`}
-                    />
-                    {review.flagged}
-                  </span>
-                </TableCell>
-                <TableCell>{new Date(review.date).toLocaleString()}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost"><EllipsisVertical /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleViewDetails(review)}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-red-600"
-                        onClick={() => handleDelete(review.id)}
-                      >
-                        <Trash className="h-4 w-4 mr-2 text-red-600" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))
+
+      {/* Empty state - using the same pattern as admin table */}
+      {reviews.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <Image src={Pending} alt="No reviews found" className="mx-auto mb-2" />
+          <p>No reviews found.</p>
+          {searchQuery && (
+            <p className="text-sm mt-2">Try adjusting your search</p>
           )}
-        </TableBody>
-      </Table>
-      {showPagination && (
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <IoIosArrowBack />
-            </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
-                size="sm"
-                onClick={() => goToPage(page)}
-              >
-                {page}
-              </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <IoIosArrowForward />
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <p className="text-sm">
-              Showing {Math.min((currentPage - 1) * reviewsPerPage + 1, totalReviews)} -{" "}
-              {Math.min(currentPage * reviewsPerPage, totalReviews)} of {totalReviews}
-            </p>
-            <div className="flex items-center space-x-2">
-              <p className="text-sm">Go to page</p>
-              <Input
-                type="number"
-                min="1"
-                max={totalPages}
-                value={currentPage}
-                onChange={(e) => goToPage(Number(e.target.value))}
-                className="w-16"
-              />
-              <Button className="text-white" size="sm" onClick={() => goToPage(currentPage)}>
-                Go
-              </Button>
-            </div>
-          </div>
         </div>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {showCheckboxes && (
+                  <TableHead>
+                    <Checkbox
+                      checked={selectedReviews.length === reviews.length && reviews.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                )}
+                <TableHead>Review ID</TableHead>
+                <TableHead>Provider Name</TableHead>
+                <TableHead>Service Offered</TableHead>
+                <TableHead>Rating</TableHead>
+                <TableHead>Comment</TableHead>
+                <TableHead>Flagged</TableHead>
+                <TableHead>Date & Time</TableHead>
+                <TableHead>Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reviews.map((review) => (
+                <TableRow key={review.id}>
+                  {showCheckboxes && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedReviews.includes(review.id)}
+                        onCheckedChange={(checked) => handleSelectReview(review.id, checked as boolean)}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell>{review.id}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar>
+                        <AvatarImage src="/placeholder-avatar.jpg" alt={review.userName} />
+                        <AvatarFallback>{review.userName.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      {review.userName}
+                    </div>
+                  </TableCell>
+                  <TableCell>{review.serviceOffered}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <span>{review.rating.toFixed(1)}/5.0</span>
+                      <Star className="h-4 w-4 text-[#0065FF] fill-[#0065FF]" />
+                    </div>
+                  </TableCell>
+                  <TableCell>{truncateText(review.reviewText, 20)}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${
+                        review.flagged === "Yes"
+                          ? "bg-red-100 text-red-600"
+                          : "bg-green-100 text-green-600"
+                      }`}
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          review.flagged === "Yes" ? "bg-red-500" : "bg-green-500"
+                        }`}
+                      />
+                      {review.flagged}
+                    </span>
+                  </TableCell>
+                  <TableCell>{new Date(review.date).toLocaleString()}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost"><EllipsisVertical /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleViewDetails(review)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onClick={() => handleDelete(review.id)}
+                        >
+                          <Trash className="h-4 w-4 mr-2 text-red-600" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {showPagination && (
+            <div className="flex justify-between items-center mt-4">
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <IoIosArrowBack />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => goToPage(page)}
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <IoIosArrowForward />
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm">
+                  Showing {Math.min((currentPage - 1) * reviewsPerPage + 1, totalReviews)} -{" "}
+                  {Math.min(currentPage * reviewsPerPage, totalReviews)} of {totalReviews}
+                </p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm">Go to page</p>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={totalPages}
+                    value={currentPage}
+                    onChange={(e) => goToPage(Number(e.target.value))}
+                    className="w-16"
+                  />
+                  <Button className="text-white" size="sm" onClick={() => goToPage(currentPage)}>
+                    Go
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
+
       {isModalOpen && (
         <div
           className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50"

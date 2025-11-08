@@ -27,6 +27,9 @@ import { CiExport } from "react-icons/ci";
 import ExportModal from "@/components/ExportModal";
 import { usePathname, useRouter } from "next/navigation";
 import BookingDetailsModal from "../../content-management/_components/BookingDetailsModal";
+import Pending from "@/public/pending.png";
+import Loading from "@/components/Loading";
+import Image from "next/image";
 
 // Interfaces (unchanged)
 interface ApiUser {
@@ -198,8 +201,8 @@ export default function BookingTable({
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [, setLoading] = useState(true);
-  const [, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [totalBookings, setTotalBookings] = useState(0);
 
   const bookingsPerPage = 10;
@@ -324,7 +327,6 @@ export default function BookingTable({
       router.push("/content-management");
     }
   };
-
 
   return (
     <>
@@ -461,29 +463,24 @@ export default function BookingTable({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      
-      {filteredBookings.length === 0 ? (
-        <div className="text-center py-12 mt-4">
-          <div className="flex flex-col items-center justify-center">
-            <p className="text-gray-500 mb-4">
-              {searchQuery || Object.values(statusFilter).some(val => val) || dateRangeFrom || dateRangeTo
-                ? "Try adjusting your search or filters to find what you're looking for."
-                : "No booking data available yet."}
-            </p>
-            {(searchQuery || Object.values(statusFilter).some(val => val) || dateRangeFrom || dateRangeTo) && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchQuery("");
-                  setStatusFilter({ CONFIRMED: false, PENDING: false, CANCELLED: false, COMPLETED: false });
-                  setDateRangeFrom("");
-                  setDateRangeTo("");
-                }}
-              >
-                Clear all filters
-              </Button>
-            )}
-          </div>
+      {loading ? (
+        <div className="flex justify-center items-center py-4">
+          <Loading />
+        </div>
+      ) : error ? (
+        <div className="text-center py-8 text-red-500">
+          <p>Error: {error}</p>
+          <Button variant="outline" className="mt-4" onClick={fetchBookings}>
+            Retry
+          </Button>
+        </div>
+      ) : filteredBookings.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <Image src={Pending} alt="No bookings found" className="mx-auto mb-2" />
+          <p>No bookings found.</p>
+          {searchQuery && (
+            <p className="text-sm mt-2">Try adjusting your search</p>
+          )}
         </div>
       ) : (
         <>
@@ -495,6 +492,7 @@ export default function BookingTable({
                     <Checkbox
                       checked={selectedBookings.length === paginatedBookings.length && paginatedBookings.length > 0}
                       onCheckedChange={handleSelectAll}
+                      disabled={loading}
                     />
                   </TableHead>
                 )}
@@ -516,6 +514,7 @@ export default function BookingTable({
                       <Checkbox
                         checked={selectedBookings.includes(booking.id)}
                         onCheckedChange={(checked) => handleSelectBooking(booking.id, checked as boolean)}
+                        disabled={loading}
                       />
                     </TableCell>
                   )}
@@ -554,7 +553,7 @@ export default function BookingTable({
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost"><EllipsisVertical /></Button>
+                        <Button variant="ghost" disabled={loading}><EllipsisVertical /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleViewDetails(booking)}>
@@ -569,7 +568,7 @@ export default function BookingTable({
             </TableBody>
           </Table>
           
-          {showPagination && (
+          {showPagination && paginatedBookings.length > 0 && (
             <div className="flex justify-between items-center mt-4">
               <div className="flex space-x-2">
                 <Button

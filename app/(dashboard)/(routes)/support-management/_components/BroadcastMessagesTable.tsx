@@ -24,9 +24,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { IoIosArrowForward, IoIosArrowBack } from "react-icons/io";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { TbEdit } from "react-icons/tb";
-import { Skeleton } from "@/components/ui/skeleton";
 import Modal from "@/components/Modal";
 import { FaTrash } from "react-icons/fa";
+import Loading from "@/components/Loading";
+import Pending from "@/public/pending.png";
+import Image from "next/image";
 
 // Define types directly in the component file
 interface Broadcast {
@@ -119,10 +121,11 @@ export default function BroadcastMessagesTable({
   const [totalPages, setTotalPages] = useState(1);
   const [totalBroadcasts, setTotalBroadcasts] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [dateRangeFrom, setDateRangeFrom] = useState("");
   const [dateRangeTo, setDateRangeTo] = useState("");
   const broadcastsPerPage = 10;
+
   const fetchBroadcasts = useCallback(async () => {
     try {
       setLoading(true);
@@ -345,13 +348,23 @@ export default function BroadcastMessagesTable({
     });
   };
 
+  // Loading state - using your custom Loading component
   if (loading) {
     return (
-      <div className="space-y-2">
-        <Skeleton className="h-12 w-full" />
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
+      <div className="flex justify-center items-center py-8">
+        <Loading />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="text-center py-8 text-red-500">
+        <p>{error}</p>
+        <Button variant="outline" className="mt-4" onClick={fetchBroadcasts}>
+          Try Again
+        </Button>
       </div>
     );
   }
@@ -440,191 +453,196 @@ export default function BroadcastMessagesTable({
         </div>
       )}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {showCheckboxes && (
-              <TableHead>
-                <Checkbox
-                  checked={selectedBroadcasts.length === broadcasts.length && broadcasts.length > 0}
-                  onCheckedChange={handleSelectAll}
-                />
-              </TableHead>
-            )}
-            <TableHead>Broadcast ID</TableHead>
-            <TableHead>Title</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Recipients</TableHead>
-            <TableHead>Priority</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Schedule Date</TableHead>
-            <TableHead>Created By</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {broadcasts.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={showCheckboxes ? 10 : 9} className="text-center">
-                No broadcasts available
-              </TableCell>
-            </TableRow>
-          ) : (
-            broadcasts.map((broadcast) => (
-              <TableRow key={broadcast.id}>
-                {showCheckboxes && (
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedBroadcasts.includes(broadcast.id)}
-                      onCheckedChange={(checked) => handleSelectBroadcast(broadcast.id, checked as boolean)}
-                    />
-                  </TableCell>
-                )}
-                <TableCell className="font-mono text-sm">{broadcast.id.slice(0, 8)}...</TableCell>
-                <TableCell>{truncateText(broadcast.title, 20)}</TableCell>
-                <TableCell>
-                  <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
-                    {typeDisplayMap[broadcast.type]}
-                  </span>
-                </TableCell>
-                <TableCell>{recipientsTypeDisplayMap[broadcast.recipientsType]}</TableCell>
-                <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(broadcast.priority)}`}>
-                    {priorityDisplayMap[broadcast.priority]}
-                  </span>
-                  {broadcast.isEmergency && (
-                    <span className="ml-1 px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">
-                      Emergency
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <span className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 text-xs ${getStatusColor(broadcast.status)}`}>
-                    <span className={`h-2 w-2 rounded-full ${getStatusDotColor(broadcast.status)}`} />
-                    {statusDisplayMap[broadcast.status]}
-                    {broadcast.sendAt && broadcast.status === "SCHEDULED" && (
-                      <Clock className="h-3 w-3 ml-1" />
-                    )}
-                  </span>
-                  {broadcast.sendAt && broadcast.status === "SCHEDULED" && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      Scheduled for: {formatDate(broadcast.sendAt)}
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {broadcast.sendAt ? formatDate(broadcast.sendAt) : 'Immediate'}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback className="text-xs">
-                        {broadcast.createdBy?.name?.charAt(0) || 'A'}
-                      </AvatarFallback>
-                    </Avatar>
-                    {truncateText(broadcast.createdBy?.name || 'Admin', 15)}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <EllipsisVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit?.(broadcast)}>
-                        <TbEdit className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-
-                      {broadcast.status === "DRAFT" && (
-                        <>
-                          <DropdownMenuItem onClick={() => handleSendNow(broadcast.id)}>
-                            <Send className="h-4 w-4 mr-2" />
-                            Send Now
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSchedule(broadcast.id)}>
-                            <Calendar className="h-4 w-4 mr-2" />
-                            Schedule
-                          </DropdownMenuItem>
-                        </>
-                      )}
-
-                      {broadcast.status === "SCHEDULED" && (
-                        <DropdownMenuItem onClick={() => handleCancel(broadcast.id)}>
-                          <Clock className="h-4 w-4 mr-2" />
-                          Cancel Schedule
-                        </DropdownMenuItem>
-                      )}
-
-                      <DropdownMenuItem onClick={() => {
-                        setSelectedBroadcasts([broadcast.id]);
-                        openDeleteModal();
-                      }} className="text-[#FF3B30]">
-                        <Trash2 className="h-4 w-4 mr-2 text-[#FF3B30]" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))
+      {/* Empty state - using the same pattern as other tables */}
+      {broadcasts.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <Image src={Pending} alt="No broadcasts found" className="mx-auto mb-2" />
+          <p>No broadcasts found.</p>
+          {searchQuery && (
+            <p className="text-sm mt-2">Try adjusting your search</p>
           )}
-        </TableBody>
-      </Table>
-
-      {showPagination && (
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <IoIosArrowBack />
-            </Button>
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
-                size="sm"
-                onClick={() => goToPage(page)}
-              >
-                {page}
-              </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <IoIosArrowForward />
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <p className="text-sm">
-              Showing {Math.min((currentPage - 1) * broadcastsPerPage + 1, totalBroadcasts)} -{" "}
-              {Math.min(currentPage * broadcastsPerPage, totalBroadcasts)} of {totalBroadcasts}
-            </p>
-            <div className="flex items-center space-x-2">
-              <p className="text-sm">Go to page</p>
-              <Input
-                type="number"
-                min="1"
-                max={totalPages}
-                value={currentPage}
-                onChange={(e) => goToPage(Number(e.target.value))}
-                className="w-16"
-              />
-              <Button className="text-white" size="sm" onClick={() => goToPage(currentPage)}>
-                Go
-              </Button>
-            </div>
-          </div>
         </div>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {showCheckboxes && (
+                  <TableHead>
+                    <Checkbox
+                      checked={selectedBroadcasts.length === broadcasts.length && broadcasts.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                )}
+                <TableHead>Broadcast ID</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Recipients</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Schedule Date</TableHead>
+                <TableHead>Created By</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {broadcasts.map((broadcast) => (
+                <TableRow key={broadcast.id}>
+                  {showCheckboxes && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedBroadcasts.includes(broadcast.id)}
+                        onCheckedChange={(checked) => handleSelectBroadcast(broadcast.id, checked as boolean)}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell className="font-mono text-sm">{broadcast.id.slice(0, 8)}...</TableCell>
+                  <TableCell>{truncateText(broadcast.title, 20)}</TableCell>
+                  <TableCell>
+                    <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
+                      {typeDisplayMap[broadcast.type]}
+                    </span>
+                  </TableCell>
+                  <TableCell>{recipientsTypeDisplayMap[broadcast.recipientsType]}</TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(broadcast.priority)}`}>
+                      {priorityDisplayMap[broadcast.priority]}
+                    </span>
+                    {broadcast.isEmergency && (
+                      <span className="ml-1 px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">
+                        Emergency
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <span className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 text-xs ${getStatusColor(broadcast.status)}`}>
+                      <span className={`h-2 w-2 rounded-full ${getStatusDotColor(broadcast.status)}`} />
+                      {statusDisplayMap[broadcast.status]}
+                      {broadcast.sendAt && broadcast.status === "SCHEDULED" && (
+                        <Clock className="h-3 w-3 ml-1" />
+                      )}
+                    </span>
+                    {broadcast.sendAt && broadcast.status === "SCHEDULED" && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Scheduled for: {formatDate(broadcast.sendAt)}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {broadcast.sendAt ? formatDate(broadcast.sendAt) : 'Immediate'}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarFallback className="text-xs">
+                          {broadcast.createdBy?.name?.charAt(0) || 'A'}
+                        </AvatarFallback>
+                      </Avatar>
+                      {truncateText(broadcast.createdBy?.name || 'Admin', 15)}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <EllipsisVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEdit?.(broadcast)}>
+                          <TbEdit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+
+                        {broadcast.status === "DRAFT" && (
+                          <>
+                            <DropdownMenuItem onClick={() => handleSendNow(broadcast.id)}>
+                              <Send className="h-4 w-4 mr-2" />
+                              Send Now
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSchedule(broadcast.id)}>
+                              <Calendar className="h-4 w-4 mr-2" />
+                              Schedule
+                            </DropdownMenuItem>
+                          </>
+                        )}
+
+                        {broadcast.status === "SCHEDULED" && (
+                          <DropdownMenuItem onClick={() => handleCancel(broadcast.id)}>
+                            <Clock className="h-4 w-4 mr-2" />
+                            Cancel Schedule
+                          </DropdownMenuItem>
+                        )}
+
+                        <DropdownMenuItem onClick={() => {
+                          setSelectedBroadcasts([broadcast.id]);
+                          openDeleteModal();
+                        }} className="text-[#FF3B30]">
+                          <Trash2 className="h-4 w-4 mr-2 text-[#FF3B30]" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {showPagination && (
+            <div className="flex justify-between items-center mt-4">
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <IoIosArrowBack />
+                </Button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => goToPage(page)}
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <IoIosArrowForward />
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm">
+                  Showing {Math.min((currentPage - 1) * broadcastsPerPage + 1, totalBroadcasts)} -{" "}
+                  {Math.min(currentPage * broadcastsPerPage, totalBroadcasts)} of {totalBroadcasts}
+                </p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm">Go to page</p>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={totalPages}
+                    value={currentPage}
+                    onChange={(e) => goToPage(Number(e.target.value))}
+                    className="w-16"
+                  />
+                  <Button className="text-white" size="sm" onClick={() => goToPage(currentPage)}>
+                    Go
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <Modal

@@ -28,7 +28,9 @@ import { CiBookmarkMinus } from "react-icons/ci";
 import { TbEdit } from "react-icons/tb";
 import Modal from "@/components/Modal";
 import { FaTrash } from "react-icons/fa";
-import { Skeleton } from "@/components/ui/skeleton";
+import Loading from "@/components/Loading";
+import Pending from "@/public/pending.png";
+import Image from "next/image";
 
 // What the API returns
 interface ApiAnnouncement {
@@ -61,14 +63,14 @@ interface AnnouncementTableProps {
   showPagination?: boolean;
   headerText?: string;
   onEdit?: (announcement: Announcement) => void;
-  refreshKey?: number; // ADD THIS
+  refreshKey?: number;
 }
 
 export default function AnnouncementTable({
   showCheckboxes = false,
   showPagination = false,
   onEdit,
-  refreshKey = 0, // ADD THIS
+  refreshKey = 0,
 }: AnnouncementTableProps) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -140,7 +142,7 @@ export default function AnnouncementTable({
 
   useEffect(() => {
     fetchAnnouncements();
-  }, [fetchAnnouncements, refreshKey]); 
+  }, [fetchAnnouncements, refreshKey]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -242,19 +244,25 @@ export default function AnnouncementTable({
     }
   };
 
+  // Loading state - using your custom Loading component
   if (loading) {
     return (
-      <div className="space-y-2">
-        <Skeleton className="h-12 w-full" />
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
+      <div className="flex justify-center items-center py-8">
+        <Loading />
       </div>
     );
   }
 
+  // Error state
   if (error) {
-    return <div className="text-center py-8 text-red-500">Error: {error}</div>;
+    return (
+      <div className="text-center py-8 text-red-500">
+        <p>{error}</p>
+        <Button variant="outline" className="mt-4" onClick={fetchAnnouncements}>
+          Try Again
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -342,166 +350,173 @@ export default function AnnouncementTable({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {showCheckboxes && (
-              <TableHead>
-                <Checkbox
-                  checked={selectedAnnouncements.length === announcements.length && announcements.length > 0}
-                  onCheckedChange={handleSelectAll}
-                />
-              </TableHead>
-            )}
-            <TableHead>Announcement ID</TableHead>
-            <TableHead>Title</TableHead>
-            <TableHead>Created By</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Published Date</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {announcements.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={showCheckboxes ? 7 : 6} className="text-center">
-                No announcements available
-              </TableCell>
-            </TableRow>
-          ) : (
-            announcements.map((announcement) => (
-              <TableRow key={announcement.id}>
-                {showCheckboxes && (
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedAnnouncements.includes(announcement.id)}
-                      onCheckedChange={(checked) => handleSelectAnnouncement(announcement.id, checked as boolean)}
-                    />
-                  </TableCell>
-                )}
-                <TableCell>{announcement.id}</TableCell>
-                <TableCell>{announcement.title}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Avatar>
-                      <AvatarFallback>{announcement.createdBy.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    {truncateText(announcement.createdBy, 15)}
-                  </div>
-                </TableCell>
-                <TableCell>{announcement.role}</TableCell>
-                <TableCell>
-                  <span
-                    className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${
-                      announcement.status === "Published"
-                        ? "bg-green-100 text-green-600"
-                        : announcement.status === "Draft"
-                        ? "bg-gray-100 text-gray-600"
-                        : "bg-blue-100 text-blue-600"
-                    }`}
-                  >
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        announcement.status === "Published"
-                          ? "bg-green-500"
-                          : announcement.status === "Draft"
-                          ? "bg-gray-500"
-                          : "bg-blue-300"
-                      }`}
-                    />
-                    {announcement.status}
-                  </span>
-                </TableCell>
-                <TableCell>{new Date(announcement.publishedDate).toLocaleDateString()}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost"><EllipsisVertical /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit?.(announcement)}>
-                        <TbEdit className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      {announcement.status === "Published" ? (
-                        <DropdownMenuItem onClick={() => handlePublish(announcement.id, false)}>
-                          <HiOutlineGlobeAlt className="h-4 w-4 mr-2" />
-                          Unpublish
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem onClick={() => handlePublish(announcement.id, true)}>
-                          <HiOutlineGlobeAlt className="h-4 w-4 mr-2" />
-                          Publish
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={() => handleArchive(announcement.id)}>
-                        <CiBookmarkMinus className="h-4 w-4 mr-2" />
-                        Archive
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={openDeleteModal} className="text-[#FF3B30]">
-                        <Trash2 className="h-4 w-4 mr-2 text-[#FF3B30]" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))
+
+      {/* Empty state - using the same pattern as other tables */}
+      {announcements.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <Image src={Pending} alt="No announcements found" className="mx-auto mb-2" />
+          <p>No announcements found.</p>
+          {searchQuery && (
+            <p className="text-sm mt-2">Try adjusting your search</p>
           )}
-        </TableBody>
-      </Table>
-      {showPagination && (
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <IoIosArrowBack />
-            </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
-                size="sm"
-                onClick={() => goToPage(page)}
-              >
-                {page}
-              </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <IoIosArrowForward />
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <p className="text-sm">
-              Showing {Math.min((currentPage - 1) * announcementsPerPage + 1, totalAnnouncements)} -{" "}
-              {Math.min(currentPage * announcementsPerPage, totalAnnouncements)} of {totalAnnouncements}
-            </p>
-            <div className="flex items-center space-x-2">
-              <p className="text-sm">Go to page</p>
-              <Input
-                type="number"
-                min="1"
-                max={totalPages}
-                value={currentPage}
-                onChange={(e) => goToPage(Number(e.target.value))}
-                className="w-16"
-              />
-              <Button className="text-white" size="sm" onClick={() => goToPage(currentPage)}>
-                Go
-              </Button>
-            </div>
-          </div>
         </div>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {showCheckboxes && (
+                  <TableHead>
+                    <Checkbox
+                      checked={selectedAnnouncements.length === announcements.length && announcements.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                )}
+                <TableHead>Announcement ID</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Created By</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Published Date</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {announcements.map((announcement) => (
+                <TableRow key={announcement.id}>
+                  {showCheckboxes && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedAnnouncements.includes(announcement.id)}
+                        onCheckedChange={(checked) => handleSelectAnnouncement(announcement.id, checked as boolean)}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell>{announcement.id}</TableCell>
+                  <TableCell>{announcement.title}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar>
+                        <AvatarFallback>{announcement.createdBy.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      {truncateText(announcement.createdBy, 15)}
+                    </div>
+                  </TableCell>
+                  <TableCell>{announcement.role}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 ${
+                        announcement.status === "Published"
+                          ? "bg-green-100 text-green-600"
+                          : announcement.status === "Draft"
+                          ? "bg-gray-100 text-gray-600"
+                          : "bg-blue-100 text-blue-600"
+                      }`}
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          announcement.status === "Published"
+                            ? "bg-green-500"
+                            : announcement.status === "Draft"
+                            ? "bg-gray-500"
+                            : "bg-blue-300"
+                        }`}
+                      />
+                      {announcement.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>{new Date(announcement.publishedDate).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost"><EllipsisVertical /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEdit?.(announcement)}>
+                          <TbEdit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        {announcement.status === "Published" ? (
+                          <DropdownMenuItem onClick={() => handlePublish(announcement.id, false)}>
+                            <HiOutlineGlobeAlt className="h-4 w-4 mr-2" />
+                            Unpublish
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => handlePublish(announcement.id, true)}>
+                            <HiOutlineGlobeAlt className="h-4 w-4 mr-2" />
+                            Publish
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => handleArchive(announcement.id)}>
+                          <CiBookmarkMinus className="h-4 w-4 mr-2" />
+                          Archive
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={openDeleteModal} className="text-[#FF3B30]">
+                          <Trash2 className="h-4 w-4 mr-2 text-[#FF3B30]" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {showPagination && (
+            <div className="flex justify-between items-center mt-4">
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <IoIosArrowBack />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => goToPage(page)}
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <IoIosArrowForward />
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm">
+                  Showing {Math.min((currentPage - 1) * announcementsPerPage + 1, totalAnnouncements)} -{" "}
+                  {Math.min(currentPage * announcementsPerPage, totalAnnouncements)} of {totalAnnouncements}
+                </p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm">Go to page</p>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={totalPages}
+                    value={currentPage}
+                    onChange={(e) => goToPage(Number(e.target.value))}
+                    className="w-16"
+                  />
+                  <Button className="text-white" size="sm" onClick={() => goToPage(currentPage)}>
+                    Go
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <Modal

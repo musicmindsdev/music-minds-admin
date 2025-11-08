@@ -26,6 +26,9 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import Pending from "@/public/pending.png";
+import Loading from "@/components/Loading";
+import Image from "next/image";
 
 interface Notification {
   id: string;
@@ -214,7 +217,7 @@ export default function NotificationsPage() {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ read: false }), // Assuming API supports setting read status
+          body: JSON.stringify({ read: false }),
         })
       );
 
@@ -385,29 +388,16 @@ export default function NotificationsPage() {
     }
   };
 
-  if (error) {
-    return (
-      <div className="text-center py-8 text-red-500">
-        <p>{error}</p>
-        {error.includes("Please log in") && (
-          <Button asChild variant="outline" className="mt-4">
-            <a href="/login">Log In</a>
-          </Button>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-lg font-medium">Notifications</h1>
         <div className="space-x-2">
-          <Button variant="outline" onClick={handleMarkAllAsRead}>
+          <Button variant="outline" onClick={handleMarkAllAsRead} disabled={loading}>
             Mark All As Read
             <GoCheckCircle className="ml-2" />
           </Button>
-          <Button variant="outline" onClick={() => handleSelectAll(true)}>
+          <Button variant="outline" onClick={() => handleSelectAll(true)} disabled={loading}>
             Select All
           </Button>
         </div>
@@ -520,36 +510,47 @@ export default function NotificationsPage() {
                 <Checkbox
                   checked={selectedNotifications.length === notifications.length}
                   onCheckedChange={handleSelectAll}
+                  disabled={loading}
                 />
                 <span>Select All</span>
               </div>
               <div className="flex gap-2">
-                <Button variant="destructive" size="sm" onClick={handleDelete}>
+                <Button variant="destructive" size="sm" onClick={handleDelete} disabled={loading}>
                   Delete
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleMarkAsUnread}>
+                <Button variant="outline" size="sm" onClick={handleMarkAsUnread} disabled={loading}>
                   Mark As Unread
                 </Button>
               </div>
             </div>
           )}
-          <div className="space-y-4">
-            <Table className="border-none">
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-gray-500">
-                      Loading notifications...
-                    </TableCell>
-                  </TableRow>
-                ) : notifications.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-gray-500">
-                      No notifications available
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  notifications.map((notification) => (
+
+          {loading ? (
+            <div className="flex justify-center items-center py-8">
+              <Loading />
+            </div>
+          ) : error ? (
+            <div className="text-center py-8 text-red-500">
+              <p>{error}</p>
+              {error.includes("Please log in") && (
+                <Button asChild variant="outline" className="mt-4">
+                  <a href="/login">Log In</a>
+                </Button>
+              )}
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Image src={Pending} alt="No notifications found" className="mx-auto mb-2" />
+              <p>No notifications available.</p>
+              {searchQuery && (
+                <p className="text-sm mt-2">Try adjusting your search</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Table className="border-none">
+                <TableBody>
+                  {notifications.map((notification) => (
                     <TableRow key={notification.id}>
                       <TableCell className="py-2">
                         <Checkbox
@@ -557,6 +558,7 @@ export default function NotificationsPage() {
                           onCheckedChange={(checked) =>
                             handleSelectNotification(notification.id, checked as boolean)
                           }
+                          disabled={loading}
                         />
                       </TableCell>
                       <TableCell className="py-2">{getIconForType(notification.type)}</TableCell>
@@ -571,6 +573,7 @@ export default function NotificationsPage() {
                                 variant={action.variant}
                                 size="sm"
                                 onClick={() => handleAction(notification.id, action)}
+                                disabled={loading}
                               >
                                 {action.label}
                               </Button>
@@ -584,12 +587,13 @@ export default function NotificationsPage() {
                         )}
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          {totalPages > 1 && (
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {totalPages > 1 && notifications.length > 0 && (
             <div className="flex justify-between items-center mt-4">
               <div className="flex space-x-2">
                 <Button

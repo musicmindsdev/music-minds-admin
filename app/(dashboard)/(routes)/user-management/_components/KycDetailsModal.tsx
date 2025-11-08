@@ -72,8 +72,7 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 h-full overflow-y-auto">
-          <div className="flex justify-between items-center border-b pb-4">
-            <h2 className="text-lg font-medium">User ID: {kycId}</h2>
+          <div className="flex justify-end items-center border-b pb-4">
             <div className="flex space-x-2">
               {(kyc.kycStatus === "PENDING" || kyc.kycStatus === "UNDER_REVIEW") && (
                 <>

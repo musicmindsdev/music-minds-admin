@@ -101,10 +101,6 @@ const routes = [
           href: "/settings",
         },
         {
-          label: "Security",
-          href: "/settings/security",
-        },
-        {
           label: "Email Domains",
           href: "/settings/email-domains",
         },

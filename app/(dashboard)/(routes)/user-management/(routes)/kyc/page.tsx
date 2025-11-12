@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import KYCTable from "../../_components/KycTable";
+import KYCTable, { KYC } from "../../_components/KycTable";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TbUserHexagon, TbUserSquareRounded } from "react-icons/tb";
 import { JSX } from "react";
@@ -51,6 +51,7 @@ export default function KYCPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [timeframe, setTimeframe] = useState<"day" | "week" | "month">("month");
   const [, setOverviewData] = useState<KYCOverview | null>(null);
+  const[kyc,] = useState<KYC[]>([])
   const [stats, setStats] = useState<Stats[]>([
     {
       id: "approved",
@@ -221,17 +222,6 @@ export default function KYCPage() {
     fetchStats();
   }, [timeframe]);
 
-  const handleExport = async (data: {
-    statusFilter: Record<string, boolean>;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => {
-    console.log("Exporting KYC data:", data);
-    toast.success(`Export initiated as ${data.format}`);
-    // Implement export logic (e.g., fetch filtered data and generate CSV/JSON)
-  };
 
   return (
     <div className="p-6 space-y-6">
@@ -299,6 +289,8 @@ export default function KYCPage() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Data"
+         data={kyc}
+        dataType="Kyc"
         statusFilters={[
           { label: "Pending", value: "PENDING" },
           { label: "Under Review", value: "UNDER_REVIEW" },
@@ -314,7 +306,6 @@ export default function KYCPage() {
           { label: "Submitted Date", value: "submittedDate" },
           { label: "Type", value: "type" },
         ]}
-        onExport={handleExport}
       />
     </div>
   );

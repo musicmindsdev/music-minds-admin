@@ -644,32 +644,27 @@ export default function BookingTable({
       )}
       
       <ExportModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        title="Export Bookings"
-        fieldOptions={[
-          { label: "Booking ID", value: "Booking ID" },
-          { label: "Client Name", value: "Client Name" },
-          { label: "Client Email", value: "Client Email" },
-          { label: "Provider Name", value: "Provider Name" },
-          { label: "Provider Email", value: "Provider Email" },
-          { label: "Service Offered", value: "Service Offered" },
-          { label: "Scheduled Date", value: "Scheduled Date" },
-          { label: "Scheduled Time", value: "Scheduled Time" },
-          { label: "Location", value: "Location" },
-          { label: "Total Amount", value: "Total Amount" },
-          { label: "Payment Amount", value: "Payment Amount" },
-          { label: "Platform Fee", value: "Platform Fee" },
-          { label: "Transaction Id", value: "Transaction Id" },
-          { label: "Status", value: "Status" },
-          { label: "Created At", value: "Created At" },
-          { label: "Last Updated", value: "Last Updated" },
-        ]}
-        onExport={(selectedFields) => {
-          console.log("Exporting data with fields:", selectedFields);
-          // Add your export logic here
-        }}
-      />
+  isOpen={isExportModalOpen}
+  onClose={() => setIsExportModalOpen(false)}
+  title="Export Bookings Data"
+  data={bookings}
+  dataType="bookings"
+  statusFilters={[
+    { label: "All", value: "All" },
+    { label: "Confirmed", value: "CONFIRMED" },
+    { label: "Pending", value: "PENDING" },
+    { label: "Cancelled", value: "CANCELLED" },
+    { label: "Completed", value: "COMPLETED" },
+  ]}
+  fieldOptions={[
+    { label: "Booking ID", value: "id" },
+    { label: "Client Name", value: "clientName" },
+    { label: "Provider Name", value: "providerName" },
+    { label: "Service", value: "serviceOffered" },
+    { label: "Amount", value: "totalAmount" },
+    { label: "Status", value: "status" },
+  ]}
+/>
       
       {isDetailsModalOpen && (
         <div

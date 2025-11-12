@@ -31,7 +31,7 @@ import Pending from "@/public/pending.png";
 import Image from "next/image";
 
 // Define types directly in the component file
-interface Broadcast {
+export interface Broadcast {
   id: string;
   title: string;
   message: string;

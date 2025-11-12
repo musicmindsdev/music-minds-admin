@@ -43,7 +43,7 @@ import Tick from "@/components/svg icons/tick";
 import Pending from "@/public/pending.png";
 import Loading from "@/components/Loading";
 
-interface KYC {
+export interface KYC {
   id: string;
   name: string;
   email: string;

@@ -2,26 +2,17 @@
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import ReviewTable from "../../_components/ReviewTable";
+import ReviewTable, { Review } from "../../_components/ReviewTable";
 import { Button } from "@/components/ui/button";
 import { CiExport } from "react-icons/ci";
 import ExportModal from "@/components/ExportModal";
 
 
 
+
 export default function ReviewsPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-
-  const handleExport = (data: {
-    statusFilter: Record<string, boolean>;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => {
-    console.log("Exporting Review data:", data);
-    // Add export logic here (e.g., generate CSV/JSON)
-  };
+  const [reviews, ] = useState<Review[]>([])
 
   return (
     <div className="p-6 space-y-6">
@@ -49,7 +40,9 @@ export default function ReviewsPage() {
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        title="Export Data"
+        title="Export Reviews Data"
+          data={reviews}
+        dataType="reviews"
         statusFilters={[
 
           { label: "All", value: "All" },
@@ -75,7 +68,6 @@ export default function ReviewsPage() {
           { label: "Provider", value: "Provider" },
           { label: "Status", value: "Status" },
         ]}
-        onExport={handleExport}
       />
     </div>
   );

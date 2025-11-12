@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { CiExport } from "react-icons/ci";
 import { Card, CardContent } from "@/components/ui/card";
 import ExportModal from "@/components/ExportModal";
-import BroadcastMessagesTable from "../../_components/BroadcastMessagesTable";
+import BroadcastMessagesTable, { Broadcast } from "../../_components/BroadcastMessagesTable";
 import { AiOutlineMessage } from "react-icons/ai";
 import SendMessageModal from "../../_components/SendMessageModal";
 
@@ -44,10 +44,8 @@ export default function BroadcastMessagesPage() {
   const [editingBroadcast, setEditingBroadcast] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleExport = (data: any) => {
-    console.log("Exporting Broadcast Messages data:", data);
-  };
+  const [broadcast, ] = useState<Broadcast[]>([]);
+
 
   const handleSaveBroadcast = async (data: CreateBroadcastData) => {
     try {
@@ -158,6 +156,8 @@ export default function BroadcastMessagesPage() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Broadcast Data"
+         data={broadcast}
+        dataType="Broadcast"
         statusFilters={[
           { label: "All", value: "All" },
           { label: "Draft", value: "DRAFT" },
@@ -191,7 +191,6 @@ export default function BroadcastMessagesPage() {
           { label: "Created Date", value: "createdAt" },
           { label: "Scheduled Date", value: "sendAt" },
         ]}
-        onExport={handleExport}
       />
 
       <SendMessageModal

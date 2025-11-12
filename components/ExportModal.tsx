@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogOverlay } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -13,23 +14,14 @@ interface ExportModalProps {
   defaultTab?: string;
   statusFilters?: { label: string; value: string }[];
   priorityFilters?: { label: string; value: string }[];
-  messageTypeFilters?: { label: string; value: string }[]; // Added messageTypeFilters prop
-  recipientTypeFilters?: { label: string; value: string }[]; // Added recipientTypeFilters prop
+  messageTypeFilters?: { label: string; value: string }[];
+  recipientTypeFilters?: { label: string; value: string }[];
   roleFilters?: { label: string; value: string }[];
   fieldOptions: { label: string; value: string }[];
   adminRoleOptions?: { label: string; value: string }[];
-  onExport: (data: {
-    statusFilter: Record<string, boolean>;
-    priorityFilter: Record<string, boolean>;
-    messageTypeFilter: Record<string, boolean>; // Added messageTypeFilter to onExport data
-    recipientTypeFilter: Record<string, boolean>; // Added recipientTypeFilter to onExport data
-    roleFilter: string;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-    adminRole?: string;
-  }) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any[];
+  dataType: string;
 }
 
 export default function ExportModal({
@@ -40,12 +32,13 @@ export default function ExportModal({
   defaultTab = "members",
   statusFilters = [],
   priorityFilters = [],
-  messageTypeFilters = [], // Added messageTypeFilters default
-  recipientTypeFilters = [], // Added recipientTypeFilters default
+  messageTypeFilters = [],
+  recipientTypeFilters = [],
   roleFilters = [],
   fieldOptions,
   adminRoleOptions = [],
-  onExport,
+  data,
+  dataType,
 }: ExportModalProps) {
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [statusFilter, setStatusFilter] = useState<Record<string, boolean>>(
@@ -56,20 +49,20 @@ export default function ExportModal({
   );
   const [messageTypeFilter, setMessageTypeFilter] = useState<Record<string, boolean>>(
     messageTypeFilters.reduce((acc, { value }) => ({ ...acc, [value]: value === "All" }), {})
-  ); // Added messageTypeFilter state
+  );
   const [recipientTypeFilter, setRecipientTypeFilter] = useState<Record<string, boolean>>(
     recipientTypeFilters.reduce((acc, { value }) => ({ ...acc, [value]: value === "All" }), {})
-  ); // Added recipientTypeFilter state
+  );
   const [roleFilter, setRoleFilter] = useState("all");
   const [adminRole, setAdminRole] = useState("");
   const [dateRangeFrom, setDateRangeFrom] = useState("");
   const [dateRangeTo, setDateRangeTo] = useState("");
-  const [format, setFormat] = useState("CSV");
+  const [format, setFormat] = useState("excel");
   const [fields, setFields] = useState<Record<string, boolean>>(
     fieldOptions.reduce((acc, { value }) => ({ ...acc, [value]: true }), {})
   );
+  const [exporting, setExporting] = useState(false);
 
-  // Handle "All" logic for Status Filter
   const handleStatusFilterChange = (value: string) => {
     if (value === "All") {
       setStatusFilter(
@@ -78,11 +71,9 @@ export default function ExportModal({
     } else {
       setStatusFilter((prev) => {
         const newState = { ...prev, [value]: !prev[value] };
-        // If "All" was selected, deselect it
         if (prev.All) {
           newState.All = false;
         }
-        // If all other options are deselected, select "All"
         const otherOptions = statusFilters.filter((f) => f.value !== "All");
         if (!otherOptions.some((f) => newState[f.value])) {
           newState.All = true;
@@ -92,7 +83,6 @@ export default function ExportModal({
     }
   };
 
-  // Handle "All" logic for Message Type Filter
   const handleMessageTypeFilterChange = (value: string) => {
     if (value === "All") {
       setMessageTypeFilter(
@@ -101,11 +91,9 @@ export default function ExportModal({
     } else {
       setMessageTypeFilter((prev) => {
         const newState = { ...prev, [value]: !prev[value] };
-        // If "All" was selected, deselect it
         if (prev.All) {
           newState.All = false;
         }
-        // If all other options are deselected, select "All"
         const otherOptions = messageTypeFilters.filter((f) => f.value !== "All");
         if (!otherOptions.some((f) => newState[f.value])) {
           newState.All = true;
@@ -115,7 +103,6 @@ export default function ExportModal({
     }
   };
 
-  // Handle "All" logic for Recipient Type Filter
   const handleRecipientTypeFilterChange = (value: string) => {
     if (value === "All") {
       setRecipientTypeFilter(
@@ -124,11 +111,9 @@ export default function ExportModal({
     } else {
       setRecipientTypeFilter((prev) => {
         const newState = { ...prev, [value]: !prev[value] };
-        // If "All" was selected, deselect it
         if (prev.All) {
           newState.All = false;
         }
-        // If all other options are deselected, select "All"
         const otherOptions = recipientTypeFilters.filter((f) => f.value !== "All");
         if (!otherOptions.some((f) => newState[f.value])) {
           newState.All = true;
@@ -138,20 +123,136 @@ export default function ExportModal({
     }
   };
 
-  const handleExport = () => {
-    onExport({
-      statusFilter,
-      priorityFilter,
-      messageTypeFilter, // Added messageTypeFilter to exported data
-      recipientTypeFilter, // Added recipientTypeFilter to exported data
-      roleFilter,
-      dateRangeFrom,
-      dateRangeTo,
-      format,
-      fields,
-      adminRole: adminRole || undefined,
-    });
-    onClose();
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+  
+      // Filter data based on selected filters
+      let filteredData = [...data];
+  
+      // Apply status filter
+      if (!statusFilter.All) {
+        const activeStatuses = Object.keys(statusFilter).filter(key => statusFilter[key] && key !== "All");
+        if (activeStatuses.length > 0) {
+          filteredData = filteredData.filter(item => 
+            activeStatuses.includes(item.status?.toUpperCase())
+          );
+        }
+      }
+  
+      // Apply date range filter
+      if (dateRangeFrom || dateRangeTo) {
+        filteredData = filteredData.filter(item => {
+          const itemDate = new Date(item.createdAt || item.updatedAt || item.publishedDate);
+          if (dateRangeFrom && itemDate < new Date(dateRangeFrom)) return false;
+          if (dateRangeTo && itemDate > new Date(dateRangeTo)) return false;
+          return true;
+        });
+      }
+  
+      // Apply role filter
+      if (roleFilter !== "all") {
+        filteredData = filteredData.filter(item => 
+          item.role?.toLowerCase() === roleFilter.toLowerCase() ||
+          item.profileType?.toLowerCase() === roleFilter.toLowerCase()
+        );
+      }
+  
+      // Get selected columns
+      const selectedColumns = Object.keys(fields).filter(key => fields[key]);
+      
+      // Map column names to their display labels
+      const columnHeaders: Record<string, string> = {};
+      fieldOptions.forEach(({ label, value }) => {
+        if (fields[value]) {
+          columnHeaders[value] = label;
+        }
+      });
+  
+      // Build export payload
+      const exportPayload = {
+        data: filteredData,
+        format: format.toLowerCase(),
+        options: {
+          filename: `${dataType}-export-${Date.now()}`,
+          columns: selectedColumns,
+          columnHeaders,
+          orientation: "landscape",
+          branding: {
+            companyName: "Music Minds",
+            primaryColor: "#5243fe",
+            secondaryColor: "#ffffff",
+            footerText: "Confidential Document",
+            includeHeader: true,
+            includeFooter: true,
+          },
+          templateName: "modern",
+        },
+        urlExpiresIn: 3600,
+      };
+  
+      console.log("Sending export payload:", {
+        dataCount: exportPayload.data.length,
+        format: exportPayload.format,
+        filename: exportPayload.options.filename,
+      });
+  
+      // Call export API
+      const response = await fetch("/api/exports", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(exportPayload),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || "Failed to export data");
+      }
+  
+      const result = await response.json();
+      console.log("Export result received:", result);
+  
+      // ✅ FIXED: Force download to system (not open in browser)
+      if (result.url) {
+        console.log("Downloading file silently from:", result.url);
+      
+        try {
+          // Fetch the file from your Next.js API, not the external backend directly
+          const proxyResponse = await fetch(`/api/download?fileUrl=${encodeURIComponent(result.url)}`, {
+            method: "GET",
+          });
+      
+          if (!proxyResponse.ok) {
+            throw new Error(`Failed to proxy file: ${proxyResponse.status}`);
+          }
+      
+          const blob = await proxyResponse.blob();
+      
+          // Create a temporary download link
+          const blobUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = blobUrl;
+          link.download = result.filename || `${dataType}-export.${result.format || format}`;
+          document.body.appendChild(link);
+          link.click();
+      
+          // Cleanup
+          setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+          }, 100);
+      
+          toast.success("✅ File downloaded successfully!");
+        } catch (error) {
+          console.error("Silent download failed:", error);
+          toast.error("Download failed. Please try again.");
+        }
+      }        
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -184,7 +285,7 @@ export default function ExportModal({
               {statusFilters.length > 0 && (
                 <div>
                   <p className="text-xs font-light mb-2">Status</p>
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-2 flex-wrap">
                     {statusFilters.map(({ label, value }) => (
                       <Button
                         key={value}
@@ -203,7 +304,7 @@ export default function ExportModal({
               {messageTypeFilters.length > 0 && (
                 <div>
                   <p className="text-xs font-light mb-2">Message Type</p>
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-2 flex-wrap">
                     {messageTypeFilters.map(({ label, value }) => (
                       <Button
                         key={value}
@@ -222,7 +323,7 @@ export default function ExportModal({
               {recipientTypeFilters.length > 0 && (
                 <div>
                   <p className="text-xs font-light mb-2">Recipient Type</p>
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-2 flex-wrap">
                     {recipientTypeFilters.map(({ label, value }) => (
                       <Button
                         key={value}
@@ -241,7 +342,7 @@ export default function ExportModal({
               {priorityFilters.length > 0 && (
                 <div>
                   <p className="text-xs font-light mb-2">Priority</p>
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-2 flex-wrap">
                     {priorityFilters.map(({ label, value }) => (
                       <Button
                         key={value}
@@ -348,14 +449,14 @@ export default function ExportModal({
               </div>
               <div className="flex justify-between items-center">
                 <div className="flex gap-2 border p-1 rounded-md bg-input">
-                  {["CSV", "Excel"].map((fmt) => (
+                  {["CSV", "Excel", "Pdf"].map((fmt) => (
                     <Button
                       key={fmt}
-                      variant={format === fmt ? "default" : "ghost"}
+                      variant={format === fmt.toLowerCase() ? "default" : "ghost"}
                       className={`flex-1 rounded-md text-sm ${
-                        format === fmt ? "text-white" : "text-gray-700"
+                        format === fmt.toLowerCase() ? "text-white" : "text-gray-700"
                       }`}
-                      onClick={() => setFormat(fmt)}
+                      onClick={() => setFormat(fmt.toLowerCase())}
                     >
                       {fmt}
                     </Button>
@@ -363,9 +464,10 @@ export default function ExportModal({
                 </div>
                 <Button
                   onClick={handleExport}
+                  disabled={exporting}
                   className="w-[280px] text-white rounded-md"
                 >
-                  Export
+                  {exporting ? "Exporting..." : "Export"}
                 </Button>
               </div>
             </>

@@ -5,23 +5,29 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CiExport } from "react-icons/ci";
 import ExportModal from "@/components/ExportModal";
-import { toast } from "sonner";
 import ProductsTable from "../../_components/ProductsTable";
-
+interface ProductTableItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  currency: string;
+  type: "AUDIO" | "VIDEO" | "DOCUMENT" | "TEMPLATE" | "PRESET" | "COURSE" | "BUNDLE" | "OTHER";
+  licenseType: "PERSONAL_USE" | "COMMERCIAL_USE" | "EXTENDED_LICENSE" | "ROYALTY_FREE" | "RIGHTS_MANAGED";
+  status: "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "ARCHIVED";
+  isApproved: boolean;
+  isFeatured: boolean;
+  rating: number;
+  reviewCount: number;
+  sales: number;
+  revenue: number;
+  createdAt: string;
+  updatedAt: string;
+}
 export default function ProductsPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [products, ]= useState<ProductTableItem[]>([])
 
-  const handleExport = async (data: {
-    statusFilter: Record<string, boolean>;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => {
-    console.log("Exporting products data:", data);
-    toast.success(`Export initiated as ${data.format}`);
-    // Implement export logic for products
-  };
 
   return (
     <div className="p-6 space-y-6">
@@ -53,6 +59,8 @@ export default function ProductsPage() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Products Data"
+          data={products}
+        dataType="products"
         statusFilters={[
           { label: "Draft", value: "DRAFT" },
           { label: "Pending", value: "PENDING" },
@@ -84,7 +92,6 @@ export default function ProductsPage() {
           { label: "Created Date", value: "createdAt" },
           { label: "Updated Date", value: "updatedAt" },
         ]}
-        onExport={handleExport}
       />
     </div>
   );

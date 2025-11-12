@@ -51,7 +51,7 @@ type SettlementStatus =
   | 'CANCELLED' 
   | 'REJECTED';
 
-interface Settlement {
+export interface Settlement {
   id: string;
   walletId: string;
   userId: string;

@@ -33,22 +33,8 @@ export default function ArticlesPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [articles, ] = useState<Article[]>([]);
 
-  const handleExport = (data: {
-    statusFilter: Record<string, boolean>;
-    priorityFilter: Record<string, boolean>;
-    messageTypeFilter: Record<string, boolean>;
-    recipientTypeFilter: Record<string, boolean>;
-    roleFilter: string;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-    adminRole?: string;
-  }) => {
-    console.log("Exporting Articles data:", data);
-    // Add export logic here (e.g., generate CSV/JSON)
-  };
 
   const handleCreate = async (data: {
     id?: string;
@@ -162,7 +148,9 @@ export default function ArticlesPage() {
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        title="Export Data"
+        title="Export Articles Data"
+        data={articles} 
+        dataType="articles"  
         statusFilters={[
           { label: "All", value: "All" },
           { label: "Draft", value: "DRAFT" },
@@ -170,10 +158,6 @@ export default function ArticlesPage() {
           { label: "Scheduled", value: "SCHEDULED" },
           { label: "Archived", value: "ARCHIVED" },
         ]}
-        messageTypeFilters={[]}
-        recipientTypeFilters={[]}
-        priorityFilters={[]}
-        roleFilters={[]}
         fieldOptions={[
           { label: "Article ID", value: "id" },
           { label: "Title", value: "title" },
@@ -182,7 +166,6 @@ export default function ArticlesPage() {
           { label: "Published Date", value: "publishedDate" },
           { label: "Created By", value: "createdBy" },
         ]}
-        onExport={handleExport}
       />
       <CreateContentModal
         isOpen={isCreateModalOpen}

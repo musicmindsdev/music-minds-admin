@@ -5,24 +5,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CiExport } from "react-icons/ci";
 import ExportModal from "@/components/ExportModal";
-import { toast } from "sonner";
 import SettlementsTable from "../../_components/SettlementTable";
+import { Settlement } from "../../_components/SettlementTable";
 
 export default function SettlementsPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-
-  const handleExport = async (data: {
-    statusFilter: Record<string, boolean>;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => {
-    console.log("Exporting settlements data:", data);
-    toast.success(`Export initiated as ${data.format}`);
-    // Implement export logic for settlements
-  };
-
+  const [settlements, ] = useState<Settlement[]>([]);
   return (
     <div className="p-6 space-y-6">
       {/* Header with Export Button */}
@@ -53,6 +41,8 @@ export default function SettlementsPage() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Settlements Data"
+         data={settlements}
+        dataType="settlements"
         statusFilters={[
           { label: "Pending", value: "PENDING" },
           { label: "Approved", value: "APPROVED" },
@@ -78,7 +68,6 @@ export default function SettlementsPage() {
           { label: "Notes", value: "notes" },
           { label: "Admin Notes", value: "adminNotes" },
         ]}
-        onExport={handleExport}
       />
     </div>
   );

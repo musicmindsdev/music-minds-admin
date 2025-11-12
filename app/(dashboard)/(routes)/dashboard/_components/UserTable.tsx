@@ -366,16 +366,6 @@ export default function UserTable({
     setIsSuspendModalOpen(false);
   };
 
-  const handleExport = (data: {
-    statusFilter: Record<string, boolean>;
-    roleFilter: string;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => {
-    console.log("Exporting user data:", data);
-  };
 
   const handleViewDetails = (user: User) => {
     if (onViewDetails) {
@@ -793,29 +783,32 @@ export default function UserTable({
         onConfirm={handleSuspend}
       />
 
-      <ExportModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        title="Export Data"
-        statusFilters={[
-          { label: "Active", value: "Active" },
-          { label: "Suspended", value: "Suspended" },
-          { label: "Deactivated", value: "Deactivated" },
-        ]}
-        roleFilters={[
-          { label: "Service Provider", value: "Service Provider" },
-          { label: "Client", value: "Client" },
-        ]}
-        fieldOptions={[
-          { label: "User ID", value: "User ID" },
-          { label: "Name", value: "Name" },
-          { label: "Email", value: "Email" },
-          { label: "User Role", value: "User Role" },
-          { label: "Status", value: "Status" },
-          { label: "Last Activity", value: "Last Activity" },
-        ]}
-        onExport={handleExport}
-      />
+<ExportModal
+  isOpen={isExportModalOpen}
+  onClose={() => setIsExportModalOpen(false)}
+  title="Export Users Data"
+  data={users}
+  dataType="users"
+  statusFilters={[
+    { label: "All", value: "All" },
+    { label: "Active", value: "ACTIVE" },
+    { label: "Suspended", value: "SUSPENDED" },
+    { label: "Deactivated", value: "DEACTIVATED" },
+  ]}
+  roleFilters={[
+    { label: "Musician", value: "Musician" },
+    { label: "Producer", value: "Producer" },
+  ]}
+  fieldOptions={[
+    { label: "User ID", value: "id" },
+    { label: "Name", value: "name" },
+    { label: "Email", value: "email" },
+    { label: "Role", value: "profileType" },
+    { label: "Status", value: "status" },
+    { label: "Verified", value: "verified" },
+    { label: "Last Login", value: "lastLogin" },
+  ]}
+/>
     </div>
   );
 }

@@ -385,19 +385,6 @@ export default function AdminTable({
     setAdminToChangeRole(null);
   };
 
-  const handleExport = (_data: {
-    statusFilter: Record<string, boolean>;
-    roleFilter: string;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-    adminRole?: string;
-  }) => {
-    toast.success("Data exported successfully.");
-    console.log(_data);
-  };
-
   return (
     <>
       <div className="flex justify-between items-center mb-4">
@@ -598,7 +585,9 @@ export default function AdminTable({
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        title="Export Data"
+        title="Export Admin Data"
+         data={members}
+        dataType="Admin"
         tabs={[
           { value: "pendingInvites", label: "Pending Invites" },
           { value: "members", label: "Members" },
@@ -621,7 +610,6 @@ export default function AdminTable({
           { label: "Support", value: "Support" },
           { label: "Moderator", value: "Moderator" },
         ]}
-        onExport={handleExport}
       />
       
       <InviteAdminModal

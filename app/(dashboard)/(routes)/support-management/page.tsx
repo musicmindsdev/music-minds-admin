@@ -12,18 +12,8 @@ import ExportModal from "@/components/ExportModal";
 
 export default function SupportTicketsPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [support,] = useState([]);
 
-  const handleExport = (data: {
-    statusFilter: Record<string, boolean>;
-    priorityFilter: Record<string, boolean>; // Added priorityFilter
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => {
-    console.log("Exporting Support Ticket data:", data);
-    // Add export logic here (e.g., generate CSV/JSON)
-  };
 
   return (
     <div className="p-6 space-y-6 ">
@@ -49,6 +39,8 @@ export default function SupportTicketsPage() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Data"
+        data={support}
+        dataType="support"
         statusFilters={[
           { label: "All", value: "All" },
           { label: "Open", value: "Open" },
@@ -70,7 +62,6 @@ export default function SupportTicketsPage() {
           { label: "Issue", value: "Issue" },
           { label: "Created Date", value: "Created Date" },
         ]}
-        onExport={handleExport}
       />
     </div>
   );

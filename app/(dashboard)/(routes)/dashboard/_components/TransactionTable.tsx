@@ -144,7 +144,6 @@ export default function TransactionTable({
   showCheckboxes = false,
   showPagination = false,
   showExportButton = false,
-  onExport,
   headerText = "TRANSACTIONS MANAGEMENT",
 }: TransactionTableProps) {
   const router = useRouter();
@@ -467,16 +466,6 @@ export default function TransactionTable({
     setIsRetryPaymentModalOpen(false);
   };
 
-  const handleExport = (data: {
-    statusFilter: Record<string, boolean>;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => {
-    onExport?.(data);
-    console.log("Exporting transaction data:", data);
-  };
 
   // Loading state - using your custom Loading component
   if (loading) {
@@ -905,7 +894,9 @@ export default function TransactionTable({
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        title="Export Data"
+        title="Export Transaction Data"
+         data={transactions}
+        dataType="transactions"
         statusFilters={[
           { label: "Completed", value: "Completed" },
           { label: "Pending", value: "Pending" },
@@ -922,7 +913,6 @@ export default function TransactionTable({
           { label: "Status", value: "Status" },
           { label: "Last Updated", value: "Last Updated" },
         ]}
-        onExport={handleExport}
       />
 
       {isDetailsModalOpen && (

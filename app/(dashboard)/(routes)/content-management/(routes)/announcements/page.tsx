@@ -22,18 +22,10 @@ export default function AnnouncementsPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0); // ADD THIS
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [announcement, ] = useState<Announcement[]>([])
 
-  const handleExport = (data: {
-    statusFilter: Record<string, boolean>;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => {
-    console.log("Exporting Review data:", data);
-    // Add export logic here (e.g., generate CSV/JSON)
-  };
+
 
   const handleCreate = async (data: {
     id?: string;
@@ -120,7 +112,9 @@ export default function AnnouncementsPage() {
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        title="Export Data"
+        title="Export Announcement Data"
+        data={announcement}
+        dataType="announcements"
         statusFilters={[
           { label: "All", value: "All" },
           { label: "Published", value: "Published" },
@@ -135,7 +129,6 @@ export default function AnnouncementsPage() {
           { label: "Created By", value: "Created By" },
           { label: "Status", value: "Status" },
         ]}
-        onExport={handleExport}
       />
       <CreateContentModal
         isOpen={isCreateModalOpen}

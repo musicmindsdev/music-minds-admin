@@ -73,7 +73,6 @@ export default function AuditLogsTable({
   showCheckboxes = true,
   showPagination = true,
   showExportButton = true,
-  onExport,
   headerText = "Audit Logs",
 }: AuditLogsTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -234,15 +233,7 @@ export default function AuditLogsTable({
     }
   };
 
-  const handleExport = (data: {
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => {
-    onExport?.(data);
-    console.log("Exporting audit logs data:", data);
-  };
+
 
   // Generate pagination buttons (only 1, 2, 3)
   const totalPages = Math.ceil(totalLogs / logsPerPage);
@@ -519,6 +510,8 @@ export default function AuditLogsTable({
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Audit Logs"
+         data={logs}
+        dataType="Logs"
         statusFilters={[]}
         roleFilters={[]}
         fieldOptions={[
@@ -528,7 +521,6 @@ export default function AuditLogsTable({
           { label: "Role", value: "Role" },
           { label: "Timestamp", value: "Timestamp" },
         ]}
-        onExport={handleExport}
       />
 
       <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>

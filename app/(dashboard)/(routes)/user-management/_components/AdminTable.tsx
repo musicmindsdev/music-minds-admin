@@ -104,7 +104,7 @@ export default function AdminTable({
       }
 
       const data = await response.json();
-      
+
       // ADD DEBUG LOGGING HERE
       console.log("=== API RESPONSE DATA ===");
       console.log("Full response:", data);
@@ -115,73 +115,73 @@ export default function AdminTable({
       }
 
       const mappedAdmins: AdminTeamMember[] = Array.isArray(data.admins)
-       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ? data.admins.map((admin: any) => {
-            console.log("Processing admin:", admin);
-            
-            return {
-              id: admin.id || "N/A",
-              name: admin.name || admin.username || `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || 'N/A',
-              email: admin.email || 'N/A',
-              role: admin.role || admin.roles?.[0]?.name || 'N/A',
-              inviteSent: admin.createdAt 
-                ? new Date(admin.createdAt).toLocaleDateString('en-US', { 
-                    weekday: 'short', 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })
-                : 'N/A',
-              dateInvited: admin.createdAt
-                ? new Date(admin.createdAt).toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })
-                : 'N/A',
-              dateInviteAccepted: admin.lastLoginAt || (admin.updatedAt && admin.updatedAt !== admin.createdAt)
-                ? new Date(admin.lastLoginAt || admin.updatedAt).toLocaleDateString('en-US', { 
-                    weekday: 'short', 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })
-                : 'N/A',
-              lastLogin: admin.lastLoginAt 
-                ? new Date(admin.lastLoginAt).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })
-                : 'Never logged in',
-              // CORRECTED: Use active field for status
-              status: admin.active ? "Active" : "Inactive",
-              image: admin.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${encodeURIComponent(admin.name || admin.username || admin.email || 'A')}`,
-              permissions: admin.roles?.[0]?.permissions || [],
-              passwordCreated: admin.createdAt 
-                ? new Date(admin.createdAt).toLocaleDateString('en-US', { 
-                    weekday: 'short', 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })
-                : 'N/A',
-              lastChanged: admin.updatedAt
-                ? new Date(admin.updatedAt).toLocaleDateString('en-US', { 
-                    weekday: 'short', 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })
-                : 'N/A',
-            };
-          })
+          console.log("Processing admin:", admin);
+
+          return {
+            id: admin.id || "N/A",
+            name: admin.name || admin.username || `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || 'N/A',
+            email: admin.email || 'N/A',
+            role: admin.role || admin.roles?.[0]?.name || 'N/A',
+            inviteSent: admin.createdAt
+              ? new Date(admin.createdAt).toLocaleDateString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              })
+              : 'N/A',
+            dateInvited: admin.createdAt
+              ? new Date(admin.createdAt).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+              : 'N/A',
+            dateInviteAccepted: admin.lastLoginAt || (admin.updatedAt && admin.updatedAt !== admin.createdAt)
+              ? new Date(admin.lastLoginAt || admin.updatedAt).toLocaleDateString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              })
+              : 'N/A',
+            lastLogin: admin.lastLoginAt
+              ? new Date(admin.lastLoginAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+              : 'Never logged in',
+            // CORRECTED: Use active field for status
+            status: admin.active ? "Active" : "Inactive",
+            image: admin.avatar || `https://api.dicebear.com/6.x/initials/svg?seed=${encodeURIComponent(admin.name || admin.username || admin.email || 'A')}`,
+            permissions: admin.roles?.[0]?.permissions || [],
+            passwordCreated: admin.createdAt
+              ? new Date(admin.createdAt).toLocaleDateString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              })
+              : 'N/A',
+            lastChanged: admin.updatedAt
+              ? new Date(admin.updatedAt).toLocaleDateString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              })
+              : 'N/A',
+          };
+        })
         : [];
 
       console.log("Mapped admins:", mappedAdmins);
       setMembers(mappedAdmins);
-      
+
       toast.success(`Loaded ${mappedAdmins.length} admin(s) successfully.`);
     } catch (err) {
       console.error("Error fetching admins:", err);
@@ -199,7 +199,7 @@ export default function AdminTable({
     console.log("=== COMPONENT MOUNTED ===");
     console.log("Current members:", members);
     console.log("Current members count:", members.length);
-    
+
     fetchMembers();
   }, [fetchMembers]);
 
@@ -249,10 +249,10 @@ export default function AdminTable({
       );
 
       const results = await Promise.allSettled(deletePromises);
-      
+
       // Check if any deletions failed
-      const failedDeletes = results.filter(result => 
-        result.status === 'rejected' || 
+      const failedDeletes = results.filter(result =>
+        result.status === 'rejected' ||
         (result.status === 'fulfilled' && !result.value.ok)
       );
 
@@ -369,15 +369,15 @@ export default function AdminTable({
       prev.map((member) =>
         member.id === adminId
           ? {
-              ...member,
-              role: newRole,
-              permissions:
-                newRole === "Super Admin" || newRole === "Admin"
-                  ? ["Can manage users", "Can manage content", "Can moderate reviews"]
-                  : newRole === "Support"
+            ...member,
+            role: newRole,
+            permissions:
+              newRole === "Super Admin" || newRole === "Admin"
+                ? ["Can manage users", "Can manage content", "Can moderate reviews"]
+                : newRole === "Support"
                   ? ["Can manage support tickets"]
                   : ["Can moderate reviews"],
-            }
+          }
           : member
       )
     );
@@ -401,7 +401,7 @@ export default function AdminTable({
           )}
         </div>
       </div>
-      
+
       <div className="relative mt-4 flex items-center pb-2">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <input
@@ -431,10 +431,10 @@ export default function AdminTable({
           </Button>
         </div>
       )}
-      
+
       {loading ? (
         <div className="flex justify-center items-center py-4">
-         <Loading/>
+          <Loading />
         </div>
       ) : filteredMembers.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
@@ -491,11 +491,10 @@ export default function AdminTable({
                 </TableCell>
                 <TableCell>{member.email}</TableCell>
                 <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    member.role === 'SUPERADMIN' 
+                  <span className={`px-2 py-1 rounded-full text-xs ${member.role === 'SUPERADMIN'
                       ? 'bg-purple-100 text-purple-800'
                       : 'bg-blue-100 text-blue-800'
-                  }`}>
+                    }`}>
                     {member.role}
                   </span>
                 </TableCell>
@@ -507,14 +506,12 @@ export default function AdminTable({
                 </TableCell>
                 <TableCell>{member.lastLogin}</TableCell>
                 <TableCell>
-                  <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-                    member.status === 'Active' 
+                  <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${member.status === 'Active'
                       ? 'bg-green-100 text-green-800'
                       : 'bg-red-100 text-red-800'
-                  }`}>
-                    <span className={`h-2 w-2 rounded-full ${
-                      member.status === 'Active' ? 'bg-green-500' : 'bg-red-500'
-                    }`} />
+                    }`}>
+                    <span className={`h-2 w-2 rounded-full ${member.status === 'Active' ? 'bg-green-500' : 'bg-red-500'
+                      }`} />
                     {member.status}
                   </span>
                 </TableCell>
@@ -567,7 +564,7 @@ export default function AdminTable({
           </TableBody>
         </Table>
       )}
-      
+
       <Modal
         isOpen={isRemoveModalOpen}
         onClose={closeRemoveModal}
@@ -581,42 +578,27 @@ export default function AdminTable({
         confirmButtonColor="#EF4444"
         onConfirm={handleRemove}
       />
-      
+
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Admin Data"
-         data={members}
+        data={members}
         dataType="Admin"
-        tabs={[
-          { value: "pendingInvites", label: "Pending Invites" },
-          { value: "members", label: "Members" },
-        ]}
-        defaultTab="members"
-        statusFilters={[
-          { label: "Active", value: "Active" },
-          { label: "Inactive", value: "Inactive" },
-        ]}
         fieldOptions={[
-          { label: "Name", value: "Name" },
-          { label: "Status", value: "Status" },
-          { label: "Email", value: "Email" },
-          { label: "Last Activity", value: "Last Activity" },
-          { label: "Role", value: "Role" },
-        ]}
-        adminRoleOptions={[
-          { label: "Admin", value: "Admin" },
-          { label: "Super Admin", value: "Super Admin" },
-          { label: "Support", value: "Support" },
-          { label: "Moderator", value: "Moderator" },
+          { label: "Name", value: "name" },
+          { label: "Email", value: "email" },
+          { label: "Role", value: "role" },
+          { label: "Status", value: "status" },
+          { label: "Last Login", value: "lastLogin" },
+          { label: "Invite Sent", value: "inviteSent" },
         ]}
       />
-      
       <InviteAdminModal
         isOpen={isInviteAdminModalOpen}
         onClose={() => setIsInviteAdminModalOpen(false)}
       />
-      
+
       {isModalOpen && (
         <div
           className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50"
@@ -635,7 +617,7 @@ export default function AdminTable({
           </div>
         </div>
       )}
-      
+
       <ChangeRoleModal
         isOpen={isChangeRoleModalOpen}
         onClose={() => setIsChangeRoleModalOpen(false)}

@@ -40,12 +40,16 @@ export default function BroadcastMessagesPage() {
   const [activeTab, setActiveTab] = useState("PUSH_NOTIFICATION");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isSendMessageModalOpen, setIsSendMessageModalOpen] = useState(false);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [editingBroadcast, setEditingBroadcast] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [broadcast, ] = useState<Broadcast[]>([]);
+  const [broadcastsData, setBroadcastsData] = useState<Broadcast[]>([]);
 
+  // This receives the data from the BroadcastMessagesTable
+  const handleExportData = (broadcasts: Broadcast[]) => {
+    setBroadcastsData(broadcasts);
+  };
 
   const handleSaveBroadcast = async (data: CreateBroadcastData) => {
     try {
@@ -80,6 +84,7 @@ export default function BroadcastMessagesPage() {
       alert(error instanceof Error ? error.message : "An error occurred");
     }
   };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleEditBroadcast = (broadcast: any) => {
     setEditingBroadcast(broadcast);
@@ -147,6 +152,7 @@ export default function BroadcastMessagesPage() {
               activeTab={activeTab}
               onEdit={handleEditBroadcast}
               refreshKey={refreshKey}
+              onExportData={handleExportData} // Pass the callback
             />
           </CardContent>
         </Card>
@@ -156,8 +162,8 @@ export default function BroadcastMessagesPage() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Broadcast Data"
-         data={broadcast}
-        dataType="Broadcast"
+        data={broadcastsData} 
+        dataType="broadcasts"
         statusFilters={[
           { label: "All", value: "All" },
           { label: "Draft", value: "DRAFT" },
@@ -167,29 +173,23 @@ export default function BroadcastMessagesPage() {
           { label: "Cancelled", value: "CANCELLED" },
           { label: "Failed", value: "FAILED" },
         ]}
-        messageTypeFilters={broadcastTypes.filter(t => t.value !== 'ALL')}
-        recipientTypeFilters={[
-          { label: "All Users", value: "ALL_USERS" },
-          { label: "Specific Users", value: "SPECIFIC_USERS" },
-          { label: "Filtered Users", value: "FILTERED_USERS" },
-        ]}
-        priorityFilters={[
-          { label: "Low", value: "LOW" },
-          { label: "Normal", value: "NORMAL" },
-          { label: "High", value: "HIGH" },
-        ]}
         roleFilters={[]}
         fieldOptions={[
           { label: "Broadcast ID", value: "id" },
           { label: "Title", value: "title" },
           { label: "Message", value: "message" },
           { label: "Type", value: "type" },
-          { label: "Status", value: "status" },
           { label: "Recipients Type", value: "recipientsType" },
           { label: "Priority", value: "priority" },
           { label: "Emergency", value: "isEmergency" },
-          { label: "Created Date", value: "createdAt" },
+          { label: "Status", value: "status" },
           { label: "Scheduled Date", value: "sendAt" },
+          { label: "Created Date", value: "createdAt" },
+          { label: "Updated Date", value: "updatedAt" },
+          { label: "Sent Date", value: "sentAt" },
+          { label: "Total Recipients", value: "totalRecipients" },
+          { label: "Successful Deliveries", value: "successfulDeliveries" },
+          { label: "Failed Deliveries", value: "failedDeliveries" },
         ]}
       />
 

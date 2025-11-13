@@ -65,6 +65,7 @@ interface BroadcastMessagesTableProps {
   showPagination?: boolean;
   activeTab?: string;
   onEdit?: (message: Broadcast) => void;
+  onExportData?: (broadcasts: Broadcast[]) => void;
   refreshKey?: number;
 }
 
@@ -102,6 +103,7 @@ export default function BroadcastMessagesTable({
   showPagination = false,
   activeTab = "PUSH_NOTIFICATION",
   onEdit,
+  onExportData,
   refreshKey = 0,
 }: BroadcastMessagesTableProps) {
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
@@ -198,6 +200,11 @@ export default function BroadcastMessagesTable({
   useEffect(() => {
     fetchBroadcasts();
   }, [fetchBroadcasts, refreshKey]);
+  useEffect(() => {
+    if (onExportData) {
+      onExportData(broadcasts);
+    }
+  }, [broadcasts, onExportData]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {

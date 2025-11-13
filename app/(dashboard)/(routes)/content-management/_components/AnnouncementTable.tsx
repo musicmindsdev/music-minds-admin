@@ -33,7 +33,7 @@ import Pending from "@/public/pending.png";
 import Image from "next/image";
 
 // What the API returns
-interface ApiAnnouncement {
+export interface ApiAnnouncement {
   id: string;
   title: string;
   content: string;
@@ -46,7 +46,7 @@ interface ApiAnnouncement {
 }
 
 // What our component uses (strict typing, required props)
-interface Announcement {
+export interface Announcement {
   id: string;
   title: string;
   content: string;
@@ -63,6 +63,8 @@ interface AnnouncementTableProps {
   showPagination?: boolean;
   headerText?: string;
   onEdit?: (announcement: Announcement) => void;
+  onExportData?: (announcements: Announcement[]) => void;
+  onFetchAllData?: (dateRangeFrom: string, dateRangeTo: string) => Promise<Announcement[]>;
   refreshKey?: number;
 }
 
@@ -70,6 +72,7 @@ export default function AnnouncementTable({
   showCheckboxes = false,
   showPagination = false,
   onEdit,
+  onExportData,
   refreshKey = 0,
 }: AnnouncementTableProps) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -143,6 +146,12 @@ export default function AnnouncementTable({
   useEffect(() => {
     fetchAnnouncements();
   }, [fetchAnnouncements, refreshKey]);
+
+  useEffect(() => {
+    if (onExportData) {
+      onExportData(announcements);
+    }
+  }, [announcements, onExportData]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {

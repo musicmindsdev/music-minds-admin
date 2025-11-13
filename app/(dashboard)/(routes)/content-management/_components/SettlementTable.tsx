@@ -78,7 +78,7 @@ export interface Settlement {
   processedBy: User;
 }
 
-interface SettlementAPIResponse {
+export interface SettlementAPIResponse {
   id: string;
   walletId: string;
   userId: string;
@@ -109,12 +109,15 @@ interface SettlementsTableProps {
   showCheckboxes?: boolean;
   showPagination?: boolean;
   onActionComplete?: () => void;
+  onExportData?: (settlements: Settlement[]) => void;
+  onFetchAllData?: (dateRangeFrom: string, dateRangeTo: string) => Promise<Settlement[]>;
 }
 
 export default function SettlementsTable({
   showCheckboxes = false,
   showPagination = true,
   onActionComplete,
+  onExportData,
 }: SettlementsTableProps) {
   const [statusFilter, setStatusFilter] = useState<Record<SettlementStatus, boolean>>({
     PENDING: false,
@@ -217,6 +220,12 @@ export default function SettlementsTable({
   useEffect(() => {
     fetchSettlements();
   }, [fetchSettlements]);
+
+  useEffect(() => {
+    if (onExportData) {
+      onExportData(settlementsData);
+    }
+  }, [settlementsData, onExportData]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {

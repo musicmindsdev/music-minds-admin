@@ -33,6 +33,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Loading from "@/components/Loading";
 import Pending from "@/public/pending.png";
 import Image from "next/image";
+import { toast } from "sonner";
 
 // Define interfaces for API response data
 interface RawTransaction {
@@ -130,13 +131,7 @@ interface TransactionTableProps {
   showCheckboxes?: boolean;
   showPagination?: boolean;
   showExportButton?: boolean;
-  onExport?: (data: {
-    statusFilter: Record<string, boolean>;
-    dateRangeFrom: string;
-    dateRangeTo: string;
-    format: string;
-    fields: Record<string, boolean>;
-  }) => void;
+  onExport?: () => void;
   headerText?: string;
 }
 
@@ -262,6 +257,81 @@ export default function TransactionTable({
   useEffect(() => {
     fetchTransactions();
   }, [fetchTransactions]);
+
+  // ADDED: Fetch all transactions for export with date range support
+  const fetchAllTransactions = async (exportDateRangeFrom: string, exportDateRangeTo: string) => {
+    try {
+      const queryParams: Record<string, string> = {
+        limit: "10000", // Fetch all records
+      };
+
+      // Use ExportModal's date range if provided
+      const startTime = exportDateRangeFrom;
+      const endTime = exportDateRangeTo;
+
+      if (startTime) {
+        queryParams.fromDate = startTime;
+      }
+      if (endTime) {
+        queryParams.toDate = endTime;
+      }
+
+      // Add current filters
+      const activeStatusFilters = Object.entries(statusFilter)
+        .filter(([, isActive]) => isActive)
+        .map(([status]) => {
+          if (status === "Completed") return "COMPLETED";
+          if (status === "Failed") return "FAILED";
+          return "PENDING";
+        });
+      
+      if (activeStatusFilters.length > 0) {
+        queryParams.status = activeStatusFilters.join(",");
+      }
+
+      if (searchQuery) {
+        queryParams.searchQuery = searchQuery;
+      }
+
+      const query = new URLSearchParams(queryParams).toString();
+
+      console.log("Fetching ALL transactions for export with query:", query);
+
+      const response = await fetch(`/api/transactions?${query}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch all transactions (Status: ${response.status})`);
+      }
+
+      const data = await response.json();
+      console.log("All transactions for export:", data);
+
+      // Transform the data to match Transaction interface
+      let rawTransactions: RawTransaction[] = [];
+      
+      if (data.transactions && data.transactions.data && Array.isArray(data.transactions.data)) {
+        rawTransactions = data.transactions.data;
+      } else if (data.transactions && Array.isArray(data.transactions)) {
+        rawTransactions = data.transactions;
+      } else if (Array.isArray(data)) {
+        rawTransactions = data;
+      } else if (data.data && Array.isArray(data.data)) {
+        rawTransactions = data.data;
+      }
+
+      const allTransactions = rawTransactions.map(mapApiTransactionToComponentTransaction);
+      return allTransactions;
+    } catch (err) {
+      console.error("Error fetching all transactions for export:", err);
+      toast.error("Failed to fetch all transactions for export");
+      return [];
+    }
+  };
 
   // Filter transactions client-side for searchQuery
   const filteredTransactions = transactions.filter((transaction) => {
@@ -465,7 +535,6 @@ export default function TransactionTable({
   const closeRetryPaymentModal = () => {
     setIsRetryPaymentModalOpen(false);
   };
-
 
   // Loading state - using your custom Loading component
   if (loading) {
@@ -783,8 +852,8 @@ export default function TransactionTable({
                         <DropdownMenuItem onClick={openRetryPaymentModal}>
                           <BiRotateLeft className="h-4 w-4 mr-2" />
                           Retry Payment
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
@@ -891,11 +960,12 @@ export default function TransactionTable({
         onConfirm={handleRetryPayment}
       />
 
+      {/* UPDATED: ExportModal with onFetchAllData prop */}
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Transaction Data"
-         data={transactions}
+        data={transactions}
         dataType="transactions"
         statusFilters={[
           { label: "Completed", value: "Completed" },
@@ -904,15 +974,16 @@ export default function TransactionTable({
         ]}
         roleFilters={[]}
         fieldOptions={[
-          { label: "Transaction ID", value: "Transaction ID" },
-          { label: "Booking ID", value: "Booking ID" },
-          { label: "Client Name", value: "Client Name" },
-          { label: "Provider Name", value: "Provider Name" },
-          { label: "Service Offered", value: "Service Offered" },
-          { label: "Total Amount", value: "Total Amount" },
-          { label: "Status", value: "Status" },
-          { label: "Last Updated", value: "Last Updated" },
+          { label: "Transaction ID", value: "id" },
+          { label: "Booking ID", value: "bookingId" },
+          { label: "Client Name", value: "clientName" },
+          { label: "Provider Name", value: "providerName" },
+          { label: "Service Offered", value: "serviceOffered" },
+          { label: "Total Amount", value: "totalAmount" },
+          { label: "Status", value: "status" },
+          { label: "Last Updated", value: "lastLogin" },
         ]}
+        onFetchAllData={fetchAllTransactions}
       />
 
       {isDetailsModalOpen && (

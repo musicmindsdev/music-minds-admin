@@ -30,7 +30,7 @@ import Loading from "@/components/Loading";
 import Pending from "@/public/pending.png";
 import Image from "next/image";
 
-interface ProductTableItem {
+export interface ProductTableItem {
   id: string;
   name: string;
   description: string;
@@ -53,12 +53,15 @@ interface ProductsTableProps {
   showCheckboxes?: boolean;
   showPagination?: boolean;
   onActionComplete?: () => void;
+  onExportData?: (products: ProductTableItem[]) => void;
+  onFetchAllData?: (dateRangeFrom: string, dateRangeTo: string) => Promise<ProductTableItem[]>;
 }
 
 export default function ProductsTable({
   showCheckboxes = false,
   showPagination = true,
   onActionComplete,
+  onExportData,
 }: ProductsTableProps) {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -202,6 +205,12 @@ export default function ProductsTable({
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  useEffect(() => {
+    if (onExportData) {
+      onExportData(productsData);
+    }
+  }, [productsData, onExportData]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {

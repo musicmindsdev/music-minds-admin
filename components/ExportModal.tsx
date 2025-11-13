@@ -22,6 +22,8 @@ interface ExportModalProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any[];
   dataType: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onFetchAllData?: (dateRangeFrom: string, dateRangeTo: string) => Promise<any[]>;
 }
 
 export default function ExportModal({
@@ -39,6 +41,7 @@ export default function ExportModal({
   adminRoleOptions = [],
   data,
   dataType,
+  onFetchAllData,
 }: ExportModalProps) {
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [statusFilter, setStatusFilter] = useState<Record<string, boolean>>(
@@ -127,8 +130,16 @@ export default function ExportModal({
     try {
       setExporting(true);
   
+      // Use onFetchAllData if provided, otherwise use the current page data
+      let exportData = data;
+      if (onFetchAllData) {
+        console.log("Fetching all data for export with date range:", { dateRangeFrom, dateRangeTo });
+        exportData = await onFetchAllData(dateRangeFrom, dateRangeTo);
+        console.log(`Fetched ${exportData.length} records for export`);
+      }
+
       // Filter data based on selected filters
-      let filteredData = [...data];
+      let filteredData = [...exportData];
   
       // Apply status filter
       if (!statusFilter.All) {
@@ -140,8 +151,9 @@ export default function ExportModal({
         }
       }
   
-      // Apply date range filter
-      if (dateRangeFrom || dateRangeTo) {
+      // Apply date range filter - ONLY if we didn't use onFetchAllData
+      // If we used onFetchAllData, the date filtering is already done in the API call
+      if (!onFetchAllData && (dateRangeFrom || dateRangeTo)) {
         filteredData = filteredData.filter(item => {
           const itemDate = new Date(item.createdAt || item.updatedAt || item.publishedDate);
           if (dateRangeFrom && itemDate < new Date(dateRangeFrom)) return false;

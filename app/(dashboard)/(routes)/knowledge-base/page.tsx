@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { CiExport } from "react-icons/ci";
 import { Card, CardContent } from "@/components/ui/card";
 import ExportModal from "@/components/ExportModal";
-import ArticlesTable from "./_components/ArticlesTable";
+import ArticlesTable, { ApiArticle, Article } from "./_components/ArticlesTable"; // Import the Article type
 import { PiBookOpenTextLight } from "react-icons/pi";
 import CreateContentModal from "@/components/CreateContentModal";
 
-interface Article {
+interface CreateArticleData {
   id?: string;
   title: string;
   slug?: string;
@@ -31,10 +31,74 @@ interface Article {
 export default function ArticlesPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const [editingArticle, setEditingArticle] = useState<CreateArticleData | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [articles, ] = useState<Article[]>([]);
+  const [articlesData, setArticlesData] = useState<Article[]>([]);
 
+  // This receives the data from the ArticlesTable
+  const handleExportData = (articles: Article[]) => {
+    setArticlesData(articles);
+  };
+
+  const fetchAllArticles = async (exportDateRangeFrom: string, exportDateRangeTo: string) => {
+    try {
+      const queryParams: Record<string, string> = {
+        limit: "10000",
+      };
+
+      if (exportDateRangeFrom) {
+        queryParams.fromDate = new Date(exportDateRangeFrom).toISOString();
+      }
+      if (exportDateRangeTo) {
+        queryParams.toDate = new Date(exportDateRangeTo).toISOString();
+      }
+
+      const query = new URLSearchParams(queryParams).toString();
+
+      const response = await fetch(`/api/articles?${query}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch all articles");
+      }
+
+      const backendData = await response.json();
+
+      // Handle different response structures
+      let articlesData = [];
+      if (Array.isArray(backendData)) {
+        articlesData = backendData;
+      } else if (backendData.articles && Array.isArray(backendData.articles)) {
+        articlesData = backendData.articles;
+      } else if (backendData.data && Array.isArray(backendData.data)) {
+        articlesData = backendData.data;
+      } else {
+        const possibleArrays = Object.values(backendData).filter(val => Array.isArray(val));
+        articlesData = possibleArrays[0] || [];
+      }
+
+      const allArticles: Article[] = articlesData.map((article: ApiArticle) => ({
+        id: article.id,
+        title: article.title,
+        content: article.content,
+        category: article.category,
+        status: article.status,
+        createdBy: article.author?.name || "Unknown Author",
+        role: "Admin",
+        publishedDate: article.publishedAt || article.createdAt || new Date().toISOString(),
+        thumbnail: article.thumbnail,
+        tags: article.tags,
+        publishAt: article.publishAt,
+      }));
+
+      return allArticles;
+    } catch (err) {
+      console.error("Error fetching all articles for export:", err);
+      return [];
+    }
+  };
 
   const handleCreate = async (data: {
     id?: string;
@@ -53,7 +117,7 @@ export default function ArticlesPage() {
     tags?: string[];
     publishAt?: string;
     sendImmediately?: boolean;
-    mediaFile?: File; // Add this line
+    mediaFile?: File;
   }) => {
     try {
       // Create FormData for file upload
@@ -83,7 +147,6 @@ export default function ArticlesPage() {
   
       const response = await fetch(url, {
         method,
-        // Don't set Content-Type header for FormData - let browser set it
         body: formData,
       });
   
@@ -141,6 +204,8 @@ export default function ArticlesPage() {
               showPagination={true} 
               onEdit={handleEdit}
               refreshKey={refreshKey}
+              onExportData={handleExportData} 
+              onFetchAllData={fetchAllArticles}
             />
           </CardContent>
         </Card>
@@ -149,7 +214,7 @@ export default function ArticlesPage() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Articles Data"
-        data={articles} 
+        data={articlesData} // Use the data from table
         dataType="articles"  
         statusFilters={[
           { label: "All", value: "All" },
@@ -161,11 +226,16 @@ export default function ArticlesPage() {
         fieldOptions={[
           { label: "Article ID", value: "id" },
           { label: "Title", value: "title" },
+          { label: "Content", value: "content" },
           { label: "Category", value: "category" },
           { label: "Status", value: "status" },
-          { label: "Published Date", value: "publishedDate" },
           { label: "Created By", value: "createdBy" },
+          { label: "Role", value: "role" },
+          { label: "Published Date", value: "publishedDate" },
+          { label: "Tags", value: "tags" },
+          { label: "Scheduled Date", value: "publishAt" },
         ]}
+        onFetchAllData={fetchAllArticles}
       />
       <CreateContentModal
         isOpen={isCreateModalOpen}

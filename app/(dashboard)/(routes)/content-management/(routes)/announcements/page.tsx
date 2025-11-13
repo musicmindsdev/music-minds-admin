@@ -6,10 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PiNotificationBold } from "react-icons/pi";
 import { CiExport } from "react-icons/ci";
 import ExportModal from "@/components/ExportModal";
-import AnnouncementTable from "../../_components/AnnouncementTable";
+import AnnouncementTable, { Announcement, ApiAnnouncement } from "../../_components/AnnouncementTable"; // Import the type
 import CreateContentModal from "@/components/CreateContentModal";
 
-interface Announcement {
+interface CreateAnnouncement {
   id?: string;
   type: string;
   status: string;
@@ -21,12 +21,61 @@ interface Announcement {
 export default function AnnouncementsPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<CreateAnnouncement | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [announcement, ] = useState<Announcement[]>([])
+  const [announcementsData, setAnnouncementsData] = useState<Announcement[]>([]); // Use the imported type
 
+  // This receives the data from the AnnouncementTable
+  const handleExportData = (announcements: Announcement[]) => {
+    setAnnouncementsData(announcements);
+  };
 
+  const fetchAllAnnouncements = async (exportDateRangeFrom: string, exportDateRangeTo: string) => {
+    try {
+      const queryParams: Record<string, string> = {
+        limit: "10000",
+      };
 
+      if (exportDateRangeFrom) {
+        queryParams.startDate = new Date(exportDateRangeFrom).toISOString();
+      }
+      if (exportDateRangeTo) {
+        queryParams.endDate = new Date(exportDateRangeTo).toISOString();
+      }
+
+      const query = new URLSearchParams(queryParams).toString();
+
+      const response = await fetch(`/api/announcements?${query}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch all announcements");
+      }
+
+      const { announcements: apiAnnouncements } = await response.json();
+
+      const allAnnouncements: Announcement[] = Array.isArray(apiAnnouncements)
+        ? apiAnnouncements.map((ann: ApiAnnouncement) => ({
+            id: ann.id,
+            title: ann.title,
+            content: ann.content,
+            type: ann.type,
+            status: ann.status,
+            createdBy: ann.createdBy || "Unknown",
+            role: ann.role || "Admin",
+            publishedDate: ann.publishedDate || new Date().toISOString(),
+            mediaUrl: ann.mediaUrl,
+          }))
+        : [];
+
+      return allAnnouncements;
+    } catch (err) {
+      console.error("Error fetching all announcements for export:", err);
+      return [];
+    }
+  };
   const handleCreate = async (data: {
     id?: string;
     type: string;
@@ -105,7 +154,9 @@ export default function AnnouncementsPage() {
             showPagination={true}
             headerText="All Announcements"
             onEdit={handleEdit}
-            refreshKey={refreshKey} // PASS refreshKey HERE
+            refreshKey={refreshKey}
+            onExportData={handleExportData} 
+            onFetchAllData={fetchAllAnnouncements}
           />
         </CardContent>
       </Card>
@@ -113,7 +164,7 @@ export default function AnnouncementsPage() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Announcement Data"
-        data={announcement}
+        data={announcementsData} // Use the data from table
         dataType="announcements"
         statusFilters={[
           { label: "All", value: "All" },
@@ -123,12 +174,16 @@ export default function AnnouncementsPage() {
         ]}
         roleFilters={[]}
         fieldOptions={[
-          { label: "Announcement ID", value: "Announcement ID" },
-          { label: "Published Date", value: "Published Date" },
-          { label: "Title", value: "Title" },
-          { label: "Created By", value: "Created By" },
-          { label: "Status", value: "Status" },
+          { label: "Announcement ID", value: "id" },
+          { label: "Published Date", value: "publishedDate" },
+          { label: "Title", value: "title" },
+          { label: "Content", value: "content" },
+          { label: "Type", value: "type" },
+          { label: "Created By", value: "createdBy" },
+          { label: "Role", value: "role" },
+          { label: "Status", value: "status" },
         ]}
+        onFetchAllData={fetchAllAnnouncements}
       />
       <CreateContentModal
         isOpen={isCreateModalOpen}

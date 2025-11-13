@@ -33,7 +33,7 @@ import Pending from "@/public/pending.png";
 import Image from "next/image";
 
 // What the API returns
-interface ApiArticle {
+export interface ApiArticle {
   id: string;
   title: string;
   slug?: string;
@@ -54,7 +54,7 @@ interface ApiArticle {
 }
 
 // What our component uses
-interface Article {
+export interface Article {
   id: string;
   title: string;
   content: string;
@@ -74,6 +74,8 @@ interface ArticlesTableProps {
   headerText?: string;
   onEdit?: (article: Article) => void;
   onSchedule?: (article: Article) => void;
+  onExportData?: (articles: Article[]) => void;
+  onFetchAllData?: (dateRangeFrom: string, dateRangeTo: string) => Promise<Article[]>;
   refreshKey?: number;
 }
 
@@ -82,6 +84,7 @@ export default function ArticlesTable({
   showPagination = false,
   onEdit,
   onSchedule,
+  onExportData,
   refreshKey = 0,
 }: ArticlesTableProps) {
   const [articles, setArticles] = useState<Article[]>([]);
@@ -217,6 +220,11 @@ const fetchArticles = useCallback(async () => {
   useEffect(() => {
     fetchArticles();
   }, [fetchArticles, refreshKey]);
+  useEffect(() => {
+    if (onExportData) {
+      onExportData(articles);
+    }
+  }, [articles, onExportData]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {

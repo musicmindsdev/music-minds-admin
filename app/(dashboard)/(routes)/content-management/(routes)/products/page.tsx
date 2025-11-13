@@ -5,28 +5,73 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CiExport } from "react-icons/ci";
 import ExportModal from "@/components/ExportModal";
-import ProductsTable from "../../_components/ProductsTable";
-interface ProductTableItem {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  currency: string;
-  type: "AUDIO" | "VIDEO" | "DOCUMENT" | "TEMPLATE" | "PRESET" | "COURSE" | "BUNDLE" | "OTHER";
-  licenseType: "PERSONAL_USE" | "COMMERCIAL_USE" | "EXTENDED_LICENSE" | "ROYALTY_FREE" | "RIGHTS_MANAGED";
-  status: "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "ARCHIVED";
-  isApproved: boolean;
-  isFeatured: boolean;
-  rating: number;
-  reviewCount: number;
-  sales: number;
-  revenue: number;
-  createdAt: string;
-  updatedAt: string;
-}
+import ProductsTable, { ProductTableItem } from "../../_components/ProductsTable";
+
 export default function ProductsPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [products, ]= useState<ProductTableItem[]>([])
+  const [productsData, setProductsData] = useState<ProductTableItem[]>([]);
+
+  // This receives the data from the ProductsTable
+  const handleExportData = (products: ProductTableItem[]) => {
+    setProductsData(products);
+  };
+
+  const fetchAllProducts = async (exportDateRangeFrom: string, exportDateRangeTo: string) => {
+    try {
+      const queryParams: Record<string, string> = {
+        limit: "10000",
+      };
+
+      if (exportDateRangeFrom) {
+        queryParams.fromDate = exportDateRangeFrom;
+      }
+      if (exportDateRangeTo) {
+        queryParams.toDate = exportDateRangeTo;
+      }
+
+      const query = new URLSearchParams(queryParams).toString();
+
+      const response = await fetch(`/api/products?${query}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch all products");
+      }
+
+      const { data } = await response.json();
+
+      const allProducts: ProductTableItem[] = Array.isArray(data)
+        ? data.map((product: ProductTableItem) => ({
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            currency: product.currency,
+            type: product.type,
+            licenseType: product.licenseType,
+            status: product.status,
+            isApproved: product.isApproved,
+            isFeatured: product.isFeatured,
+            rating: product.rating,
+            reviewCount: product.reviewCount,
+            sales: product.sales,
+            revenue: product.revenue,
+            createdAt: product.createdAt,
+            updatedAt: product.updatedAt,
+          }))
+        : [];
+
+      return allProducts;
+    } catch (err) {
+      console.error("Error fetching all products for export:", err);
+      return [];
+    }
+  };
 
 
   return (
@@ -50,6 +95,8 @@ export default function ProductsPage() {
             showCheckboxes={true}
             showPagination={true}
             onActionComplete={() => console.log("Product action completed")}
+            onExportData={handleExportData} 
+            onFetchAllData={fetchAllProducts}
           />
         </CardContent>
       </Card>
@@ -59,15 +106,8 @@ export default function ProductsPage() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Products Data"
-          data={products}
+        data={productsData} // Use the data from table
         dataType="products"
-        statusFilters={[
-          { label: "Draft", value: "DRAFT" },
-          { label: "Pending", value: "PENDING" },
-          { label: "Approved", value: "APPROVED" },
-          { label: "Rejected", value: "REJECTED" },
-          { label: "Archived", value: "ARCHIVED" },
-        ]}
         roleFilters={[]}
         fieldOptions={[
           { label: "Product ID", value: "id" },
@@ -82,16 +122,12 @@ export default function ProductsPage() {
           { label: "Review Count", value: "reviewCount" },
           { label: "Sales", value: "sales" },
           { label: "Revenue", value: "revenue" },
-          { label: "Downloads", value: "downloads" },
-          { label: "File Format", value: "fileFormat" },
-          { label: "File Size", value: "fileSize" },
-          { label: "Creator Name", value: "creatorName" },
-          { label: "Creator Email", value: "creatorEmail" },
           { label: "Is Featured", value: "isFeatured" },
           { label: "Is Approved", value: "isApproved" },
           { label: "Created Date", value: "createdAt" },
           { label: "Updated Date", value: "updatedAt" },
         ]}
+        onFetchAllData={fetchAllProducts}
       />
     </div>
   );

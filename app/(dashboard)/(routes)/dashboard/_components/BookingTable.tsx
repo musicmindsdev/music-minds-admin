@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Filter, Search, Calendar, EllipsisVertical, Eye} from "lucide-react";
+import { Filter, Search, Calendar, EllipsisVertical, Eye } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,23 +114,23 @@ export interface Booking {
 
 // Helper function (unchanged)
 const mapApiBookingToComponentBooking = (apiBooking: ApiBooking): Booking => {
-  const clientName = apiBooking.user 
-    ? `${apiBooking.user.firstName || ''} ${apiBooking.user.lastName || ''}`.trim() 
+  const clientName = apiBooking.user
+    ? `${apiBooking.user.firstName || ''} ${apiBooking.user.lastName || ''}`.trim()
     : "Unknown Client";
   const clientEmail = apiBooking.user?.email || "No email";
   const providerName = "Provider Name";
   const providerEmail = "provider@example.com";
   const scheduledDate = apiBooking.date ? new Date(apiBooking.date).toLocaleDateString() : "Not scheduled";
   const formatTime = (timeString: string) => {
-    return timeString ? new Date(timeString).toLocaleTimeString([], { 
-      hour: '2-digit', 
+    return timeString ? new Date(timeString).toLocaleTimeString([], {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     }) : "";
   };
   const startTimeFormatted = formatTime(apiBooking.startTime);
   const endTimeFormatted = formatTime(apiBooking.endTime);
-  const scheduledTime = startTimeFormatted && endTimeFormatted 
+  const scheduledTime = startTimeFormatted && endTimeFormatted
     ? `${startTimeFormatted} - ${endTimeFormatted}`
     : "Not scheduled";
   const location = [apiBooking.address, apiBooking.city, apiBooking.country]
@@ -255,6 +255,73 @@ export default function BookingTable({
     }
   }, [currentPage, statusFilter, dateRangeFrom, dateRangeTo, bookingsPerPage]);
 
+  const fetchAllBookings = async (exportDateRangeFrom: string, exportDateRangeTo: string) => {
+    try {
+      const queryParams: Record<string, string> = {
+        limit: "10000", // Fetch all records
+      };
+
+      // Use ExportModal's date range if provided
+      const startTime = exportDateRangeFrom;
+      const endTime = exportDateRangeTo;
+
+      if (startTime) {
+        queryParams.fromDate = new Date(startTime).toISOString();
+      }
+      if (endTime) {
+        queryParams.toDate = new Date(endTime).toISOString();
+      }
+
+      // Add current table filters
+      if (searchQuery) {
+        queryParams.search = searchQuery;
+      }
+
+      // Add status filters
+      const activeStatusFilters = Object.entries(statusFilter)
+        .filter(([, isActive]) => isActive)
+        .map(([status]) => status);
+      if (activeStatusFilters.length > 0) {
+        queryParams.status = activeStatusFilters.join(',');
+      }
+
+      const query = new URLSearchParams(queryParams).toString();
+
+      console.log("Fetching ALL bookings for export with query:", query);
+
+      const response = await fetch(`/api/bookings?${query}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch all bookings (Status: ${response.status})`);
+      }
+
+      const responseData = await response.json();
+      console.log("All bookings for export:", responseData);
+
+      // Transform the data to match Booking interface
+      let bookingsData: ApiBooking[] = [];
+      if (responseData.data && Array.isArray(responseData.data)) {
+        bookingsData = responseData.data;
+      } else if (Array.isArray(responseData)) {
+        bookingsData = responseData;
+      }
+
+      const allBookings = bookingsData.map(mapApiBookingToComponentBooking);
+      console.log(`Fetched ${allBookings.length} bookings for export`);
+
+      return allBookings;
+    } catch (err) {
+      console.error("Error fetching all bookings for export:", err);
+      // You might want to add toast notification here if you have it set up
+      return [];
+    }
+  };
+
+
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
@@ -376,9 +443,8 @@ export default function BookingTable({
               <div className="flex space-x-2">
                 <Button
                   variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.CONFIRMED ? "border border-gray-400 font-medium" : ""
-                  }`}
+                  className={`flex items-center gap-1 rounded-full text-sm ${statusFilter.CONFIRMED ? "border border-gray-400 font-medium" : ""
+                    }`}
                   onClick={() =>
                     setStatusFilter((prev) => ({
                       ...prev,
@@ -391,9 +457,8 @@ export default function BookingTable({
                 </Button>
                 <Button
                   variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.PENDING ? "border border-gray-400 font-medium" : ""
-                  }`}
+                  className={`flex items-center gap-1 rounded-full text-sm ${statusFilter.PENDING ? "border border-gray-400 font-medium" : ""
+                    }`}
                   onClick={() =>
                     setStatusFilter((prev) => ({
                       ...prev,
@@ -406,9 +471,8 @@ export default function BookingTable({
                 </Button>
                 <Button
                   variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.CANCELLED ? "border border-gray-400 font-medium" : ""
-                  }`}
+                  className={`flex items-center gap-1 rounded-full text-sm ${statusFilter.CANCELLED ? "border border-gray-400 font-medium" : ""
+                    }`}
                   onClick={() =>
                     setStatusFilter((prev) => ({
                       ...prev,
@@ -421,9 +485,8 @@ export default function BookingTable({
                 </Button>
                 <Button
                   variant="ghost"
-                  className={`flex items-center gap-1 rounded-full text-sm ${
-                    statusFilter.COMPLETED ? "border border-gray-400 font-medium" : ""
-                  }`}
+                  className={`flex items-center gap-1 rounded-full text-sm ${statusFilter.COMPLETED ? "border border-gray-400 font-medium" : ""
+                    }`}
                   onClick={() =>
                     setStatusFilter((prev) => ({
                       ...prev,
@@ -525,26 +588,24 @@ export default function BookingTable({
                   <TableCell>{booking.totalAmount}</TableCell>
                   <TableCell>
                     <span
-                      className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 text-xs ${
-                        booking.status === "CONFIRMED" 
+                      className={`flex items-center justify-center gap-1 rounded-full px-2 py-1 text-xs ${booking.status === "CONFIRMED"
                           ? "bg-green-100 text-green-600"
                           : booking.status === "PENDING"
-                          ? "bg-yellow-100 text-yellow-600"
-                          : booking.status === "CANCELLED"
-                          ? "bg-red-100 text-red-600"
-                          : "bg-blue-100 text-blue-600"
-                      }`}
+                            ? "bg-yellow-100 text-yellow-600"
+                            : booking.status === "CANCELLED"
+                              ? "bg-red-100 text-red-600"
+                              : "bg-blue-100 text-blue-600"
+                        }`}
                     >
                       <span
-                        className={`h-2 w-2 rounded-full ${
-                          booking.status === "CONFIRMED"
+                        className={`h-2 w-2 rounded-full ${booking.status === "CONFIRMED"
                             ? "bg-green-500"
                             : booking.status === "PENDING"
-                            ? "bg-yellow-500"
-                            : booking.status === "CANCELLED"
-                            ? "bg-red-500"
-                            : "bg-blue-500"
-                        }`}
+                              ? "bg-yellow-500"
+                              : booking.status === "CANCELLED"
+                                ? "bg-red-500"
+                                : "bg-blue-500"
+                          }`}
                       />
                       {booking.status}
                     </span>
@@ -567,7 +628,7 @@ export default function BookingTable({
               ))}
             </TableBody>
           </Table>
-          
+
           {showPagination && paginatedBookings.length > 0 && (
             <div className="flex justify-between items-center mt-4">
               <div className="flex space-x-2">
@@ -642,30 +703,31 @@ export default function BookingTable({
           )}
         </>
       )}
-      
+
       <ExportModal
-  isOpen={isExportModalOpen}
-  onClose={() => setIsExportModalOpen(false)}
-  title="Export Bookings Data"
-  data={bookings}
-  dataType="bookings"
-  statusFilters={[
-    { label: "All", value: "All" },
-    { label: "Confirmed", value: "CONFIRMED" },
-    { label: "Pending", value: "PENDING" },
-    { label: "Cancelled", value: "CANCELLED" },
-    { label: "Completed", value: "COMPLETED" },
-  ]}
-  fieldOptions={[
-    { label: "Booking ID", value: "id" },
-    { label: "Client Name", value: "clientName" },
-    { label: "Provider Name", value: "providerName" },
-    { label: "Service", value: "serviceOffered" },
-    { label: "Amount", value: "totalAmount" },
-    { label: "Status", value: "status" },
-  ]}
-/>
-      
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        title="Export Bookings Data"
+        data={bookings}
+        dataType="bookings"
+        statusFilters={[
+          { label: "All", value: "All" },
+          { label: "Confirmed", value: "CONFIRMED" },
+          { label: "Pending", value: "PENDING" },
+          { label: "Cancelled", value: "CANCELLED" },
+          { label: "Completed", value: "COMPLETED" },
+        ]}
+        fieldOptions={[
+          { label: "Booking ID", value: "id" },
+          { label: "Client Name", value: "clientName" },
+          { label: "Provider Name", value: "providerName" },
+          { label: "Service", value: "serviceOffered" },
+          { label: "Amount", value: "totalAmount" },
+          { label: "Status", value: "status" },
+        ]}
+        onFetchAllData={fetchAllBookings}
+      />
+
       {isDetailsModalOpen && (
         <div
           className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50"

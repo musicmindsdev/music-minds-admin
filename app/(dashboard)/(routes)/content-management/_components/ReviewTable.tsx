@@ -31,7 +31,7 @@ import Pending from "@/public/pending.png";
 import Image from "next/image";
 
 // Raw API response type
-interface ApiReview {
+export interface ApiReview {
   id: string;
   userName?: string;
   email?: string;
@@ -71,11 +71,14 @@ interface ReviewTableProps {
   showCheckboxes?: boolean;
   showPagination?: boolean;
   headerText?: string;
+  onExportData?: (reviews: Review[]) => void; 
+  onFetchAllData?: (dateRangeFrom: string, dateRangeTo: string) => Promise<Review[]>;
 }
 
 export default function ReviewTable({
   showCheckboxes = false,
   showPagination = true,
+  onExportData,
 }: ReviewTableProps) {
   const [flaggedFilter, setFlaggedFilter] = useState({ Yes: false, No: false });
   const [serviceTypeFilter, setServiceTypeFilter] = useState("all");
@@ -174,11 +177,16 @@ export default function ReviewTable({
     dateRangeTo,
     searchQuery,
   ]);
-
   
   useEffect(() => {
     fetchReviews();
   }, [fetchReviews]);
+
+  useEffect(() => {
+    if (onExportData) {
+      onExportData(reviews);
+    }
+  }, [reviews, onExportData]);
 
   // Get unique service types from reviews
   const serviceTypes = [...new Set(reviews.map((review) => review.serviceOffered))];

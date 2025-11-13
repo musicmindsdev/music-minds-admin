@@ -168,6 +168,64 @@ export default function AuditLogsTable({
     }
   }, [searchQuery, actionTypeFilter, dateRangeFrom, dateRangeTo, currentPage]);
 
+  // Add this function to fetch all audit logs for export
+  const fetchAllAuditLogs = async (exportDateRangeFrom: string, exportDateRangeTo: string) => {
+    try {
+      const selectedActions = Object.keys(actionTypeFilter)
+        .filter((key) => actionTypeFilter[key as keyof typeof actionTypeFilter])
+        .join(",");
+      
+      // Use the date range from ExportModal, not the table's date range
+      const queryParams: Record<string, string> = {
+        ...(selectedActions && { action: selectedActions }),
+        ...(searchQuery && { search: searchQuery }),
+        limit: "10000", // Fetch all records
+      };
+
+      // Use ExportModal's date range if provided, otherwise use table's date range
+      const startTime = exportDateRangeFrom || dateRangeFrom;
+      const endTime = exportDateRangeTo || dateRangeTo;
+
+      if (startTime) {
+        queryParams.startTime = new Date(startTime).toISOString();
+      }
+      if (endTime) {
+        queryParams.endTime = new Date(endTime).toISOString();
+      }
+
+      const query = new URLSearchParams(queryParams).toString();
+
+      console.log("Fetching ALL audit logs for export with query:", query);
+
+      const response = await fetch(`/api/audit-logs?${query}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: "Failed to parse backend error response",
+        }));
+        throw new Error(errorData.error || `Failed to fetch all audit logs (Status: ${response.status})`);
+      }
+
+      const data = await response.json();
+      console.log("All audit logs for export:", data);
+
+      // Format the timestamps and return all data
+      const allLogs = (data.data || []).map((log: AuditLogEntry) => ({
+        ...log,
+        time: formatTimestamp(log.time),
+      }));
+
+      return allLogs;
+    } catch (err) {
+      console.error("Error fetching all audit logs for export:", err);
+      toast.error("Failed to fetch all audit logs for export", { position: "top-right", duration: 5000 });
+      return [];
+    }
+  };
+
   const handleViewDetails = async (log: AuditLogEntry) => {
     try {
       setIsDetailsModalOpen(true);
@@ -232,8 +290,6 @@ export default function AuditLogsTable({
       setCurrentPage(page);
     }
   };
-
-
 
   // Generate pagination buttons (only 1, 2, 3)
   const totalPages = Math.ceil(totalLogs / logsPerPage);
@@ -510,17 +566,24 @@ export default function AuditLogsTable({
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Audit Logs"
-         data={logs}
-        dataType="Logs"
+        data={logs}
+        dataType="audit-logs"
         statusFilters={[]}
         roleFilters={[]}
         fieldOptions={[
-          { label: "Log ID", value: "Log ID" },
-          { label: "Action", value: "Action" },
-          { label: "User", value: "User" },
-          { label: "Role", value: "Role" },
-          { label: "Timestamp", value: "Timestamp" },
+          { label: "Log ID", value: "id" },
+          { label: "Action", value: "action" },
+          { label: "User ID", value: "userId" },
+          { label: "User Name", value: "user.name" },
+          { label: "User Email", value: "user.email" },
+          { label: "User Role", value: "user.role" },
+          { label: "Role", value: "role" },
+          { label: "Timestamp", value: "time" },
+          { label: "IP Address", value: "ipAddress" },
+          { label: "User Agent", value: "userAgent" },
+          { label: "Details", value: "details" },
         ]}
+        onFetchAllData={fetchAllAuditLogs}
       />
 
       <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>

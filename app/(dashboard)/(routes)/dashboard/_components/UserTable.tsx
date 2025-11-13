@@ -35,6 +35,7 @@ import ExportModal from "@/components/ExportModal";
 import Pending from "@/public/pending.png";
 import Loading from "@/components/Loading";
 import Image from "next/image";
+import { toast } from "sonner";
 
 interface User {
   id: string;
@@ -221,6 +222,54 @@ export default function UserTable({
 
     return searchMatch && statusMatch && profileTypeMatch && dateMatch && verificationMatch;
   });
+  const fetchAllUsers = async (exportDateRangeFrom: string, exportDateRangeTo: string) => {
+    try {
+      const queryParams: Record<string, string> = {
+        limit: "10000", // Fetch all records
+      };
+  
+      // Use ExportModal's date range if provided
+      const startTime = exportDateRangeFrom;
+      const endTime = exportDateRangeTo;
+  
+      if (startTime) {
+        queryParams.fromDate = startTime;
+      }
+      if (endTime) {
+        queryParams.toDate = endTime;
+      }
+  
+      // Add other filters
+      if (searchQuery) {
+        queryParams.searchQuery = searchQuery;
+      }
+  
+      const query = new URLSearchParams(queryParams).toString();
+  
+      console.log("Fetching ALL users for export with query:", query);
+  
+      const response = await fetch(`/api/users?${query}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch all users (Status: ${response.status})`);
+      }
+  
+      const data = await response.json();
+      console.log("All users for export:", data);
+  
+      // Transform the data to match User interface
+      const allUsers = Array.isArray(data.users) ? data.users.map(mapApiUserToComponentUser) : [];
+      return allUsers;
+    } catch (err) {
+      console.error("Error fetching all users for export:", err);
+      toast.error("Failed to fetch all users for export");
+      return [];
+    }
+  };
 
   const totalPages = Math.ceil(totalUsers / usersPerPage);
   const startIndex = (currentPage - 1) * usersPerPage;
@@ -808,6 +857,7 @@ export default function UserTable({
     { label: "Verified", value: "verified" },
     { label: "Last Login", value: "lastLogin" },
   ]}
+  onFetchAllData={fetchAllUsers}
 />
     </div>
   );

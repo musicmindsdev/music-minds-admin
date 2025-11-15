@@ -2,7 +2,6 @@ import * as React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { reviewData } from "@/lib/mockData";
 import { Transaction } from "../../dashboard/_components/TransactionTable";
 
 interface TransactionDetailsModalProps {
@@ -20,6 +19,8 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
   React.useEffect(() => {
     console.log('TransactionDetailsModal - isOpen:', isOpen);
     console.log('TransactionDetailsModal - transaction:', transaction);
+    console.log('TransactionDetailsModal - transaction status:', transaction?.status);
+    console.log('TransactionDetailsModal - transaction rawStatus:', transaction?.rawStatus);
   }, [isOpen, transaction]);
 
   if (!isOpen || !transaction) {
@@ -27,17 +28,8 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
     return null;
   }
 
-  // Function to find matching review
-  const findMatchingReview = () => {
-    return reviewData.find(
-      (review: { reviewer: { name: string }; userName: string; serviceOffered: string }) =>
-        review.reviewer?.name === transaction.clientName &&
-        review.userName === transaction.providerName &&
-        review.serviceOffered === transaction.serviceOffered
-    );
-  };
-
-  const matchingReview = findMatchingReview();
+  // ✅ Use the transaction status directly (it's already mapped consistently)
+  // No need for mock data - use real transaction data only
 
   return (
     <div className="h-full p-6 overflow-y-auto">
@@ -73,7 +65,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
           <p className="text-xs text-gray-500">Service Provider&apos;s Information</p>
           <div className="flex items-center gap-4">
             <Avatar className="w-12 h-12">
-              <AvatarImage src="/placeholder-avatar.jpg" alt={transaction.providerName} />
+              <AvatarImage src={transaction.image} alt={transaction.providerName} />
               <AvatarFallback>{transaction.providerName?.charAt(0) || 'P'}</AvatarFallback>
             </Avatar>
             <div>
@@ -124,6 +116,12 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                   }`}
                 />
                 {transaction.status}
+                {/* Show raw status for debugging */}
+                {transaction.rawStatus && transaction.rawStatus !== transaction.status && (
+                  <span className="text-xs text-gray-400 ml-1">
+                    ({transaction.rawStatus})
+                  </span>
+                )}
               </span>
             </div>
             
@@ -131,37 +129,35 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
               <span className="text-xs text-gray-500">Last Updated:</span>
               <span className="text-sm font-medium">{transaction.lastLogin}</span>
             </div>
+
+            {/* Show additional raw data if available */}
+            {transaction.rawData && (
+              <>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">Transaction Type:</span>
+                  <span className="text-sm font-medium">{transaction.rawData.type}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">Service Fee:</span>
+                  <span className="text-sm font-medium">${transaction.rawData.serviceFee?.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">Net Amount:</span>
+                  <span className="text-sm font-medium">${transaction.rawData.netAmount?.toFixed(2)}</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Ratings & Review */}
         <div className="space-y-4">
-          <h3 className="text-base font-medium">Ratings & Review</h3>
+          <h3 className="text-base font-medium">Additional Information</h3>
           
-          {matchingReview ? (
-            <div className="grid grid-cols-1 gap-3">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-500">Rating:</span>
-                <span className="text-sm font-medium">{matchingReview.rating}/5.0</span>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-500">Review ID:</span>
-                <span className="text-sm font-medium">{matchingReview.id}</span>
-              </div>
-              
-              <div>
-                <span className="text-xs text-gray-500 block mb-1">Review Comment:</span>
-                <p className="text-sm font-medium bg-gray-50 p-3 rounded-md">
-                  {matchingReview.reviewText}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-sm text-gray-500">No review available for this transaction</p>
-            </div>
-          )}
+          <div className="text-center py-4">
+            <p className="text-sm text-gray-500">
+              {transaction.rawData?.description || "No additional information available"}
+            </p>
+          </div>
         </div>
       </div>
     </div>

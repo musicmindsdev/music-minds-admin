@@ -81,7 +81,6 @@ export interface Transaction {
   status: "Completed" | "Pending" | "Failed";
   lastLogin: string;
   image: string;
-  // Add raw data for consistency
   rawStatus?: string;
   rawData?: RawTransaction;
 }
@@ -90,7 +89,7 @@ export interface Transaction {
 const mapStatusToFrontend = (backendStatus: string): "Completed" | "Pending" | "Failed" => {
   if (backendStatus === "COMPLETED" || backendStatus === "SUCCESS") return "Completed";
   if (backendStatus === "FAILED" || backendStatus === "CANCELLED" || backendStatus === "DECLINED") return "Failed";
-  return "Pending"; // Default for PENDING, PROCESSING, etc.
+  return "Pending";
 };
 
 // Helper function to map API transaction to component transaction
@@ -99,23 +98,22 @@ const mapApiTransactionToComponentTransaction = (apiTransaction: RawTransaction)
   const status = mapStatusToFrontend(apiTransaction.status);
 
   // Get client name (payer)
-  const clientName = apiTransaction.payer?.name || "Unknown Client";
+  const clientName = apiTransaction.payer?.name || "";
   
   // Get provider name (payee)
-  const providerName = apiTransaction.payee?.name || "Unknown Provider";
+  const providerName = apiTransaction.payee?.name || "";
   
   // Get service offered
   const serviceOffered = apiTransaction.booking?.title || 
                         apiTransaction.description || 
-                        apiTransaction.type?.replace(/_/g, ' ') || 
-                        "Unknown Service";
+                        apiTransaction.type?.replace(/_/g, ' ') || "";
 
   // Get avatar image
-  const image = apiTransaction.payer?.avatar || apiTransaction.payee?.avatar || "/placeholder-avatar.jpg";
+  const image = apiTransaction.payer?.avatar || apiTransaction.payee?.avatar || "";
 
   return {
     id: apiTransaction.id,
-    bookingId: apiTransaction.bookingId || "N/A",
+    bookingId: apiTransaction.bookingId || "",
     clientName,
     providerName,
     serviceOffered,
@@ -130,7 +128,7 @@ const mapApiTransactionToComponentTransaction = (apiTransaction: RawTransaction)
           minute: "2-digit",
           hour12: true,
         })
-      : "Unknown",
+      : "",
     image,
     // Store raw data for consistency
     rawStatus: apiTransaction.status,
@@ -410,43 +408,13 @@ export default function TransactionTable({
     }
   };
 
-  const handleViewDetails = async (transaction: Transaction) => {
+  // ✅ SIMPLE AND CLEAN - just like the products table
+  const handleViewDetails = (transaction: Transaction) => {
     console.log('Opening details for transaction:', transaction);
     
-    // Immediately set the transaction and open modal
+    // Just set the transaction and open modal - no additional API calls
     setSelectedTransaction(transaction);
     setIsDetailsModalOpen(true);
-  
-    // Then try to fetch additional details in background
-    try {
-      const response = await fetch(`/api/transactions/${transaction.id}`, {
-        credentials: "include",
-      });
-  
-      if (response.ok) {
-        const responseData = await response.json();
-        console.log('Detailed transaction data:', responseData);
-        
-        // Properly check if we have detailed transaction data
-        const detailedTransaction = responseData.transaction || responseData.data;
-        
-        // Check if detailedTransaction exists and has data
-        if (detailedTransaction && typeof detailedTransaction === 'object' && Object.keys(detailedTransaction).length > 0) {
-          // ✅ Use the SAME mapping function for consistency
-          const enhancedTransaction = mapApiTransactionToComponentTransaction(detailedTransaction);
-          
-          // Update the transaction with enhanced data
-          setSelectedTransaction(enhancedTransaction);
-        } else {
-          console.log('No detailed transaction data found, using basic data');
-        }
-      } else {
-        console.log('Failed to fetch detailed transaction data, using basic data');
-      }
-    } catch (err) {
-      console.error('Error fetching transaction details:', err);
-      // Keep the original transaction data if fetch fails
-    }
   };
 
   const handleProcessPayout = async () => {

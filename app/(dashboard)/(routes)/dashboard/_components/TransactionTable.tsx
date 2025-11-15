@@ -81,14 +81,22 @@ export interface Transaction {
   status: "Completed" | "Pending" | "Failed";
   lastLogin: string;
   image: string;
+  // Add raw data for consistency
+  rawStatus?: string;
+  rawData?: RawTransaction;
 }
+
+// ✅ CONSISTENT STATUS MAPPING FUNCTION
+const mapStatusToFrontend = (backendStatus: string): "Completed" | "Pending" | "Failed" => {
+  if (backendStatus === "COMPLETED" || backendStatus === "SUCCESS") return "Completed";
+  if (backendStatus === "FAILED" || backendStatus === "CANCELLED" || backendStatus === "DECLINED") return "Failed";
+  return "Pending"; // Default for PENDING, PROCESSING, etc.
+};
 
 // Helper function to map API transaction to component transaction
 const mapApiTransactionToComponentTransaction = (apiTransaction: RawTransaction): Transaction => {
-  // Determine status mapping
-  let status: "Completed" | "Pending" | "Failed" = "Pending";
-  if (apiTransaction.status === "COMPLETED") status = "Completed";
-  else if (apiTransaction.status === "FAILED" || apiTransaction.status === "CANCELLED") status = "Failed";
+  // ✅ Use consistent status mapping
+  const status = mapStatusToFrontend(apiTransaction.status);
 
   // Get client name (payer)
   const clientName = apiTransaction.payer?.name || "Unknown Client";
@@ -124,6 +132,9 @@ const mapApiTransactionToComponentTransaction = (apiTransaction: RawTransaction)
         })
       : "Unknown",
     image,
+    // Store raw data for consistency
+    rawStatus: apiTransaction.status,
+    rawData: apiTransaction,
   };
 };
 
@@ -421,39 +432,9 @@ export default function TransactionTable({
         
         // Check if detailedTransaction exists and has data
         if (detailedTransaction && typeof detailedTransaction === 'object' && Object.keys(detailedTransaction).length > 0) {
-          const enhancedTransaction: Transaction = {
-            id: detailedTransaction.id || transaction.id,
-            bookingId: detailedTransaction.bookingId || transaction.bookingId,
-            clientName: detailedTransaction.payer?.name || 
-                       transaction.clientName,
-            providerName: detailedTransaction.payee?.name || 
-                         transaction.providerName,
-            serviceOffered: detailedTransaction.booking?.title || 
-                           detailedTransaction.description || 
-                           transaction.serviceOffered,
-            totalAmount: detailedTransaction.amount ? 
-                        `$${detailedTransaction.amount.toFixed(2)}` : 
-                        transaction.totalAmount,
-                        status: detailedTransaction.status === "COMPLETED"
-                        ? "Completed"
-                        : detailedTransaction.status === "PENDING"
-                        ? "Pending"
-                        : "Failed",                      
-            lastLogin: detailedTransaction.updatedAt ? 
-                      new Date(detailedTransaction.updatedAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                      }) : 
-                      transaction.lastLogin,
-            image: detailedTransaction.payer?.avatar || 
-                  detailedTransaction.payee?.avatar || 
-                  transaction.image || 
-                  "/placeholder-avatar.jpg",
-          };
+          // ✅ Use the SAME mapping function for consistency
+          const enhancedTransaction = mapApiTransactionToComponentTransaction(detailedTransaction);
+          
           // Update the transaction with enhanced data
           setSelectedTransaction(enhancedTransaction);
         } else {

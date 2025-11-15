@@ -24,37 +24,20 @@ export default function NotificationsDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-
-  const getUserId = () => {
-    const cookieHeader = document.cookie;
-    if (!cookieHeader) return null;
-    const cookies = cookieHeader.split(";").reduce((acc, cookie) => {
-      const [name, value] = cookie.trim().split("=");
-      acc[name] = value;
-      return acc;
-    }, {} as Record<string, string>);
-    const token = cookies.accessToken;
-    if (!token) return null;
-    try {
-      const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
-      return payload.id || null;
-    } catch {
-      return null;
-    }
-  };
 
   const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
+      const read = filter === "unread" ? "false" : "";
       const query = new URLSearchParams({
         page: "1",
         limit: "10",
-        read: filter === "unread" ? "false" : "",
+        ...(read && { read }),
       }).toString();
 
       const response = await fetch(`/api/notifications?${query}`, {
@@ -63,59 +46,58 @@ export default function NotificationsDropdown() {
         credentials: "include",
       });
 
-      console.log("Notifications API response status:", response.status);
+      console.log("Dropdown - Notifications API response status:", response.status);
 
       if (!response.ok) {
         if (response.status === 401) {
           setError("Please log in to view notifications");
-          toast.error("Please log in to view notifications", {
-            position: "top-right",
-            duration: 5000,
-          });
           return;
         }
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to fetch notifications");
       }
 
-      const { notifications: apiNotifications } = await response.json();
-      const mappedNotifications: Notification[] = Array.isArray(apiNotifications)
-        ?  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        apiNotifications.map((n: any) => ({
-            id: n.id,
-            type: n.type,
-            message: n.message,
-            timestamp: n.timestamp || new Date().toISOString(),
-            read: n.read || false,
-            actions: n.actions || [{ label: "View", variant: "default" }],
-          }))
-        : [];
+      const responseData = await response.json();
+      console.log("Dropdown - Full API response:", responseData);
+      
+      // ✅ USE THE EXACT SAME MAPPING LOGIC AS YOUR NOTIFICATIONS PAGE
+      const apiNotifications = responseData.notifications?.data || responseData.notifications || [];
+      console.log("Dropdown - Extracted notifications:", apiNotifications);
+       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedNotifications: Notification[] = apiNotifications.map((n: any) => ({
+        id: n.id,
+        type: n.type,
+        message: n.message,
+        timestamp: n.createdAt || new Date().toISOString(), // ✅ Same as page
+        read: n.read || false,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        actions: n.actions?.map((a: any) => ({
+          label: a.label,
+          variant: "default" as const,
+          href: a.route
+        })) || [{ label: "View", variant: "default" as const }],
+      }));
 
+      console.log("Dropdown - Mapped notifications:", mappedNotifications);
       setNotifications(mappedNotifications);
+
     } catch (err) {
       console.error("Error fetching notifications:", err);
       setError(err instanceof Error ? err.message : "An error occurred while fetching notifications");
-      toast.error(err instanceof Error ? err.message : "An error occurred while fetching notifications", {
-        position: "top-right",
-        duration: 5000,
-      });
     } finally {
       setLoading(false);
     }
   }, [filter]);
 
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    if (open) {
+      fetchNotifications();
+    }
+  }, [open, fetchNotifications]);
 
   const handleMarkAllAsRead = async () => {
     try {
-      const userId = getUserId();
-      if (!userId) {
-        throw new Error("Authentication required: No user ID found in token");
-      }
-
-      const response = await fetch(`/api/notifications/mark-all-read?userId=${userId}`, {
+      const response = await fetch(`/api/notifications/mark-all-read`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -204,58 +186,46 @@ export default function NotificationsDropdown() {
     switch (type) {
       case "system":
         return (
-          <Button className="rounded-xl bg-gradient-to-r from-[#0065FF] via-[#952BDA] to-[#FE02BF]">
-            <HiOutlineComputerDesktop className="h-6 w-6 text-white" />
-          </Button>
+          <div className="rounded-xl bg-gradient-to-r from-[#0065FF] via-[#952BDA] to-[#FE02BF] p-2">
+            <HiOutlineComputerDesktop className="h-4 w-4 text-white" />
+          </div>
         );
       case "booking":
         return (
-          <Button variant="outline" className="bg-[#FFEAFB] rounded-xl">
-            <FaRegBell className="h-6 w-6 text-[#9747FF]" />
-          </Button>
+          <div className="bg-[#FFEAFB] rounded-xl p-2 border">
+            <FaRegBell className="h-4 w-4 text-[#9747FF]" />
+          </div>
         );
       case "user":
         return (
-          <Button variant="outline" className="bg-[#FFE7FB] rounded-xl">
-            <LuUserRoundCheck className="h-6 w-6 text-[#FE02BF]" />
-          </Button>
+          <div className="bg-[#FFE7FB] rounded-xl p-2 border">
+            <LuUserRoundCheck className="h-4 w-4 text-[#FE02BF]" />
+          </div>
         );
       case "support":
         return (
-          <Button variant="outline" className="bg-[#FDF3D9] rounded-xl">
-            <TbTicket className="h-6 w-6 text-yellow-500" />
-          </Button>
+          <div className="bg-[#FDF3D9] rounded-xl p-2 border">
+            <TbTicket className="h-4 w-4 text-yellow-500" />
+          </div>
         );
       case "security":
         return (
-          <Button className="rounded-xl bg-gradient-to-r from-[#0065FF] via-[#952BDA] to-[#FE02BF]">
-            <AlertTriangle className="h-6 w-6 text-white" />
-          </Button>
+          <div className="rounded-xl bg-gradient-to-r from-[#0065FF] via-[#952BDA] to-[#FE02BF] p-2">
+            <AlertTriangle className="h-4 w-4 text-white" />
+          </div>
         );
       default:
-        return null;
+        return (
+          <div className="bg-gray-100 rounded-xl p-2 border">
+            <Bell className="h-4 w-4 text-gray-600" />
+          </div>
+        );
     }
   };
 
-  if (error) {
-    return (
-      <DropdownMenu open={open} onOpenChange={setOpen}>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative">
-            <Bell className="h-5 w-5" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-96 p-4" align="end">
-          <p className="text-red-500 text-center">{error}</p>
-          {error.includes("Please log in") && (
-            <Button asChild variant="outline" className="w-full mt-4">
-              <a href="/login">Log In</a>
-            </Button>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  }
+  const displayedNotifications = filter === "unread" 
+    ? notifications.filter(n => !n.read)
+    : notifications;
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -263,57 +233,79 @@ export default function NotificationsDropdown() {
         <Button variant="ghost" className="relative">
           <Bell className="h-5 w-5" />
           {notifications.filter((n) => !n.read).length > 0 && (
-            <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
               {notifications.filter((n) => !n.read).length}
             </span>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-96 p-4" align="end">
+      <DropdownMenuContent className="w-96 p-4" align="end" sideOffset={5}>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium">Notifications</h3>
           <Button
             variant="link"
-            className="text-blue-600 text-sm"
+            className="text-blue-600 text-sm p-0 h-auto"
             onClick={handleMarkAllAsRead}
             disabled={notifications.filter((n) => !n.read).length === 0}
           >
             Mark all as read
           </Button>
         </div>
+        
         <div className="flex space-x-2 mb-4">
           <Button
             variant={filter === "all" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("all")}
           >
-            All {notifications.length}
+            All ({notifications.length})
           </Button>
           <Button
             variant={filter === "unread" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("unread")}
           >
-            Unread {notifications.filter((n) => !n.read).length}
+            Unread ({notifications.filter((n) => !n.read).length})
           </Button>
         </div>
-        <div className="space-y-4 max-h-64 overflow-y-auto">
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+            <p className="text-red-800 text-sm">{error}</p>
+            {error.includes("Please log in") && (
+              <Button asChild variant="outline" className="w-full mt-2">
+                <a href="/login">Log In</a>
+              </Button>
+            )}
+          </div>
+        )}
+
+        <div className="space-y-3 max-h-64 overflow-y-auto">
           {loading ? (
-            <p className="text-center text-gray-500">Loading notifications...</p>
-          ) : notifications.length === 0 ? (
-            <p className="text-center text-gray-500">No notifications available</p>
+            <div className="text-center py-4">
+              <p className="text-gray-500">Loading notifications...</p>
+            </div>
+          ) : displayedNotifications.length === 0 ? (
+            <div className="text-center py-4">
+              <p className="text-gray-500">No notifications available</p>
+            </div>
           ) : (
-            notifications.map((notification) => (
+            displayedNotifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`flex items-start space-x-3 p-2 rounded-lg ${
-                  notification.read ? "bg-gray-50" : "bg-white"
+                className={`flex items-start space-x-3 p-3 rounded-lg border ${
+                  notification.read ? "bg-gray-50" : "bg-white border-blue-200"
                 }`}
               >
-                <div>{getIconForType(notification.type)}</div>
-                <div className="flex-1">
-                  <p className="text-sm">{notification.message}</p>
-                  <p className="text-xs text-gray-500">{new Date(notification.timestamp).toLocaleString()}</p>
+                <div className="flex-shrink-0">
+                  {getIconForType(notification.type)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-900 break-words">{notification.message}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {new Date(notification.timestamp).toLocaleDateString()} at{" "}
+                    {new Date(notification.timestamp).toLocaleTimeString()}
+                  </p>
                   <div className="flex space-x-2 mt-2">
                     {notification.actions.map((action, idx) => (
                       <Button
@@ -321,6 +313,7 @@ export default function NotificationsDropdown() {
                         variant={action.variant}
                         size="sm"
                         onClick={() => handleAction(notification.id, action)}
+                        className="text-xs"
                       >
                         {action.label}
                       </Button>
@@ -328,14 +321,17 @@ export default function NotificationsDropdown() {
                   </div>
                 </div>
                 {!notification.read && (
-                  <div className="h-3 w-3 bg-blue-500 rounded-full mt-1"></div>
+                  <div className="flex-shrink-0 mt-2">
+                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                  </div>
                 )}
               </div>
             ))
           )}
         </div>
+
         <Button
-          className="w-full mt-4 text-white"
+          className="w-full mt-4"
           onClick={handleSeeAll}
         >
           See all notifications

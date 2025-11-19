@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -16,7 +15,7 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Stats {
-  id: string; // Unique identifier for each card
+  id: string;
   icon: JSX.Element;
   statNum: string | number;
   statTitle: string;
@@ -51,7 +50,7 @@ export default function KYCPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [timeframe, setTimeframe] = useState<"day" | "week" | "month">("month");
   const [, setOverviewData] = useState<KYCOverview | null>(null);
-  const[kyc,] = useState<KYC[]>([])
+  const [kyc] = useState<KYC[]>([]);
   const [stats, setStats] = useState<Stats[]>([
     {
       id: "approved",
@@ -120,80 +119,81 @@ export default function KYCPage() {
 
   const fetchStats = async () => {
     try {
-      // Reset errors and set loading for all cards
       setStats((prev) =>
         prev.map((stat) => ({ ...stat, loading: true, error: null }))
       );
-  
+
       const response = await fetch("/api/kyc/stats", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
       });
-  
+
       console.log("Stats API response status:", response.status);
-  
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.error || `Failed to fetch KYC stats (Status: ${response.status})`;
         console.error("Stats API error:", errorData);
         throw new Error(errorMessage);
       }
-  
+
       const responseData = await response.json();
       console.log("Stats API response data:", responseData);
       
-      // Extract the actual data from the response wrapper
       const data: KYCOverview = responseData.data || responseData;
       console.log("Extracted KYC overview data:", data);
-  
+
       setOverviewData(data);
+
+      // FIXED: Properly map the data to stats
       setStats((prev) =>
-        prev.map((stat) => ({
-          ...stat,
-          loading: false,
-          error: null,
-          statNum:
-            stat.id === "approved"
-              ? data.timeframes[timeframe].approved
-              : stat.id === "submitted"
-              ? data.timeframes[timeframe].submitted
-              : stat.id === "rejected"
-              ? data.totals.rejected
-              : stat.statNum,
-          statTrend: (
-            <div
-              className={`flex gap-1 p-1 text-xs items-center text-end ${
-                stat.id === "approved" && data.totals.change.approved >= 0
-                  ? "text-[#34C759] bg-[#DEFFE7]"
-                  : stat.id === "submitted" && data.totals.change.submitted >= 0
-                  ? "text-[#34C759] bg-[#DEFFE7]"
-                  : stat.id === "rejected" && data.totals.change.rejected >= 0
-                  ? "text-[#34C759] bg-[#DEFFE7]"
-                  : "text-[#FF3B30] bg-[#FEEAE9]"
-              } rounded-lg`}
-            >
-              <span>
-                {Math.abs(
-                  stat.id === "approved"
-                    ? data.totals.change.approved
-                    : stat.id === "submitted"
-                    ? data.totals.change.submitted
-                    : data.totals.change.rejected
-                ) || 0}
-                %
-              </span>
-              {(stat.id === "approved" && data.totals.change.approved >= 0) ||
-              (stat.id === "submitted" && data.totals.change.submitted >= 0) ||
-              (stat.id === "rejected" && data.totals.change.rejected >= 0) ? (
-                <FaArrowTrendUp />
-              ) : (
-                <FaArrowTrendDown />
-              )}
-            </div>
-          ),
-        }))
+        prev.map((stat) => {
+          let statNum = 0;
+          let trendValue = 0;
+          let isPositive = true;
+
+          switch (stat.id) {
+            case "approved":
+              // Show total approved, not timeframe approved
+              statNum = data.totals.approved;
+              trendValue = data.totals.change.approved;
+              isPositive = trendValue >= 0;
+              break;
+            case "submitted":
+              // Show total submitted, not timeframe submitted
+              statNum = data.totals.submitted;
+              trendValue = data.totals.change.submitted;
+              isPositive = trendValue >= 0;
+              break;
+            case "rejected":
+              // Show total rejected
+              statNum = data.totals.rejected;
+              trendValue = data.totals.change.rejected;
+              isPositive = trendValue >= 0;
+              break;
+          }
+
+          return {
+            ...stat,
+            loading: false,
+            error: null,
+            statNum,
+            statTrend: (
+              <div
+                className={`flex gap-1 p-1 text-xs items-center text-end ${
+                  isPositive
+                    ? "text-[#34C759] bg-[#DEFFE7]"
+                    : "text-[#FF3B30] bg-[#FEEAE9]"
+                } rounded-lg`}
+              >
+                <span>{Math.abs(trendValue)}%</span>
+                {isPositive ? <FaArrowTrendUp /> : <FaArrowTrendDown />}
+              </div>
+            ),
+          };
+        })
       );
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to fetch KYC stats";
@@ -215,14 +215,13 @@ export default function KYCPage() {
         stat.id === statId ? { ...stat, loading: true, error: null } : stat
       )
     );
-    fetchStats(); // Retry fetching all stats
+    fetchStats();
   };
 
   useEffect(() => {
     fetchStats();
   }, [timeframe]);
-
-
+ 
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -275,12 +274,13 @@ export default function KYCPage() {
           </Card>
         ))}
       </div>
+
       <Card className="rounded-none">
         <CardContent>
           <KYCTable
             showCheckboxes={true}
             showPagination={true}
-            onActionComplete={fetchStats} // Refresh stats after approve/decline
+            onActionComplete={fetchStats}
           />
         </CardContent>
       </Card>
@@ -289,7 +289,7 @@ export default function KYCPage() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         title="Export Data"
-         data={kyc}
+        data={kyc}
         dataType="Kyc"
         statusFilters={[
           { label: "Pending", value: "PENDING" },

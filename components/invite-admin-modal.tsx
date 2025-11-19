@@ -23,6 +23,7 @@ interface InvitedPerson {
   email: string;
   role: string;
   expiresIn: string;
+  id?: string;
 }
 
 interface InviteAdminModalProps {
@@ -103,98 +104,123 @@ export default function InviteAdminModal({ isOpen, onClose, onSuccess }: InviteA
   };
 
   // Fetch initial data including roles
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        setLoading(true);
+ // Fetch initial data including roles
+useEffect(() => {
+  const fetchInitialData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch roles first
+      const rolesResponse = await fetch("/api/admin/roles");
+      if (rolesResponse.ok) {
+        const rolesData = await rolesResponse.json();
+        console.log("Roles API response:", rolesData);
         
-        // Fetch roles first
-        const rolesResponse = await fetch("/api/admin/roles");
-        if (rolesResponse.ok) {
-          const rolesData = await rolesResponse.json();
-          console.log("Roles API response:", rolesData);
-          
-          const rolesArray = getRolesArray(rolesData);
-          console.log("Processed roles array:", rolesArray);
-          
-          setRoles(rolesArray);
-          if (rolesArray.length > 0) {
-            setSelectedRoleId(rolesArray[0].id);
-          }
-        } else {
-          console.warn("Failed to fetch roles, status:", rolesResponse.status);
-          // Set default roles if API fails
-          setRoles([
-            { id: "admin", name: "Administrator", permissions: ["all"] },
-            { id: "moderator", name: "Moderator", permissions: ["read", "write"] }
-          ]);
+        const rolesArray = getRolesArray(rolesData);
+        console.log("Processed roles array:", rolesArray);
+        
+        setRoles(rolesArray);
+        if (rolesArray.length > 0) {
+          setSelectedRoleId(rolesArray[0].id);
         }
+      } else {
+        console.warn("Failed to fetch roles, status:", rolesResponse.status);
+        // Set default roles if API fails
+        setRoles([
+          { id: "admin", name: "Administrator", permissions: ["all"] },
+          { id: "moderator", name: "Moderator", permissions: ["read", "write"] }
+        ]);
+      }
 
-        // Fetch domains - handle 404 gracefully
-        try {
-          setDomainsLoading(true);
-          const domainsResponse = await fetch("/api/admin/domains");
-          if (domainsResponse.ok) {
-            const domainsData = await domainsResponse.json();
-            
-            let domainsArray: Domain[] = [];
-            
-            if (Array.isArray(domainsData)) {
-              domainsArray = domainsData;
-            } 
-            else if (domainsData && Array.isArray(domainsData.domains)) {
-              domainsArray = domainsData.domains;
-            }
-            else if (domainsData && typeof domainsData === 'object' && domainsData.domain) {
-              domainsArray = [domainsData];
-            }
-            else if (domainsData && typeof domainsData === 'object' && !domainsData.message) {
+      // Fetch domains - handle 404 gracefully
+      try {
+        setDomainsLoading(true);
+        const domainsResponse = await fetch("/api/admin/domains");
+        if (domainsResponse.ok) {
+          const domainsData = await domainsResponse.json();
+          
+          let domainsArray: Domain[] = [];
+          
+          if (Array.isArray(domainsData)) {
+            domainsArray = domainsData;
+          } 
+          else if (domainsData && Array.isArray(domainsData.domains)) {
+            domainsArray = domainsData.domains;
+          }
+          else if (domainsData && typeof domainsData === 'object' && domainsData.domain) {
+            domainsArray = [domainsData];
+          }
+          else if (domainsData && typeof domainsData === 'object' && !domainsData.message) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const values = Object.values(domainsData) as any[];
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const values = Object.values(domainsData) as any[];
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              domainsArray = values.filter((item: any) => 
-                item && (typeof item === 'string' || (typeof item === 'object' && item.domain))
-              ) as Domain[];
-            }
-            
-            setDomains(domainsArray);
-          } else {
-            console.warn("Domains endpoint returned:", domainsResponse.status);
-            setDomains([]);
+            domainsArray = values.filter((item: any) => 
+              item && (typeof item === 'string' || (typeof item === 'object' && item.domain))
+            ) as Domain[];
           }
-        } catch (error) {
-          console.warn("Failed to fetch domains:", error);
+          
+          setDomains(domainsArray);
+        } else {
+          console.warn("Domains endpoint returned:", domainsResponse.status);
           setDomains([]);
-        } finally {
-          setDomainsLoading(false);
-        }
-
-        // Fetch pending invitations
-        const invitationsResponse = await fetch("/api/admin/invitations/pending");
-        if (invitationsResponse.ok) {
-          const invitationsData = await invitationsResponse.json();
-          const mappedInvitations = Array.isArray(invitationsData.invitations || invitationsData)
-            ?// eslint-disable-next-line @typescript-eslint/no-explicit-any
-             (invitationsData.invitations || invitationsData).map((invite: any) => ({
-                initials: (invite.email || "").split("@")[0].slice(0, 2).toUpperCase(),
-                name: invite.name || (invite.email || "").split("@")[0],
-                email: invite.email || "",
-                role: invite.role || "Admin",
-                expiresIn: "24h",
-              }))
-            : [];
-          setInvitedPeople(mappedInvitations);
         }
       } catch (error) {
-        console.error("Failed to fetch initial data:", error);
-        toast.error("Failed to load initial data");
+        console.warn("Failed to fetch domains:", error);
+        setDomains([]);
       } finally {
-        setLoading(false);
+        setDomainsLoading(false);
       }
-    };
-    
-    if (isOpen) fetchInitialData();
-  }, [isOpen]);
+
+      // Fetch pending invitations - CORRECTED SECTION
+      const invitationsResponse = await fetch("/api/admin/invitations/pending");
+      if (invitationsResponse.ok) {
+        const invitationsData = await invitationsResponse.json();
+        console.log("Pending invitations response:", invitationsData);
+        
+        // Extract the invitations array from the nested structure
+        let invitationsArray = [];
+        
+        if (invitationsData.invitations && invitationsData.invitations.data) {
+          // Structure: { invitations: { data: [...] } }
+          invitationsArray = invitationsData.invitations.data;
+        } else if (invitationsData.data) {
+          // Structure: { data: [...] }
+          invitationsArray = invitationsData.data;
+        } else if (Array.isArray(invitationsData.invitations)) {
+          // Structure: { invitations: [...] }
+          invitationsArray = invitationsData.invitations;
+        } else if (Array.isArray(invitationsData)) {
+          // Structure: [...]
+          invitationsArray = invitationsData;
+        }
+        
+        console.log("Extracted invitations array:", invitationsArray);
+               // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mappedInvitations = invitationsArray.map((invite: any) => ({
+          initials: (invite.email || "").slice(0, 2).toUpperCase(),
+          name: invite.invitedBy?.name || (invite.email || "").split("@")[0],
+          email: invite.email || "",
+          role: invite.role?.name || "Unknown Role",
+          expiresIn: "24h", // You might want to calculate this from expiresAt
+          id: invite.id // Keep the ID for revoking
+        }));
+        
+        console.log("Mapped invitations:", mappedInvitations);
+        setInvitedPeople(mappedInvitations);
+      } else {
+        console.warn("Failed to fetch pending invitations:", invitationsResponse.status);
+        setInvitedPeople([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch initial data:", error);
+      toast.error("Failed to load initial data");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  if (isOpen) fetchInitialData();
+}, [isOpen]);
 
   // Add a new domain
   const handleAddDomain = async () => {
@@ -366,41 +392,68 @@ export default function InviteAdminModal({ isOpen, onClose, onSuccess }: InviteA
   };
 
   // Revoke an invitation
-  const handleRevokeInvitation = async (email: string) => {
-    try {
-      setLoading(true);
-      // First get the invitation ID
-      const invitationsResponse = await fetch("/api/admin/invitations/pending");
-      if (invitationsResponse.ok) {
-        const invitationsData = await invitationsResponse.json();
-        const invitationToDelete = Array.isArray(invitationsData.invitations || invitationsData)
-          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (invitationsData.invitations || invitationsData).find((invite: any) => invite.email === email)
-          : null;
+const handleRevokeInvitation = async (email: string) => {
+  try {
+    setLoading(true);
+    
+    // Find the invitation in the current state to get the ID
+    const invitationToDelete = invitedPeople.find(person => person.email === email);
+    
+    if (invitationToDelete && invitationToDelete.id) {
+      const response = await fetch(`/api/admin/invitations/${invitationToDelete.id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        // Cookies are automatically sent with same-origin requests
+      });
 
-        if (invitationToDelete) {
-          const invitationId = invitationToDelete.id;
-          const response = await fetch(`/api/admin/invitations/${invitationId}`, {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || "Failed to revoke invitation");
-          }
-
-          setInvitedPeople(invitedPeople.filter((person) => person.email !== email));
-          toast.success("Invitation revoked successfully");
-        }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to revoke invitation");
       }
-    } catch (error) {
-      console.error("Failed to revoke invitation:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to revoke invitation");
-    } finally {
-      setLoading(false);
+
+      // Remove the invitation from the local state immediately
+      setInvitedPeople(invitedPeople.filter((person) => person.email !== email));
+      toast.success("Invitation revoked successfully");
+      
+      // Optional: Refetch pending invitations to ensure consistency
+      const refreshResponse = await fetch("/api/admin/invitations/pending");
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        let invitationsArray = [];
+        
+        if (refreshData.invitations && refreshData.invitations.data) {
+          invitationsArray = refreshData.invitations.data;
+        } else if (refreshData.data) {
+          invitationsArray = refreshData.data;
+        } else if (Array.isArray(refreshData.invitations)) {
+          invitationsArray = refreshData.invitations;
+        } else if (Array.isArray(refreshData)) {
+          invitationsArray = refreshData;
+        }
+               // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mappedInvitations = invitationsArray.map((invite: any) => ({
+          initials: (invite.email || "").slice(0, 2).toUpperCase(),
+          name: invite.invitedBy?.name || (invite.email || "").split("@")[0],
+          email: invite.email || "",
+          role: invite.role?.name || "Unknown Role",
+          expiresIn: "24h",
+          id: invite.id
+        }));
+        
+        setInvitedPeople(mappedInvitations);
+      }
+    } else {
+      throw new Error("Invitation not found in local state");
     }
-  };
+  } catch (error) {
+    console.error("Failed to revoke invitation:", error);
+    toast.error(error instanceof Error ? error.message : "Failed to revoke invitation");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -600,8 +653,7 @@ export default function InviteAdminModal({ isOpen, onClose, onSuccess }: InviteA
                     {person.initials}
                   </div>
                   <div>
-                    <div className="text-sm font-medium">{person.name}</div>
-                    <div className="text-xs text-gray-500">{person.email}</div>
+                    <div className="text-sm font-medium">{person.email}</div>
                     <div className="text-xs text-gray-500">
                       Invitation will expire in {person.expiresIn}
                     </div>

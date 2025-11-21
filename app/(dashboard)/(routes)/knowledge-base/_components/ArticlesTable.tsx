@@ -107,115 +107,114 @@ export default function ArticlesTable({
   const [dateRangeTo, setDateRangeTo] = useState("");
   const articlesPerPage = 10;
 
-const fetchArticles = useCallback(async () => {
-  try {
-    setLoading(true);
-    setError(null);
-
-    // Build query parameters - use the exact parameters the backend expects
-    const queryParams = new URLSearchParams({
-      page: currentPage.toString(),
-      limit: articlesPerPage.toString(),
-    });
-
-    // Add search if provided
-    if (searchQuery) {
-      queryParams.append("search", searchQuery);
+  const fetchArticles = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+  
+      // Build query parameters - use the exact parameters the backend expects
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: articlesPerPage.toString(),
+      });
+  
+      // Add search if provided
+      if (searchQuery) {
+        queryParams.append("search", searchQuery);
+      }
+  
+      // Add date filters if provided
+      if (dateRangeFrom) {
+        queryParams.append("fromDate", new Date(dateRangeFrom).toISOString());
+      }
+      if (dateRangeTo) {
+        queryParams.append("toDate", new Date(dateRangeTo).toISOString());
+      }
+  
+      // Add status filter (only if not "All")
+      if (!statusFilter.All) {
+        const selectedStatuses = [];
+        if (statusFilter.PUBLISHED) selectedStatuses.push("PUBLISHED");
+        if (statusFilter.DRAFT) selectedStatuses.push("DRAFT");
+        if (statusFilter.ARCHIVED) selectedStatuses.push("ARCHIVED");
+        if (statusFilter.SCHEDULED) selectedStatuses.push("SCHEDULED");
+        
+        if (selectedStatuses.length > 0) {
+          selectedStatuses.forEach(status => queryParams.append("status", status));
+        }
+      }
+      // Remove the else clause that defaults to PUBLISHED when "All" is selected
+      // This way, when "All" is selected, no status filter is applied
+  
+      console.log("Fetching articles with params:", queryParams.toString());
+  
+      const response = await fetch(`/api/articles?${queryParams.toString()}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch articles");
+      }
+  
+      const backendData = await response.json();
+      console.log("Full backend response:", backendData);
+  
+      // Based on your API response structure, extract data and metadata
+      let articlesData = [];
+      let totalCount = 0;
+      let totalPagesCount = 1;
+  
+      if (backendData.data && Array.isArray(backendData.data)) {
+        // Your API returns { data: [], meta: { total, page, totalPages, ... } }
+        articlesData = backendData.data;
+        totalCount = backendData.meta?.total || 0;
+        totalPagesCount = backendData.meta?.totalPages || 1;
+        
+        console.log(`Extracted ${articlesData.length} articles from backendData.data`);
+        console.log(`Total count: ${totalCount}, Total pages: ${totalPagesCount}`);
+      } else {
+        // Fallback if structure is different
+        console.warn("Unexpected API response structure:", backendData);
+        articlesData = [];
+        totalCount = 0;
+        totalPagesCount = 1;
+      }
+  
+      // Map the API data to your component's Article interface
+      const mappedArticles: Article[] = articlesData.map((article: ApiArticle) => {
+        console.log("Mapping article:", article);
+        return {
+          id: article.id,
+          title: article.title,
+          content: article.content,
+          category: article.category,
+          status: article.status,
+          createdBy: article.author?.name || "Unknown Author",
+          role: "Admin", // Default role since API doesn't provide this
+          publishedDate: article.publishedAt || article.createdAt || new Date().toISOString(),
+          thumbnail: article.thumbnail,
+          tags: article.tags,
+          publishAt: article.publishAt,
+        };
+      });
+  
+      console.log(`Mapped ${mappedArticles.length} articles`);
+      setArticles(mappedArticles);
+      setTotalArticles(totalCount);
+      setTotalPages(totalPagesCount);
+      
+    } catch (err) {
+      console.error("Error fetching articles:", err);
+      setError(err instanceof Error ? err.message : "An error occurred");
+      setArticles([]);
+      setTotalArticles(0);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
     }
-
-    // Add date filters if provided
-    if (dateRangeFrom) {
-      queryParams.append("fromDate", new Date(dateRangeFrom).toISOString());
-    }
-    if (dateRangeTo) {
-      queryParams.append("toDate", new Date(dateRangeTo).toISOString());
-    }
-
-    // Add status filter (only if not "All")
-    if (!statusFilter.All) {
-      if (statusFilter.PUBLISHED) queryParams.append("status", "PUBLISHED");
-      if (statusFilter.DRAFT) queryParams.append("status", "DRAFT");
-      if (statusFilter.ARCHIVED) queryParams.append("status", "ARCHIVED");
-      if (statusFilter.SCHEDULED) queryParams.append("status", "SCHEDULED");
-    } else {
-      // Default to PUBLISHED if All is selected, or remove this line to get all statuses
-      queryParams.append("status", "PUBLISHED");
-    }
-
-    // Add category filter - you might want to add this based on your UI
-    // queryParams.append("category", "GUIDE"); // Uncomment if you want to filter by category
-
-    console.log("Fetching articles with params:", queryParams.toString());
-
-    const response = await fetch(`/api/articles?${queryParams.toString()}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to fetch articles");
-    }
-
-    const backendData = await response.json();
-    console.log("Backend response:", backendData);
-
-    // Handle different possible response structures from backend
-    let articlesData = [];
-    let totalCount = 0;
-    let totalPagesCount = 1;
-
-    if (Array.isArray(backendData)) {
-      // If backend returns direct array
-      articlesData = backendData;
-      totalCount = backendData.length;
-      totalPagesCount = 1;
-    } else if (backendData.articles && Array.isArray(backendData.articles)) {
-      // If backend returns { articles: [], total: number, pages: number }
-      articlesData = backendData.articles;
-      totalCount = backendData.total || backendData.articles.length;
-      totalPagesCount = backendData.pages || Math.ceil(totalCount / articlesPerPage);
-    } else if (backendData.data && Array.isArray(backendData.data)) {
-      // If backend returns { data: [], total: number, pages: number }
-      articlesData = backendData.data;
-      totalCount = backendData.total || backendData.data.length;
-      totalPagesCount = backendData.pages || Math.ceil(totalCount / articlesPerPage);
-    } else {
-      // Fallback - try to find any array in the response
-      const possibleArrays = Object.values(backendData).filter(val => Array.isArray(val));
-      articlesData = possibleArrays[0] || [];
-      totalCount = articlesData.length;
-      totalPagesCount = Math.ceil(totalCount / articlesPerPage);
-    }
-
-    const mappedArticles: Article[] = articlesData.map((article: ApiArticle) => ({
-      id: article.id,
-      title: article.title,
-      content: article.content,
-      category: article.category,
-      status: article.status,
-      createdBy: article.author?.name || "Unknown Author",
-      role: "Admin",
-      publishedDate: article.publishedAt || article.createdAt || new Date().toISOString(),
-      thumbnail: article.thumbnail,
-      tags: article.tags,
-      publishAt: article.publishAt,
-    }));
-
-    setArticles(mappedArticles);
-    setTotalArticles(totalCount);
-    setTotalPages(totalPagesCount);
-    
-  } catch (err) {
-    console.error("Error fetching articles:", err);
-    setError(err instanceof Error ? err.message : "An error occurred");
-    setArticles([]);
-    setTotalArticles(0);
-    setTotalPages(1);
-  } finally {
-    setLoading(false);
-  }
-}, [currentPage, statusFilter, searchQuery, dateRangeFrom, dateRangeTo]);
+  }, [currentPage, statusFilter, searchQuery, dateRangeFrom, dateRangeTo]);
 
   useEffect(() => {
     fetchArticles();

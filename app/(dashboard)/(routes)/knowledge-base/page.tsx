@@ -143,7 +143,7 @@ export default function ArticlesPage() {
       if (data.sendImmediately) formData.append("sendImmediately", data.sendImmediately.toString());
   
       const url = data.id ? `/api/articles/${data.id}` : "/api/articles";
-      const method = data.id ? "PATCH" : "POST";
+      const method = data.id ? "PUT" : "POST";
   
       const response = await fetch(url, {
         method,

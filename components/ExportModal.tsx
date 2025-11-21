@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogOverlay } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +65,70 @@ export default function ExportModal({
     fieldOptions.reduce((acc, { value }) => ({ ...acc, [value]: true }), {})
   );
   const [exporting, setExporting] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
+
+  // Validate form whenever relevant state changes
+  useEffect(() => {
+    validateForm();
+  }, [statusFilter, priorityFilter, messageTypeFilter, recipientTypeFilter, roleFilter, adminRole, dateRangeFrom, dateRangeTo, fields, activeTab]);
+
+  const validateForm = () => {
+    let isValid = true;
+
+    // Validate status filter (at least one status must be selected)
+    if (statusFilters.length > 0) {
+      const hasStatusSelected = Object.keys(statusFilter).some(key => statusFilter[key]);
+      if (!hasStatusSelected) isValid = false;
+    }
+
+    // Validate message type filter (at least one message type must be selected)
+    if (messageTypeFilters.length > 0) {
+      const hasMessageTypeSelected = Object.keys(messageTypeFilter).some(key => messageTypeFilter[key]);
+      if (!hasMessageTypeSelected) isValid = false;
+    }
+
+    // Validate recipient type filter (at least one recipient type must be selected)
+    if (recipientTypeFilters.length > 0) {
+      const hasRecipientTypeSelected = Object.keys(recipientTypeFilter).some(key => recipientTypeFilter[key]);
+      if (!hasRecipientTypeSelected) isValid = false;
+    }
+
+    // Validate priority filter (at least one priority must be selected if priorities exist)
+    if (priorityFilters.length > 0) {
+      const hasPrioritySelected = Object.keys(priorityFilter).some(key => priorityFilter[key]);
+      if (!hasPrioritySelected) isValid = false;
+    }
+
+    // Validate role filter (must have a value if role filters exist)
+    if (roleFilters.length > 0 && roleFilter === "") {
+      isValid = false;
+    }
+
+    // Validate admin role (must be selected if admin role options exist)
+    if (adminRoleOptions.length > 0 && adminRole === "") {
+      isValid = false;
+    }
+
+    // Validate date range (both from and to must be set)
+    if (!dateRangeFrom || !dateRangeTo) {
+      isValid = false;
+    }
+
+    // Validate that date range is logical (from <= to)
+    if (dateRangeFrom && dateRangeTo) {
+      const fromDate = new Date(dateRangeFrom);
+      const toDate = new Date(dateRangeTo);
+      if (fromDate > toDate) {
+        isValid = false;
+      }
+    }
+
+    // Validate fields (at least one field must be selected)
+    const hasFieldsSelected = Object.keys(fields).some(key => fields[key]);
+    if (!hasFieldsSelected) isValid = false;
+
+    setIsFormValid(isValid);
+  };
 
   const handleStatusFilterChange = (value: string) => {
     if (value === "All") {
@@ -296,7 +360,7 @@ export default function ExportModal({
             <>
               {statusFilters.length > 0 && (
                 <div>
-                  <p className="text-xs font-light mb-2">Status</p>
+                  <p className="text-xs font-light mb-2">Status *</p>
                   <div className="flex space-x-2 flex-wrap">
                     {statusFilters.map(({ label, value }) => (
                       <Button
@@ -315,7 +379,7 @@ export default function ExportModal({
               )}
               {messageTypeFilters.length > 0 && (
                 <div>
-                  <p className="text-xs font-light mb-2">Message Type</p>
+                  <p className="text-xs font-light mb-2">Message Type *</p>
                   <div className="flex space-x-2 flex-wrap">
                     {messageTypeFilters.map(({ label, value }) => (
                       <Button
@@ -334,7 +398,7 @@ export default function ExportModal({
               )}
               {recipientTypeFilters.length > 0 && (
                 <div>
-                  <p className="text-xs font-light mb-2">Recipient Type</p>
+                  <p className="text-xs font-light mb-2">Recipient Type *</p>
                   <div className="flex space-x-2 flex-wrap">
                     {recipientTypeFilters.map(({ label, value }) => (
                       <Button
@@ -353,7 +417,7 @@ export default function ExportModal({
               )}
               {priorityFilters.length > 0 && (
                 <div>
-                  <p className="text-xs font-light mb-2">Priority</p>
+                  <p className="text-xs font-light mb-2">Priority *</p>
                   <div className="flex space-x-2 flex-wrap">
                     {priorityFilters.map(({ label, value }) => (
                       <Button
@@ -377,7 +441,7 @@ export default function ExportModal({
               )}
               {roleFilters.length > 0 && (
                 <div>
-                  <p className="text-xs font-light mb-2">User Role</p>
+                  <p className="text-xs font-light mb-2">User Role *</p>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       variant={roleFilter === "all" ? "default" : "outline"}
@@ -405,7 +469,7 @@ export default function ExportModal({
               )}
               {adminRoleOptions.length > 0 && (
                 <div>
-                  <p className="text-xs font-light mb-2">Admin Role</p>
+                  <p className="text-xs font-light mb-2">Admin Role *</p>
                   <select
                     value={adminRole}
                     onChange={(e) => setAdminRole(e.target.value)}
@@ -421,7 +485,7 @@ export default function ExportModal({
                 </div>
               )}
               <div>
-                <p className="text-xs font-light mb-2">Fields</p>
+                <p className="text-xs font-light mb-2">Fields *</p>
                 <div className="grid grid-cols-2 gap-2">
                   {fieldOptions.map(({ label, value }) => (
                     <label key={value} className="flex items-center gap-2">
@@ -439,7 +503,7 @@ export default function ExportModal({
                 </div>
               </div>
               <div>
-                <p className="text-xs font-light mb-2">Date Range</p>
+                <p className="text-xs font-light mb-2">Date Range *</p>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Input
@@ -458,6 +522,9 @@ export default function ExportModal({
                     />
                   </div>
                 </div>
+                {dateRangeFrom && dateRangeTo && new Date(dateRangeFrom) > new Date(dateRangeTo) && (
+                  <p className="text-xs text-red-500 mt-1">End date must be after start date</p>
+                )}
               </div>
               <div className="flex justify-between items-center">
                 <div className="flex gap-2 border p-1 rounded-md bg-input">
@@ -476,7 +543,7 @@ export default function ExportModal({
                 </div>
                 <Button
                   onClick={handleExport}
-                  disabled={exporting}
+                  disabled={exporting || !isFormValid}
                   className="w-[280px] text-white rounded-md"
                 >
                   {exporting ? "Exporting..." : "Export"}

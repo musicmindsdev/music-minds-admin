@@ -11,8 +11,8 @@ import { PiWarningOctagonFill } from "react-icons/pi";
 import { CheckCircle, UserRoundX } from "lucide-react";
 import { FaTrash, FaUser } from "react-icons/fa";
 import { Skeleton } from "@/components/ui/skeleton";
-import BookingTable from "../../dashboard/_components/BookingTable";
-import ReviewTable from "../../content-management/_components/ReviewTable";
+// import BookingTable from "../../dashboard/_components/BookingTable";
+// import ReviewTable from "../../content-management/_components/ReviewTable";
 import { Booking } from "../../dashboard/_components/BookingTable"; // Import Booking interface
 
 // Define interfaces for API response data
@@ -105,7 +105,7 @@ const mapApiUserToComponentUser = (apiUser: any): User => {
 };
 
 export default function UserDetailsView({ user: initialUser, onClose }: UserDetailsViewProps) {
-  const [activeTab, setActiveTab] = useState<"Bookings" | "Reviews">("Bookings");
+  // const [activeTab, setActiveTab] = useState<"Bookings" | "Reviews">("Bookings");
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState<boolean>(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
   const [isActivateModalOpen, setIsActivateModalOpen] = useState<boolean>(false);
@@ -421,7 +421,7 @@ export default function UserDetailsView({ user: initialUser, onClose }: UserDeta
       </div>
 
       {/* Tabbed Interface */}
-      <div className="flex space-x-2 border border-b-0 mb-0 px-2 pt-2 rounded-t-lg bg-card">
+      {/* <div className="flex space-x-2 border border-b-0 mb-0 px-2 pt-2 rounded-t-lg bg-card">
         <Button
           variant={"ghost"}
           className={`px-4 rounded-none ${activeTab === "Bookings" ? "border-b border-[#5243FE] text-[#5243FE]" : ""}`}
@@ -436,8 +436,8 @@ export default function UserDetailsView({ user: initialUser, onClose }: UserDeta
         >
           Reviews
         </Button>
-      </div>
-      <div className="rounded-none mt-0">
+      </div> */}
+      {/* <div className="rounded-none mt-0">
         <div className="p-6 shadow bg-card">
           {activeTab === "Bookings" ? (
             <BookingTable
@@ -454,7 +454,7 @@ export default function UserDetailsView({ user: initialUser, onClose }: UserDeta
             />
           )}
         </div>
-      </div>
+      </div> */}
 
       <Modal
         isOpen={isSuspendModalOpen}
